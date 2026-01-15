@@ -1,4 +1,38 @@
 {
+<<<<<<< HEAD
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.4",
+    "typescript-eslint": "^8.53.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "node": "^25.3.0"
+=======
   "name": "car-cleaning-system",
   "private": true,
   "version": "1.0.0",
@@ -24,5 +58,6 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+>>>>>>> 8aac7e6e2be7d999f5fa50402426a4cefb000dc7
   }
 }
