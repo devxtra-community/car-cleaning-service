@@ -1,9 +1,8 @@
 import { connectDatabase } from "./database/connectDatabase";
 
-const startServer = async ()=>{
-    await connectDatabase();
-    console.log("Backend server runnning");
-    
-}
+const startServer = async () => {
+  await connectDatabase();
+  console.log("Backend server started");
+};
 
 startServer();
