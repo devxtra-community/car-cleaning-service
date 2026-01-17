@@ -26,6 +26,9 @@
     "test": "npm run test --workspaces"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.3.1",
+    "@commitlint/config-conventional": "^20.3.1",
+    "@types/express": "^5.0.6",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
     "concurrently": "^8.2.2",
@@ -50,6 +53,9 @@
     ]
   },
   "dependencies": {
+    "commitlint": "^20.3.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "pg": "^8.17.1"
   }
 }
