@@ -1,6 +1,5 @@
 import express from 'express'
 import { logger } from './config/logger'
-import { connectDatabase } from "./database/connectDatabase";
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -8,7 +7,6 @@ const app = express()
 app.use(express.json())
 
 const PORT = 3000
- connectDatabase();
 
 app.get("/health",(req,res)=>{
     logger.info("Health check requested")
