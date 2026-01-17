@@ -1,12 +1,31 @@
-import express from "express";
-import pool from "./config/connectDatabase.js";
+import express, { Request, Response } from "express";
+import dotenv from "dotenv";
+import { logger } from "./config/logger";
+import { connectDatabase } from "./database/connectDatabase";
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-app.get("/", async (req, res) => {
-  const result = await pool.query("SELECT NOW()");
-  res.json(result.rows[0]);
-});
+const PORT = 3030;
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+const startServer = async () => {
+  await connectDatabase();
+
+  app.get("/health", (req: Request, res: Response) => {
+    logger.info("Health check requested");
+
+    res.status(200).json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toString(),
+    });
+  });
+
+  app.listen(PORT, () => {
+    logger.info(`Server started on port ${PORT}`);
+  });
+};
+
+startServer();
