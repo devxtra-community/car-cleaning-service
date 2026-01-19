@@ -12,12 +12,13 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "*": ["src/*"]
+      "@config/*": ["config/*"],
+      "@database/*": ["database/*"]
     }
   },
   "ts-node": {
     "esm": false
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../commitlint.config.js"],
   "exclude": ["node_modules", "dist"]
 }
