@@ -1,31 +1,28 @@
-import express, { Request, Response } from "express";
-import dotenv from "dotenv";
-import { logger } from "./config/logger";
-import { connectDatabase } from "./database/connectDatabase";
-
+import dotenv from 'dotenv';
 dotenv.config();
+import express, { Request, Response } from 'express';
+import { logger } from './config/logger';
+import { connectDatabase } from './database/connectDatabase';
+import { globalErrorHandler } from './middlewares/error-handler';
 
 const app = express();
 app.use(express.json());
 
 const PORT = 3030;
+connectDatabase();
 
-const startServer = async () => {
-  await connectDatabase();
+app.get('/health', (req: Request, res: Response) => {
+  logger.info('Health check requested');
 
-  app.get("/health", (req: Request, res: Response) => {
-    logger.info("Health check requested");
-
-    res.status(200).json({
-      status: "ok",
-      uptime: process.uptime(),
-      timestamp: new Date().toString(),
-    });
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toString(),
   });
+});
 
-  app.listen(PORT, () => {
-    logger.info(`Server started on port ${PORT}`);
-  });
-};
+app.use(globalErrorHandler);
 
-startServer();
+app.listen(PORT, () => {
+  logger.info(`Server started on port http://localhost:${PORT}`);
+});
