@@ -10,6 +10,9 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
 
+    env:
+      HUSKY: 0
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,21 +24,24 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd backend
-          export HUSKY=0
           npm install
 
-      - name: Run Lint (ESLint)
+      - name: Backend install
+        run: |
+          cd backend
+          npm install
+
+      - name: Run Backend Lint
         run: |
           cd backend
           npm run lint --if-present
 
-      - name: Run Tests (if available)
+      - name: Run Backend Tests
         run: |
           cd backend
           npm test --if-present
 
-      - name: Build (TypeScript)
+      - name: Backend Build
         run: |
           cd backend
           npm run build --if-present
