@@ -15,6 +15,7 @@ export const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  connectionTimeoutMillis: 5000,
 });
 
 function delay(ms: number) {
