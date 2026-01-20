@@ -8,11 +8,14 @@ const RECONNECT_INTERVAL_MS = 10000;
 let isDbConnected = false;
 let reconnectInterval: NodeJS.Timeout | null = null;
 
+
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },
+  connectionTimeoutMillis: 5000,
 });
 
 function delay(ms: number) {
