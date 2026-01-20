@@ -12,7 +12,8 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "*": ["src/*"]
+      "@config/*": ["config/*"],
+      "@database/*": ["database/*"]
     }
   },
   "ts-node": {
