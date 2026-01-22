@@ -7,32 +7,50 @@ import { pool } from '../../database/connectDatabase';
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    logger.info('Registration attempt', { email: req.body.email });
+    const { email, password, role, full_name, client_type, document, age, nationality } = req.body;
 
-    const { email, password, role, app_type, full_name } = req.body;
-
-    if (!email || !password || !role || !app_type || !full_name) {
+    if (!email || !password || !role || !full_name || !client_type) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields',
       });
     }
 
-    const user = await createUser(req.body);
+    if (!['web', 'mobile'].includes(client_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid client_type',
+      });
+    }
+
+    const user = await createUser({
+      email,
+      password,
+      role,
+      full_name,
+      client_type,
+      document,
+      age,
+      nationality,
+    });
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: user,
     });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      logger.error('Registration failed', { error: error.message });
-    } else {
-      logger.error('Registration failed', { error });
+  } catch (err: unknown) {
+    // changed from 'error'
+    if (err instanceof Error) {
+      logger.error('Registration failed', { error: err.message });
+      return res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
 
-    res.status(500).json({
+    logger.error('Registration failed', { error: err });
+    return res.status(500).json({
       success: false,
       message: 'Registration failed',
     });
@@ -41,19 +59,18 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password, clientType } = req.body;
+    const { email, password } = req.body;
 
-    if (!email || !password || !clientType) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email, password and clientType are required',
+        message: 'Email and password are required',
       });
     }
 
-    // 🔑 Direct PostgreSQL query (NO findUserByEmail)
     const result = await pool.query(
       `
-      SELECT id, email, password, role
+      SELECT id, email, password, role, client_type
       FROM users
       WHERE email = $1
       `,
@@ -78,12 +95,11 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // 🔐 Generate tokens
-    const accessToken = generateAccessToken({ userId: user.id, role: user.role }, clientType);
+    const accessToken = generateAccessToken({ userId: user.id, role: user.role }, user.client_type);
 
-    const refreshToken = generateRefreshToken({ userId: user.id }, clientType);
+    const refreshToken = generateRefreshToken({ userId: user.id }, user.client_type);
 
-    if (clientType === 'web') {
+    if (user.client_type === 'web') {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -94,22 +110,29 @@ export const login = async (req: Request, res: Response) => {
 
     logger.info('User logged in', {
       userId: user.id,
-      clientType,
+      client: user.client_type,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       accessToken,
-      ...(clientType === 'mobile' && { refreshToken }),
+      ...(user.client_type === 'mobile' && { refreshToken }),
     });
   } catch (error: unknown) {
     if (error instanceof Error) {
+      console.error('LOGIN ERROR:', error.message);
       logger.error('Login failed', { error: error.message });
-    } else {
-      logger.error('Login failed', { error });
+
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
     }
 
-    res.status(500).json({
+    console.error('LOGIN ERROR:', error);
+    logger.error('Login failed', { error });
+
+    return res.status(500).json({
       success: false,
       message: 'Login failed',
     });
