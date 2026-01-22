@@ -1,5 +1,3 @@
-
-
 export type UserRole =
   | "super_admin"
   | "admin"
@@ -7,38 +5,32 @@ export type UserRole =
   | "supervisor"
   | "cleaner";
 
-export type AppType = "web" | "mobile";
-
-export type StaffType = "cleaner" | "supervisor";
-
-export type ShiftType = "morning" | "evening" | "night";
+export type ClientType = "web" | "mobile";
 
 export interface User {
-  id: string; // UUID from DB
+  id: string;
 
   // AUTH
   email: string;
   password: string;
 
-  // ROLE & APP
+  // ROLE & ACCESS
   role: UserRole;
-  app_type: AppType;
+  allowed_clients: ClientType[];
 
   is_active: boolean;
   last_login: Date | null;
 
-  // COMMON PROFILE
+  // PROFILE
   full_name: string;
   phone?: string | null;
   address?: string | null;
 
   // STAFF INFO
   employee_code?: string | null;
-  staff_type?: StaffType | null;
-
+  staff_type?: "cleaner" | "supervisor" | null;
   joining_date?: Date | null;
   salary?: number | null;
-  shift?: ShiftType | null;
 
   assigned_area?: string | null;
   supervisor_id?: string | null;
