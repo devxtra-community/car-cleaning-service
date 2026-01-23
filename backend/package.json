@@ -9,12 +9,15 @@
     "test": "echo \"No tests yet\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.972.0",
     "@neondatabase/serverless": "^1.0.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
     "pg": "^8.17.1"
   },
   "devDependencies": {
@@ -22,6 +25,8 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/multer-s3": "^3.0.3",
     "@types/node": "^25.0.9",
     "@types/pg": "^8.16.0",
     "nodemon": "^3.1.11",
