@@ -116,7 +116,7 @@ export const login = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       accessToken,
-      ...(user.client_type === 'mobile' && { refreshToken }),
+      user,
     });
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -135,6 +135,30 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Login failed',
+    });
+  }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  try {
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    logger.info('User logged out');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  } catch (error: unknown) {
+    logger.error('Logout failed', { error });
+
+    return res.status(500).json({
+      success: false,
+      message: 'Logout failed',
     });
   }
 };
