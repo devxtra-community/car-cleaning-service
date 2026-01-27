@@ -1,25 +1,71 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
+import crypto from 'crypto';
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET_KEY!;
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET_KEY!;
-console.log('JWT_ACCESS_SECRET:', process.env.JWT_ACCESS_SECRET_KEY);
+/* =======================
+   ENV VARIABLES
+======================= */
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET_KEY;
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET_KEY;
 
-export const generateAccessToken = (payload: object, clientType: 'web' | 'mobile') => {
-  const options: SignOptions = {
-    expiresIn: (clientType === 'web'
-      ? process.env.JWT_ACCESS_EXPIRES_WEB
-      : process.env.JWT_ACCESS_EXPIRES_MOBILE) as SignOptions['expiresIn'],
-  };
+const ACCESS_EXPIRES_WEB = process.env.JWT_ACCESS_EXPIRES_WEB as SignOptions['expiresIn'];
 
-  return jwt.sign(payload, ACCESS_SECRET, options);
+const ACCESS_EXPIRES_MOBILE = process.env.JWT_ACCESS_EXPIRES_MOBILE as SignOptions['expiresIn'];
+
+const REFRESH_EXPIRES_WEB = process.env.JWT_REFRESH_EXPIRES_WEB as SignOptions['expiresIn'];
+
+const REFRESH_EXPIRES_MOBILE = process.env.JWT_REFRESH_EXPIRES_MOBILE as SignOptions['expiresIn'];
+
+/* =======================
+   RUNTIME SAFETY CHECK
+======================= */
+if (
+  !ACCESS_SECRET ||
+  !REFRESH_SECRET ||
+  !ACCESS_EXPIRES_WEB ||
+  !ACCESS_EXPIRES_MOBILE ||
+  !REFRESH_EXPIRES_WEB ||
+  !REFRESH_EXPIRES_MOBILE
+) {
+  throw new Error('Missing JWT environment variables');
+}
+
+/* =======================
+   Payload Types
+======================= */
+export interface AccessTokenPayload {
+  userId: string;
+  role: string;
+}
+
+export interface RefreshTokenPayload {
+  userId: string;
+}
+
+/* =======================
+   Access Token
+======================= */
+export const generateAccessToken = (
+  payload: AccessTokenPayload,
+  clientType: 'web' | 'mobile'
+): string => {
+  return jwt.sign(payload, ACCESS_SECRET, {
+    expiresIn: clientType === 'web' ? ACCESS_EXPIRES_WEB : ACCESS_EXPIRES_MOBILE,
+    algorithm: 'HS256',
+  });
 };
 
-export const generateRefreshToken = (payload: object, clientType: 'web' | 'mobile') => {
-  const options: SignOptions = {
-    expiresIn: (clientType === 'web'
-      ? process.env.JWT_REFRESH_EXPIRES_WEB
-      : process.env.JWT_REFRESH_EXPIRES_MOBILE) as SignOptions['expiresIn'],
-  };
-
-  return jwt.sign(payload, REFRESH_SECRET, options);
+/* =======================
+   Refresh Token
+======================= */
+export const generateRefreshToken = (
+  payload: RefreshTokenPayload,
+  clientType: 'web' | 'mobile'
+): string => {
+  return jwt.sign(payload, REFRESH_SECRET, {
+    expiresIn: clientType === 'web' ? REFRESH_EXPIRES_WEB : REFRESH_EXPIRES_MOBILE,
+    algorithm: 'HS256',
+  });
 };
+
+export const hashToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex');
