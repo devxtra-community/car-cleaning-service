@@ -2,17 +2,43 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { logger } from '../../config/logger';
 import { generateAccessToken, generateRefreshToken } from 'src/config/jwt';
-import { createUser } from './auth_service';
 import { pool } from '../../database/connectDatabase';
+import { hashToken } from '../../config/jwt';
+import { createUser } from './auth_service';
 
 export const registerUser = async (req: Request, res: Response) => {
-  try {
-    const { email, password, role, full_name, client_type, document, age, nationality } = req.body;
+  console.log('---- REGISTER DEBUG ----');
+  console.log('BODY:', req.body);
+  console.log('FILE:', req.file);
+  console.log('------------------------');
 
-    if (!email || !password || !role || !full_name || !client_type) {
+  try {
+    const { email, password, role, full_name, client_type, document_id, age, nationality } =
+      req.body;
+
+    const documentUrl = `/uploads/documents/${req.file?.filename}`;
+
+    if (!documentUrl) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields',
+        message: 'Document image is required',
+      });
+    }
+
+    if (
+      !email ||
+      !password ||
+      !role ||
+      !full_name ||
+      !client_type ||
+      !document_id ||
+      !age ||
+      !nationality ||
+      !documentUrl
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required',
       });
     }
 
@@ -23,33 +49,46 @@ export const registerUser = async (req: Request, res: Response) => {
       });
     }
 
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters',
+      });
+    }
+
     const user = await createUser({
       email,
       password,
       role,
-      full_name,
       client_type,
-      document,
-      age,
+      full_name,
+      document: documentUrl,
+      document_id: document_id,
+      age: age,
       nationality,
     });
 
-    res.status(201).json({
+    logger.info('User registered successfully', {
+      userId: user.id,
+      role: user.role,
+      clientType: user.client_type,
+    });
+
+    return res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: user,
     });
-  } catch (err: unknown) {
-    // changed from 'error'
-    if (err instanceof Error) {
-      logger.error('Registration failed', { error: err.message });
-      return res.status(500).json({
+  } catch (err) {
+    if (err instanceof Error && err.message === 'USER_ALREADY_EXISTS') {
+      return res.status(409).json({
         success: false,
-        message: err.message,
+        message: 'User already exists',
       });
     }
 
-    logger.error('Registration failed', { error: err });
+    logger.error('Registration failed', { err });
+
     return res.status(500).json({
       success: false,
       message: 'Registration failed',
@@ -68,70 +107,90 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const result = await pool.query(
       `
-      SELECT id, email, password, role, client_type
+      SELECT id, password, role, client_type, is_active
       FROM users
       WHERE email = $1
       `,
-      [email]
+      [normalizedEmail]
     );
 
     const user = result.rows[0];
 
-    if (!user) {
+    if (!user || !user.is_active) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!user.client_type) {
+      logger.error('client_type missing for user', { userId: user.id });
+      return res.status(500).json({
+        success: false,
+        message: 'User client type not configured',
+      });
+    }
 
-    if (!isPasswordValid) {
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
+    await pool.query(
+      `
+  UPDATE users
+  SET last_login = NOW()
+  WHERE id = $1
+  `,
+      [user.id]
+    );
     const accessToken = generateAccessToken({ userId: user.id, role: user.role }, user.client_type);
 
     const refreshToken = generateRefreshToken({ userId: user.id }, user.client_type);
+
+    const refreshExpiry = user.client_type === 'web' ? '7 days' : '90 days';
+
+    await pool.query(
+      `
+      UPDATE refresh_tokens
+      SET revoked = TRUE
+      WHERE user_id = $1 AND client_type = $2 AND revoked = FALSE
+      `,
+      [user.id, user.client_type]
+    );
+
+    await pool.query(
+      `
+      INSERT INTO refresh_tokens (user_id, token_hash, client_type, expires_at)
+      VALUES ($1, $2, $3, NOW() + INTERVAL '${refreshExpiry}')
+      `,
+      [user.id, hashToken(refreshToken), user.client_type]
+    );
 
     if (user.client_type === 'web') {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
+        path: '/auth/refresh',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
     }
 
-    logger.info('User logged in', {
-      userId: user.id,
-      client: user.client_type,
-    });
-
     return res.status(200).json({
       success: true,
       accessToken,
-      user,
+      ...(user.client_type === 'mobile' && { refreshToken }),
     });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error('LOGIN ERROR:', error.message);
-      logger.error('Login failed', { error: error.message });
-
-      return res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    console.error('LOGIN ERROR:', error);
-    logger.error('Login failed', { error });
-
+  } catch (err) {
+    logger.error('Login failed', { err });
     return res.status(500).json({
       success: false,
       message: 'Login failed',
@@ -141,20 +200,34 @@ export const login = async (req: Request, res: Response) => {
 
 export const logout = async (req: Request, res: Response) => {
   try {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+    if (refreshToken) {
+      await pool.query(
+        `
+        UPDATE refresh_tokens
+        SET revoked = TRUE
+        WHERE token_hash = $1 AND revoked = FALSE
+        `,
+        [hashToken(refreshToken)]
+      );
+    }
+
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/auth/refresh',
     });
 
-    logger.info('User logged out');
+    logger.info('User logged out securely');
 
     return res.status(200).json({
       success: true,
-      message: 'Logged out successfully',
+      message: 'Logged out securely',
     });
-  } catch (error: unknown) {
-    logger.error('Logout failed', { error });
+  } catch (err) {
+    logger.error('Logout failed', { err });
 
     return res.status(500).json({
       success: false,
