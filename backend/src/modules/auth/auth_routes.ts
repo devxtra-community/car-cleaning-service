@@ -1,17 +1,26 @@
 import { Router } from 'express';
-import { login, logout, registerUser } from './auth_controller';
-import { protect } from 'src/middlewares/authMiddleware';
-import { allowRoles } from 'src/middlewares/roleMiddleware';
+import { registerUser, login, logout } from './auth_controller';
+import { protect } from '../../middlewares/authMiddleware';
+import { allowRoles } from '../../middlewares/roleMiddleware';
 import { uploadTaskImageToS3 } from 'src/middlewares/uploadToS3';
+
 const router = Router();
 
+/**
+ * ONLY super_admin & admin can register users
+ */
 router.post(
   '/register',
   protect,
-  allowRoles('admin', 'super_admin'),
+  allowRoles('super_admin', 'admin'),
   uploadTaskImageToS3.single('document'),
   registerUser
 );
+
+// Login
 router.post('/login', login);
+
+// Logout
 router.post('/logout', logout);
+
 export default router;
