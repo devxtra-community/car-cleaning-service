@@ -1,29 +1,24 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { createTaskService } from './tasks_service';
-import { logger } from '../../config/logger'; // ✅ use your logger
+import { logger } from '../../config/logger';
 
 export const createTaskController = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
 
-    // ✅ Auth check
     if (!workerId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    // ✅ Extract body fields
     const { owner_name, owner_phone, car_number, car_model, car_type, car_color } = req.body;
 
-    // ✅ Required validation
     if (!owner_name || !owner_phone || !car_number || !car_model || !car_type || !car_color) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    // ✅ Multer-S3 file typing
     const file = req.file as Express.MulterS3.File | undefined;
 
-    // ✅ Create Task
     const task = await createTaskService({
       owner_name,
       owner_phone,
