@@ -13,10 +13,20 @@ export const registerUser = async (req: Request, res: Response) => {
   console.log('------------------------');
 
   try {
-    const { email, password, role, full_name, client_type, document_id, age, nationality } =
-      req.body;
+    const {
+      email,
+      password,
+      role,
+      full_name,
+      client_type = 'web',
+      document_id,
+      age,
+      nationality,
+      document,
+    } = req.body;
 
-    const documentUrl = `/uploads/documents/${req.file?.filename}`;
+    // Get document URL from uploaded file or from body
+    const documentUrl = req.file ? `/uploads/documents/${req.file.filename}` : document;
 
     if (!documentUrl) {
       return res.status(400).json({
@@ -30,7 +40,6 @@ export const registerUser = async (req: Request, res: Response) => {
       !password ||
       !role ||
       !full_name ||
-      !client_type ||
       !document_id ||
       !age ||
       !nationality ||
@@ -56,6 +65,9 @@ export const registerUser = async (req: Request, res: Response) => {
       });
     }
 
+    // Extract role-specific data from request body
+    const { staff, supervisor, cleaner } = req.body;
+
     const user = await createUser({
       email,
       password,
@@ -66,6 +78,9 @@ export const registerUser = async (req: Request, res: Response) => {
       document_id: document_id,
       age: age,
       nationality,
+      ...(staff && { staff }),
+      ...(supervisor && { supervisor }),
+      ...(cleaner && { cleaner }),
     });
 
     logger.info('User registered successfully', {
@@ -98,7 +113,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, client_type = 'web' } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -107,11 +122,18 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    if (!['web', 'mobile'].includes(client_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid client_type. Must be "web" or "mobile"',
+      });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     const result = await pool.query(
       `
-      SELECT id, password, role, client_type, is_active
+      SELECT id, password, role
       FROM users
       WHERE email = $1
       `,
@@ -120,20 +142,15 @@ export const login = async (req: Request, res: Response) => {
 
     const user = result.rows[0];
 
-    if (!user || !user.is_active) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
-    if (!user.client_type) {
-      logger.error('client_type missing for user', { userId: user.id });
-      return res.status(500).json({
-        success: false,
-        message: 'User client type not configured',
-      });
-    }
+    // Add client_type to user object from request
+    user.client_type = client_type;
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {

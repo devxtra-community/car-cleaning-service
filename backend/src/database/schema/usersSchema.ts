@@ -12,6 +12,7 @@ export interface User {
 
   full_name: string;
   document?: string;
+  document_id: string;
   age?: number;
   nationality?: string;
 

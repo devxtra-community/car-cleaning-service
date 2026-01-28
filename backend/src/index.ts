@@ -4,9 +4,10 @@ import express, { Request, Response } from 'express';
 import { logger } from './config/logger';
 import { connectDatabase } from './database/connectDatabase';
 import { globalErrorHandler } from './middlewares/error-handler';
-import authRouter from './modules/auth/auth_routes';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import authRouter from './modules/auth/auth_routes';
+import vechicleRoutes from './modules/vehicles/vechicleRoutes';
 
 const app = express();
 app.use(express.json());
@@ -26,7 +27,7 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 app.use('/api/auth', authRouter);
-
+app.use('/api/vehicle', vechicleRoutes);
 app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
