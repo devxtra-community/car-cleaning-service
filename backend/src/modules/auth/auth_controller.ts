@@ -7,23 +7,11 @@ import { hashToken } from '../../config/jwt';
 import { createUser } from './auth_service';
 
 export const registerUser = async (req: Request, res: Response) => {
-  console.log('---- REGISTER DEBUG ----');
-  console.log('BODY:', req.body);
-  console.log('FILE:', req.file);
-  console.log('------------------------');
-
   try {
     const { email, password, role, full_name, client_type, document_id, age, nationality } =
       req.body;
 
     const documentUrl = `/uploads/documents/${req.file?.filename}`;
-
-    if (!documentUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'Document image is required',
-      });
-    }
 
     if (
       !email ||
@@ -33,8 +21,7 @@ export const registerUser = async (req: Request, res: Response) => {
       !client_type ||
       !document_id ||
       !age ||
-      !nationality ||
-      !documentUrl
+      !nationality
     ) {
       return res.status(400).json({
         success: false,
@@ -183,6 +170,7 @@ export const login = async (req: Request, res: Response) => {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
     }
+    logger.info('User logined successfully', { user });
 
     return res.status(200).json({
       success: true,
