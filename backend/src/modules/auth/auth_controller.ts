@@ -7,11 +7,6 @@ import { hashToken } from '../../config/jwt';
 import { createUser } from './auth_service';
 
 export const registerUser = async (req: Request, res: Response) => {
-  console.log('---- REGISTER DEBUG ----');
-  console.log('BODY:', req.body);
-  console.log('FILE:', req.file);
-  console.log('------------------------');
-
   try {
     const {
       email,
