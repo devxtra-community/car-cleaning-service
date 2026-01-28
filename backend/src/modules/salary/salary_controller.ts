@@ -1,95 +1,164 @@
 import { Request, Response } from 'express';
-import * as salaryService from './salary_service';
-import { UserRole } from '../../database/schema/usersSchema';
-
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    role: UserRole;
-    client_type: 'web' | 'mobile';
-  };
-}
+import {
+  createSalary,
+  getAllSalaries,
+  getSalaryByUser,
+  updateSalary,
+  finalizeSalary,
+} from './salary_service';
+import { logger } from '../../config/logger';
+import { AuthRequest } from '../../middlewares/authMiddleware';
 
 /**
- * Helper to safely extract route param
+ * Small helper to safely extract string params
  */
-const getParam = (param: string | string[]): string => {
-  return Array.isArray(param) ? param[0] : param;
+const getString = (value: string | string[] | undefined): string => {
+  if (!value) {
+    throw new Error('PARAM_MISSING');
+  }
+  return Array.isArray(value) ? value[0] : value;
 };
 
 /**
- * CREATE salary (Admin / Accountant)
+ * CREATE salary
  */
-export const createSalary = async (req: AuthenticatedRequest, res: Response) => {
+export const createSalaryController = async (req: Request, res: Response) => {
   try {
-    if (!req.user || !['admin', 'accountant'].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Access denied' });
+    const { user_id, salary_month, base_salary, total_work, incentive_amount, penalty_amount } =
+      req.body;
+
+    if (!user_id || !salary_month || !base_salary) {
+      return res.status(400).json({
+        success: false,
+        message: 'user_id, salary_month and base_salary are required',
+      });
     }
 
-    const salary = await salaryService.createSalary({
-      ...req.body,
-      generated_by: req.user.userId,
+    const salary = await createSalary({
+      user_id,
+      salary_month,
+      base_salary,
+      total_work,
+      incentive_amount,
+      penalty_amount,
+      generated_by: null, // no accountant yet
     });
 
-    return res.status(201).json(salary);
+    return res.status(201).json({
+      success: true,
+      data: salary,
+    });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'Failed to create salary' });
+    logger.error('Create salary failed', { err });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create salary',
+    });
   }
 };
 
 /**
- * GET all salaries (Admin / Accountant)
+ * GET all salaries
  */
-export const getAllSalaries = async (_req: Request, res: Response) => {
-  const salaries = await salaryService.getAllSalaries();
-  return res.json(salaries);
-};
-
-/**
- * GET own salary (Cleaner)
- */
-export const getMySalary = async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-
-  const salaries = await salaryService.getSalaryByCleaner(req.user.userId);
-  return res.json(salaries);
-};
-
-/**
- * UPDATE salary (Accountant only, draft only)
- */
-export const updateSalary = async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user || req.user.role !== 'accountant') {
-    return res.status(403).json({ message: 'Access denied' });
-  }
-
-  const salaryId = getParam(req.params.id);
-
+export const getAllSalariesController = async (_req: Request, res: Response) => {
   try {
-    const salary = await salaryService.updateSalary(salaryId, req.body);
-    return res.json(salary);
+    const salaries = await getAllSalaries();
+
+    return res.status(200).json({
+      success: true,
+      data: salaries,
+    });
+  } catch (err) {
+    logger.error('Fetch salaries failed', { err });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch salaries',
+    });
+  }
+};
+
+/**
+ * GET my salary (cleaner)
+ */
+export const getMySalaryController = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = getString(req.user?.userId);
+
+    const salaries = await getSalaryByUser(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: salaries,
+    });
+  } catch (err) {
+    logger.error('Fetch my salary failed', { err });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch salary',
+    });
+  }
+};
+
+/**
+ * UPDATE salary (draft only)
+ */
+export const updateSalaryController = async (req: Request, res: Response) => {
+  try {
+    const salaryId = getString(req.params.id);
+
+    const { base_salary, incentive_amount, penalty_amount } = req.body;
+
+    const salary = await updateSalary(salaryId, {
+      base_salary,
+      incentive_amount,
+      penalty_amount,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: salary,
+    });
   } catch (err) {
     if (err instanceof Error && err.message === 'SALARY_LOCKED') {
-      return res.status(400).json({ message: 'Salary already finalized' });
+      return res.status(400).json({
+        success: false,
+        message: 'Salary already finalized',
+      });
     }
-    throw err;
+
+    logger.error('Update salary failed', { err });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update salary',
+    });
   }
 };
 
 /**
- * FINALIZE salary (Accountant only)
+ * FINALIZE salary
  */
-export const finalizeSalary = async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user || req.user.role !== 'accountant') {
-    return res.status(403).json({ message: 'Access denied' });
+export const finalizeSalaryController = async (req: Request, res: Response) => {
+  try {
+    const salaryId = getString(req.params.id);
+
+    const salary = await finalizeSalary(salaryId);
+
+    if (!salary) {
+      return res.status(400).json({
+        success: false,
+        message: 'Salary already finalized or not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: salary,
+    });
+  } catch (err) {
+    logger.error('Finalize salary failed', { err });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to finalize salary',
+    });
   }
-
-  const salaryId = getParam(req.params.id);
-
-  const salary = await salaryService.finalizeSalary(salaryId, req.user.userId);
-
-  return res.json(salary);
 };
