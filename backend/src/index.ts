@@ -5,6 +5,8 @@ import { logger } from './config/logger';
 import { connectDatabase } from './database/connectDatabase';
 import { globalErrorHandler } from './middlewares/error-handler';
 import authRouter from './modules/auth/auth_routes';
+import salaryRouter from './modules/salary/salary_routes';
+
 import cookieParser from 'cookie-parser';
 import path from 'path';
 
@@ -26,6 +28,7 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 app.use('/api/auth', authRouter);
+app.use('/api/salaries', salaryRouter);
 
 app.use(globalErrorHandler);
 
