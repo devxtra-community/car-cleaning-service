@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import {
-  createSalary,
-  getAllSalaries,
-  getMySalary,
-  updateSalary,
-  finalizeSalary,
+  createSalaryController,
+  getAllSalariesController,
+  getMySalaryController,
+  updateSalaryController,
+  finalizeSalaryController,
 } from './salary_controller';
 import { protect } from 'src/middlewares/authMiddleware';
 import { allowRoles } from 'src/middlewares/roleMiddleware';
