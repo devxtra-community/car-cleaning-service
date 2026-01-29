@@ -7,11 +7,6 @@ import { hashToken } from '../../config/jwt';
 import { createUser } from './auth_service';
 
 export const registerUser = async (req: Request, res: Response) => {
-  console.log('---- REGISTER DEBUG ----');
-  console.log('BODY:', req.body);
-  console.log('FILE:', req.file);
-  console.log('------------------------');
-
   try {
     const {
       email,
@@ -25,7 +20,6 @@ export const registerUser = async (req: Request, res: Response) => {
       document,
     } = req.body;
 
-    // Get document URL from uploaded file or from body
     const documentUrl = req.file ? `/uploads/documents/${req.file.filename}` : document;
 
     if (!documentUrl) {
@@ -65,7 +59,6 @@ export const registerUser = async (req: Request, res: Response) => {
       });
     }
 
-    // Extract role-specific data from request body
     const { staff, supervisor, cleaner } = req.body;
 
     const user = await createUser({
@@ -149,7 +142,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Add client_type to user object from request
     user.client_type = client_type;
 
     const isValidPassword = await bcrypt.compare(password, user.password);
