@@ -10,7 +10,8 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import authRouter from './modules/auth/auth_routes';
 import vechicleRoutes from './modules/vehicles/vechicleRoutes';
-
+import attendanceRoutes from './modules/attendance/attendance_routes';
+import salaryRoute from '../src/modules/salary/salary_routes';
 const app = express();
 
 app.use(express.json());
@@ -40,10 +41,12 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api', attendanceRoutes);
+
 app.use('/api/vehicle', vechicleRoutes);
 
 app.use(globalErrorHandler);
-
+app.use('/salary', salaryRoute);
 app.listen(PORT, () => {
   logger.info(`Server started on port http://localhost:${PORT}`);
 });
