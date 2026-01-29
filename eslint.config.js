@@ -39,5 +39,17 @@ export default [
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'react/react-in-jsx-scope': 'off',
     },
+    ignores: ['**/dist/**', '**/node_modules/**'],
+  },
+
+  // Frontend (browser)
+  {
+    files: ['apps/web/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
   },
 ];
