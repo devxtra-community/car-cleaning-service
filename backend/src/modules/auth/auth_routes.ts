@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerUser, login, logout } from './auth_controller';
+import { registerUser, login, logout, refresh } from './auth_controller';
 import { protect } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
 import { uploadTaskImageToS3 } from 'src/middlewares/uploadToS3';
@@ -19,7 +19,7 @@ router.post(
 
 // Login
 router.post('/login', login);
-
+router.post('/refresh', refresh);
 // Logout
 router.post('/logout', logout);
 

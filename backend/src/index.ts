@@ -47,11 +47,10 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api', attendanceRoutes);
-
 app.use('/api/vehicle', vechicleRoutes);
+app.use('/salary', salaryRoute);
 
 app.use(globalErrorHandler);
-app.use('/salary', salaryRoute);
 app.listen(PORT, () => {
   logger.info(`Server started on port http://localhost:${PORT}`);
 });
