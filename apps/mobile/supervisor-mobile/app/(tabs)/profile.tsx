@@ -1,12 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable, Dimensions, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Wallet, Settings, HelpCircle, LogOut, CheckCircle } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 const { width } = Dimensions.get('window');
 
 export default function ProfileView() {
+  const handleLogout = async () => {
+    Alert.alert('Logout', 'are You sure want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await SecureStore.deleteItemAsync('access_token');
+          await SecureStore.deleteItemAsync('user_role');
+
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       {/* HEADER */}
@@ -61,6 +78,7 @@ export default function ProfileView() {
           title="Log out"
           subtitle="Secure your account"
           danger
+          onPress={handleLogout}
         />
       </View>
     </SafeAreaView>
@@ -74,14 +92,16 @@ function MenuItem({
   title,
   subtitle,
   danger,
+  onPress,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   danger?: boolean;
+  onPress?: () => void;
 }) {
   return (
-    <Pressable style={styles.menuItem}>
+    <Pressable style={styles.menuItem} onPress={onPress}>
       <View style={styles.iconBox}>{icon}</View>
 
       <View style={{ flex: 1 }}>
