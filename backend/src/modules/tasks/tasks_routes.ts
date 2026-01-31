@@ -7,14 +7,19 @@ import { createTaskController } from './tasks_controller';
 const router = express.Router();
 
 router.post(
-  '/tasks',
+  '/',
   protect,
-  allowRoles('worker'),
+  allowRoles('cleaner', 'admin', 'super_admin'),
   uploadTaskImageToS3.single('car_image'),
   createTaskController
 );
 
-router.patch('/tasks/:id/complete', protect, allowRoles('worker'), createTaskController);
+router.patch(
+  '/tasks/:id/complete',
+  protect,
+  allowRoles('worker', 'cleaner', 'admin'),
+  createTaskController
+);
 
 router.get('/tasks/my', protect, allowRoles('worker'), createTaskController);
 

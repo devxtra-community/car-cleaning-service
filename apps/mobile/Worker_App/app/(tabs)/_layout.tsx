@@ -18,8 +18,14 @@ export default function TabLayout() {
       screenOptions={{ headerShown: false }}
       tabBar={({ state, navigation }) => {
         const activeIndex = state.index;
+        const currentRoute = state.routeNames[state.index];
 
-        // animation INSIDE component render (NOT hook)
+        // ✅ HIDE TAB BAR ON AddJob SCREEN
+        if (currentRoute === 'AddJob') {
+          return null;
+        }
+
+        // animate slider
         Animated.spring(translateX, {
           toValue: activeIndex * TAB_WIDTH,
           useNativeDriver: true,
@@ -58,9 +64,13 @@ export default function TabLayout() {
       <Tabs.Screen name="Analytics" />
       <Tabs.Screen name="Homepage" />
       <Tabs.Screen name="Profile" />
+
+      {/* 👇 IMPORTANT: AddJob MUST be declared here */}
+      <Tabs.Screen name="AddJob" />
     </Tabs>
   );
 }
+
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
@@ -75,7 +85,7 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
     borderRadius: 40,
     flexDirection: 'row',
-    padding: 11, // outer padding
+    padding: 11,
     overflow: 'hidden',
     alignItems: 'center',
   },
@@ -83,11 +93,11 @@ const styles = StyleSheet.create({
   slider: {
     position: 'absolute',
     width: TAB_WIDTH,
-    height: 68, // container height minus padding
+    height: 68,
     backgroundColor: '#1B86C6',
     borderRadius: 34,
-    top: 6, // centers vertically
-    left: 6, // matches padding
+    top: 6,
+    left: 6,
   },
 
   tab: {
