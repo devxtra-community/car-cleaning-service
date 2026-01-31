@@ -7,9 +7,7 @@ import {
   Pressable,
   Image,
   ScrollView,
-  Animated,
   Alert,
-  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
@@ -18,8 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Camera, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width } = Dimensions.get('window');
+import { router } from 'expo-router';
 
 const API = axios.create({
   baseURL: 'http://10.10.2.230:3033',
@@ -46,9 +43,7 @@ export default function AddJob() {
   const [carType, setCarType] = useState('');
   const [types, setTypes] = useState<string[]>([]);
   const [workerId, setWorkerId] = useState('');
-
-  // ✅ Animated value WITHOUT refs (ESLint safe)
-  const [slideX] = useState(() => new Animated.Value(0));
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -67,9 +62,8 @@ export default function AddJob() {
         ];
 
         setTypes(vehicleTypes);
-      } catch (error: unknown) {
-        console.log(error);
-        Alert.alert('Failed to load initial data');
+      } catch {
+        Alert.alert('Failed to load data');
       }
     };
 
@@ -80,61 +74,62 @@ export default function AddJob() {
     const p = await ImagePicker.requestCameraPermissionsAsync();
     if (!p.granted) return;
 
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!res.canceled) setImage(res.assets[0]);
   };
 
   const canSubmit =
     image && ownerName && ownerPhone && carNumber && carModel && carColor && carType && workerId;
 
-  const confirm = () => {
-    if (!canSubmit) return Alert.alert('Fill all fields');
+  const confirm = async () => {
+    if (!canSubmit) return Alert.alert('Please fill all fields');
 
-    Animated.timing(slideX, {
-      toValue: width - 120,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(upload);
-  };
+    setLoading(true);
 
-  const upload = async () => {
-    const token = await AsyncStorage.getItem('token');
+    try {
+      const token = await AsyncStorage.getItem('token');
 
-    if (!image?.uri) {
-      Alert.alert('Please select image');
-      return;
+      if (!image?.uri) return;
+
+      const form = new FormData();
+
+      form.append('car_image', {
+        uri: image.uri,
+        name: 'car.jpg',
+        type: 'image/jpeg',
+      } as unknown as Blob);
+
+      form.append('owner_name', ownerName);
+      form.append('owner_phone', ownerPhone);
+      form.append('car_number', carNumber);
+      form.append('car_model', carModel);
+      form.append('car_color', carColor);
+      form.append('car_type', carType);
+      form.append('worker_id', workerId);
+
+      await API.post('/tasks', form, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      Alert.alert('Job Added Successfully');
+
+      router.push('/Homepage');
+    } catch {
+      Alert.alert('Upload failed');
+    } finally {
+      setLoading(false);
     }
-
-    const form = new FormData();
-
-    form.append('car_image', {
-      uri: image.uri,
-      name: 'car.jpg',
-      type: 'image/jpeg',
-    } as unknown as Blob);
-
-    form.append('owner_name', ownerName);
-    form.append('owner_phone', ownerPhone);
-    form.append('car_number', carNumber);
-    form.append('car_model', carModel);
-    form.append('car_color', carColor);
-    form.append('car_type', carType);
-    form.append('worker_id', workerId);
-
-    await API.post('/api/tasks/tasks', form, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    Alert.alert('Job Added Successfully');
   };
 
   return (
     <View style={{ flex: 1 }}>
       <LinearGradient colors={['#4FB3E8', '#3DA2CE']} style={styles.header}>
-        <ArrowLeft color="#fff" />
+        <Pressable onPress={() => router.push('/Homepage')}>
+          <ArrowLeft color="#fff" />
+        </Pressable>
       </LinearGradient>
 
       <ScrollView style={styles.container}>
@@ -150,13 +145,10 @@ export default function AddJob() {
         </Pressable>
 
         <Field placeholder="Enter Owner Name" value={ownerName} onChange={setOwnerName} />
-
         <Label title="Phone Number" />
         <Field placeholder="Enter Owner Number" value={ownerPhone} onChange={setOwnerPhone} />
-
         <Label title="Vehicle Number" />
         <Field placeholder="Enter vehicle Number" value={carNumber} onChange={setCarNumber} />
-
         <Label title="Car Model Name *" />
         <Field placeholder="" value={carModel} onChange={setCarModel} />
 
@@ -179,17 +171,17 @@ export default function AddJob() {
             </Picker>
           </View>
         </View>
+
+        {/* CONFIRM BUTTON */}
+        <Pressable
+          style={[styles.submitBtn, (!canSubmit || loading) && { opacity: 0.5 }]}
+          onPress={confirm}
+        >
+          <Text style={styles.submitText}>
+            {loading ? 'Submitting...' : 'Confirm & Submit Job'}
+          </Text>
+        </Pressable>
       </ScrollView>
-
-      <View style={[styles.slider, !canSubmit && { opacity: 0.4 }]}>
-        <Animated.View style={[styles.knob, { transform: [{ translateX: slideX }] }]}>
-          <Pressable onPress={confirm}>
-            <Text style={{ color: '#fff' }}>➜</Text>
-          </Pressable>
-        </Animated.View>
-
-        <Text style={styles.slideText}>Slide To Confirm</Text>
-      </View>
     </View>
   );
 }
@@ -211,7 +203,7 @@ function Label({ title }: LabelProps) {
 
 const styles = StyleSheet.create({
   header: {
-    height: 120,
+    height: 100,
     paddingTop: 50,
     paddingHorizontal: 20,
   },
@@ -221,7 +213,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   uploadBox: {
-    height: 150,
+    height: 200,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderRadius: 16,
@@ -263,25 +255,17 @@ const styles = StyleSheet.create({
   picker: {
     height: 48,
   },
-  slider: {
-    height: 60,
-    backgroundColor: '#d0d0d0',
-    margin: 20,
-    borderRadius: 40,
-    justifyContent: 'center',
-  },
-  knob: {
-    position: 'absolute',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  submitBtn: {
+    height: 55,
     backgroundColor: '#1B86C6',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    left: 5,
+    marginVertical: 30,
   },
-  slideText: {
-    textAlign: 'center',
-    color: '#444',
+  submitText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

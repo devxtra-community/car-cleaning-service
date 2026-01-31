@@ -12,6 +12,7 @@ import authRouter from './modules/auth/auth_routes';
 import vechicleRoutes from './modules/vehicles/vechicleRoutes';
 import attendanceRoutes from './modules/attendance/attendance_routes';
 import salaryRoute from '../src/modules/salary/salary_routes';
+import taskRoutes from '../src/modules/tasks/tasks_routes';
 const app = express();
 
 app.use(express.json());
@@ -49,11 +50,9 @@ app.use('/api/auth', authRouter);
 app.use('/api', attendanceRoutes);
 
 app.use('/api/vehicle', vechicleRoutes);
-app.use(cors());
-app.use(express.json());
-
-app.use(globalErrorHandler);
+app.use('/tasks', taskRoutes);
 app.use('/salary', salaryRoute);
+app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
   console.log('Backend running on port 3033');
 });
