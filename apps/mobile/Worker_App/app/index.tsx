@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, Dimensions, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Checkbox from 'expo-checkbox';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { API } from '../src/api/api';
+import { AxiosError } from 'axios';
+import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from 'jwt-decode';
 
 const { height } = Dimensions.get('window');
+
+type JwtPayload = {
+  userId: string;
+  role: string;
+};
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -15,7 +24,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert('Enter email and password');
+      Alert.alert('Enter email and password');
       return;
     }
 
@@ -27,10 +36,31 @@ export default function LoginScreen() {
 
       console.log('LOGIN RESPONSE:', res.data);
 
-      alert('Login Success');
+      const token = res.data.accessToken;
+
+      // ✅ Save token
+      await AsyncStorage.setItem('token', token);
+
+      // ✅ Decode JWT to get workerId
+      const decoded = jwtDecode<JwtPayload>(token);
+
+      await AsyncStorage.setItem(
+        'user',
+        JSON.stringify({
+          id: decoded.userId,
+          role: decoded.role,
+        })
+      );
+
+      console.log('SAVED TOKEN + USER');
+
+      router.replace('/Homepage');
     } catch (err: unknown) {
-      console.log(err.response?.data);
-      alert(err.response?.data?.message || 'Login Failed');
+      const error = err as AxiosError<{ message: string }>;
+
+      console.log(error.response?.data);
+
+      Alert.alert(error.response?.data?.message || 'Login Failed');
     }
   };
 
@@ -82,7 +112,6 @@ export default function LoginScreen() {
           <Text style={styles.forgot}>Forgot Password?</Text>
         </View>
 
-        {/* 🔥 BUTTON CONNECTED */}
         <Pressable style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Login</Text>
         </Pressable>
@@ -92,10 +121,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f6f8fb',
-  },
+  container: { flex: 1, backgroundColor: '#f6f8fb' },
 
   header: {
     height: height * 0.38,
@@ -110,11 +136,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
 
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#333',
-  },
+  title: { fontSize: 28, fontWeight: '700', color: '#333' },
 
   line: {
     width: 30,
@@ -124,10 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  label: {
-    color: '#555',
-    marginBottom: 6,
-  },
+  label: { color: '#555', marginBottom: 6 },
 
   inputRow: {
     flexDirection: 'row',
@@ -138,9 +157,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  input: {
-    flex: 1,
-  },
+  input: { flex: 1 },
 
   row: {
     flexDirection: 'row',
@@ -149,20 +166,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
-  rememberText: {
-    fontSize: 13,
-  },
+  rememberText: { fontSize: 13 },
 
-  forgot: {
-    color: '#3DA2CE',
-    fontSize: 13,
-  },
+  forgot: { color: '#3DA2CE', fontSize: 13 },
 
   button: {
     backgroundColor: '#48A9D6',
@@ -173,9 +181,5 @@ const styles = StyleSheet.create({
     marginTop: 30,
   },
 
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 });
