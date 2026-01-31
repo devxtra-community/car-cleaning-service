@@ -22,7 +22,7 @@ app.use(
   cors({
     origin: [
       'http://localhost:5173',
-      'http://192.168.56.1:8081',
+      'http://10.10.2.230:8081',
       'http://10.10.3.182.1:8081',
       'http://10.10.2.19.1:8081',
     ],
@@ -49,9 +49,15 @@ app.use('/api/auth', authRouter);
 app.use('/api', attendanceRoutes);
 
 app.use('/api/vehicle', vechicleRoutes);
+app.use(cors());
+app.use(express.json());
 
 app.use(globalErrorHandler);
 app.use('/salary', salaryRoute);
-app.listen(PORT, () => {
-  logger.info(`Server started on port http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('Backend running on port 3033');
+});
+
+app.get('/test', (req, res) => {
+  res.json({ message: 'Backend reachable' });
 });
