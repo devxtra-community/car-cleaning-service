@@ -1,9 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 
-/* =======================
-   ENV VARIABLES
-======================= */
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET_KEY;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET_KEY;
 
@@ -15,9 +12,6 @@ const REFRESH_EXPIRES_WEB = process.env.JWT_REFRESH_EXPIRES_WEB as SignOptions['
 
 const REFRESH_EXPIRES_MOBILE = process.env.JWT_REFRESH_EXPIRES_MOBILE as SignOptions['expiresIn'];
 
-/* =======================
-   RUNTIME SAFETY CHECK
-======================= */
 if (
   !ACCESS_SECRET ||
   !REFRESH_SECRET ||
@@ -29,9 +23,6 @@ if (
   throw new Error('Missing JWT environment variables');
 }
 
-/* =======================
-   Payload Types
-======================= */
 export interface AccessTokenPayload {
   userId: string;
   role: string;
@@ -41,9 +32,6 @@ export interface RefreshTokenPayload {
   userId: string;
 }
 
-/* =======================
-   Access Token
-======================= */
 export const generateAccessToken = (
   payload: AccessTokenPayload,
   clientType: 'web' | 'mobile'
@@ -54,9 +42,6 @@ export const generateAccessToken = (
   });
 };
 
-/* =======================
-   Refresh Token
-======================= */
 export const generateRefreshToken = (
   payload: RefreshTokenPayload,
   clientType: 'web' | 'mobile'
@@ -69,3 +54,6 @@ export const generateRefreshToken = (
 
 export const hashToken = (token: string): string =>
   crypto.createHash('sha256').update(token).digest('hex');
+
+export const verifyRefreshToken = (token: string) =>
+  jwt.verify(token, REFRESH_SECRET) as RefreshTokenPayload;

@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import carlogo from '../assets/carlogo.png';
 
 import { Link } from 'react-router-dom';
 
 const Login = () => {
+  const [loginInput, setLoginInput] = useState({
+    email: '',
+    password: '',
+  });
+
+  const handleLogin = () => {};
+
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 flex items-center justify-center">
       <div className="w-full max-w-7xl bg-white shadow sm:rounded-lg flex flex-col lg:flex-row overflow-hidden">
@@ -11,11 +18,13 @@ const Login = () => {
           <div className="w-full max-w-xs">
             <img src={carlogo} className="w-22 mx-auto" />
 
-            <h1 className="text-2xl xl:text-3xl font-extrabold text-center">Sign up</h1>
+            <h1 className="text-2xl xl:text-3xl font-extrabold text-center">Login</h1>
 
             <div className="mt-8">
               <label>Enter your email here</label>
               <input
+                value={loginInput.email}
+                onChange={(e) => setLoginInput({ ...loginInput, email: e.target.value })}
                 className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
                 type="email"
                 placeholder="Email"
@@ -23,12 +32,17 @@ const Login = () => {
 
               <label className="block mt-5">Enter your password here</label>
               <input
+                value={loginInput.password}
+                onChange={(e) => setLoginInput({ ...loginInput, password: e.target.value })}
                 className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
                 type="password"
                 placeholder="Password"
               />
 
-              <button className="mt-5 tracking-wide font-semibold bg-[#00AEFF] text-gray-100 w-full py-4 rounded-lg hover:bg-[#23b9ff] transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none">
+              <button
+                onClick={handleLogin}
+                className="mt-5 tracking-wide font-semibold bg-[#00AEFF] text-gray-100 w-full py-4 rounded-lg hover:bg-[#23b9ff] transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
+              >
                 <svg
                   className="w-6 h-6 -ml-2"
                   fill="none"
@@ -41,7 +55,7 @@ const Login = () => {
                   <circle cx="8.5" cy="7" r="4" />
                   <path d="M20 8v6M23 11h-6" />
                 </svg>
-                <span className="ml-3">Sign Up</span>
+                <span className="ml-3">Sign In</span>
               </button>
 
               <p className="mt-6 text-xs text-gray-600 text-center">
