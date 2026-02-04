@@ -103,7 +103,7 @@ export default function LoginScreen() {
     try {
       setLoading(true);
 
-      const res = await API.post('/auth/login', {
+      const res = await API.post('/api/auth/login', {
         email,
         password,
         client_type: 'mobile',

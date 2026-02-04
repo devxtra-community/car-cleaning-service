@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { getSupervisorWorkersService, supervisorReportService } from './supervisor_services';
+
 export const getSupervisorWorkers = async (req: AuthRequest, res: Response) => {
   if (!req.user?.userId) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
