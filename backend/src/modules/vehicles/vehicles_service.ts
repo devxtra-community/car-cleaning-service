@@ -32,9 +32,9 @@ export const createVehicleService = async (data: VehicleInput) => {
 export const getAllVehiclesService = async () => {
   const result = await pool.query(
     `
-    SELECT id, type, brand, model, price_min, price_max
+    SELECT id, type, price_min, price_max
     FROM vehicles
-    ORDER BY created_at DESC
+    
     `
   );
 
