@@ -7,7 +7,6 @@ export interface AuthRequest extends Request {
     role: string;
   };
 }
-
 export const protect = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -27,6 +26,10 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
     };
 
     req.user = decoded;
+
+    // ✅ LOG AFTER ASSIGN
+    console.log('USER FROM TOKEN:', req.user);
+
     next();
   } catch (err) {
     return res.status(401).json({

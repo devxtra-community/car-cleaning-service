@@ -7,6 +7,11 @@ const router = Router();
 
 router.post('/add', protect, allowRoles('admin', 'super_admin'), vehicleDetails);
 
-router.get('/allVehicles', protect, getVehicleDetails);
+router.get(
+  '/allVehicles',
+  protect,
+  allowRoles('admin', 'cleaner', 'superviser', 'accountant', 'super_admin'),
+  getVehicleDetails
+);
 
 export default router;
