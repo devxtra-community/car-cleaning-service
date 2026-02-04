@@ -1,249 +1,352 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Image,
+  ScrollView,
+  RefreshControl,
+  Modal,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, QrCode, Wallet, ClipboardCheck, AlertTriangle } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-
-const { width } = Dimensions.get('window');
+import { useRouter, useFocusEffect } from 'expo-router';
+import { API } from '../../src/api/api';
 
 /* ================= TYPES ================= */
 
-type ActionCardProps = {
+type Job = {
+  id: string;
+  owner_name: string;
+  owner_phone: string;
+  car_number: string;
+  car_model: string;
+  car_color: string;
+  car_type: string;
+  car_image_url?: string | null;
+};
+
+type Worker = {
+  name: string;
+  empId: string;
+  jobsDone: number;
+  totalRevenue: number;
+};
+
+interface AlertProps {
+  visible: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+interface ActionCardProps {
   icon: React.ReactNode;
   title: string;
   onPress?: () => void;
-};
+}
 
-type QuickCardProps = {
+interface QuickCardProps {
   icon: React.ReactNode;
   title: string;
-  subtitle?: string;
-};
+}
+
+interface JobItemProps {
+  label: string;
+  value: string;
+}
+
+/* ================= CUSTOM ALERT ================= */
+
+function CustomAlert({ visible, onCancel, onConfirm }: AlertProps) {
+  return (
+    <Modal transparent visible={visible} animationType="fade">
+      <View style={alert.overlay}>
+        <View style={alert.card}>
+          <Text style={alert.title}>Complete Job</Text>
+          <Text style={alert.message}>Mark this job as completed?</Text>
+
+          <View style={alert.row}>
+            <Pressable onPress={onCancel}>
+              <Text style={alert.cancel}>Cancel</Text>
+            </Pressable>
+
+            <Pressable onPress={onConfirm} style={alert.okBtn}>
+              <Text style={alert.okText}>Yes</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 /* ================= SCREEN ================= */
 
 export default function HomeScreen() {
   const router = useRouter();
 
-  return (
-    <View style={styles.container}>
-      {/* HEADER */}
-      <LinearGradient colors={['#4FB3E8', '#3DA2CE']} style={styles.header}>
-        <Text style={styles.hello}>Hi, Rajesh!</Text>
-        <Text style={styles.id}>EMP ID: W0678432</Text>
+  const [activeJob, setActiveJob] = useState<Job | null>(null);
+  const [worker, setWorker] = useState<Worker>({
+    name: '',
+    empId: '',
+    jobsDone: 0,
+    totalRevenue: 0,
+  });
 
-        {/* Stats Box */}
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+
+  /* ================= LOADERS (DECLARE FIRST) ================= */
+
+  const loadDashboard = async () => {
+    const res = await API.get('/workers/dashboard');
+    setWorker(res.data);
+  };
+
+  const loadJob = async () => {
+    const res = await API.get('/tasks/my');
+    setActiveJob(res.data?.[0] || null);
+  };
+
+  /* ================= FOCUS REFRESH ================= */
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetch = async () => {
+        await Promise.all([loadJob(), loadDashboard()]);
+      };
+      fetch();
+    }, [])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadJob(), loadDashboard()]);
+    setRefreshing(false);
+  };
+
+  return (
+    <ScrollView
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <LinearGradient colors={['#4FB3E8', '#3DA2CE']} style={styles.header}>
+        <Text style={styles.hello}>Hi, {worker.name || 'Worker'} 👋</Text>
+        <Text style={styles.id}>EMP ID: {worker.empId}</Text>
+
         <View style={styles.statsBox}>
-          <View>
-            <Text style={styles.statsLabel}>Today Earnings</Text>
-            <Text style={styles.statsValue}>₹ 1,580</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statsLabel}>Jobs Done</Text>
+            <Text style={styles.statsValue}>{worker.jobsDone}</Text>
           </View>
 
-          <View style={styles.divider} />
+          <View style={styles.statsDivider} />
 
-          <View>
-            <Text style={styles.statsLabel}>Jobs Done</Text>
-            <Text style={styles.statsValue}>20</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statsLabel}>Revenue</Text>
+            <Text style={styles.statsValue}>₹ {worker.totalRevenue}</Text>
           </View>
         </View>
       </LinearGradient>
 
-      {/* ACTION BUTTONS */}
-      <View style={styles.actions}>
-        <ActionCard
-          icon={<Plus color="#1B86C6" />}
-          title="Add New Job"
-          onPress={() => router.push('/(tabs)/AddJob')}
-        />
+      {!activeJob && (
+        <View style={styles.actions}>
+          <ActionCard
+            icon={<Plus size={18} color="#fff" />}
+            title="Add Job"
+            onPress={() => router.push('/(tabs)/AddJob')}
+          />
+          <ActionCard icon={<QrCode size={18} color="#fff" />} title="Scan" />
+        </View>
+      )}
 
-        <ActionCard icon={<QrCode color="#1B86C6" />} title="Scan Vehicle" />
-      </View>
+      {activeJob && (
+        <View style={styles.jobCard}>
+          {activeJob.car_image_url && (
+            <Image source={{ uri: activeJob.car_image_url }} style={styles.jobImage} />
+          )}
 
-      {/* QUICK ACTIONS */}
+          <View style={styles.jobGrid}>
+            <JobItem label="Owner" value={activeJob.owner_name} />
+            <JobItem label="Phone" value={activeJob.owner_phone} />
+            <JobItem label="Vehicle" value={activeJob.car_number} />
+            <JobItem label="Model" value={activeJob.car_model} />
+            <JobItem label="Color" value={activeJob.car_color} />
+            <JobItem label="Type" value={activeJob.car_type} />
+          </View>
+
+          <Pressable style={styles.completeBtn} onPress={() => setShowAlert(true)}>
+            <Text style={styles.completeText}>Mark Completed</Text>
+          </Pressable>
+        </View>
+      )}
+
       <View style={styles.quick}>
         <Text style={styles.quickTitle}>Quick Actions</Text>
 
         <View style={styles.grid}>
-          <QuickCard icon={<Wallet />} title="Incentives" subtitle="450 Pending" />
-          <QuickCard icon={<ClipboardCheck />} title="Attendance" subtitle="Check in at 9:00" />
-          <QuickCard icon={<Wallet />} title="Earnings" subtitle="450 Pending" />
-          <QuickCard icon={<AlertTriangle />} title="Report Problem" />
+          <QuickCard icon={<Wallet />} title="Earnings" />
+          <QuickCard icon={<ClipboardCheck />} title="Attendance" />
+          <QuickCard icon={<AlertTriangle />} title="Report" />
         </View>
       </View>
 
-      {/* SUPERVISOR FIXED */}
-      <View style={styles.supervisorFixed}>
-        <View>
-          <Text style={{ fontWeight: '600' }}>Sahil Krishna</Text>
-          <Text style={{ color: '#777' }}>Supervisor</Text>
-        </View>
+      <CustomAlert
+        visible={showAlert}
+        onCancel={() => setShowAlert(false)}
+        onConfirm={async () => {
+          await API.patch(`/tasks/${activeJob?.id}/complete`);
+          setActiveJob(null);
+          loadDashboard();
+          setShowAlert(false);
+        }}
+      />
 
-        <View style={styles.active}>
-          <Text style={{ color: '#2ecc71', fontSize: 12 }}>Active</Text>
-        </View>
-      </View>
-    </View>
+      <View style={{ height: 80 }} />
+    </ScrollView>
   );
 }
 
-/* ================= COMPONENTS ================= */
+/* ================= SMALL COMPONENTS ================= */
 
-function ActionCard({ icon, title, onPress }: ActionCardProps) {
-  return (
-    <Pressable style={styles.actionCard} onPress={onPress}>
-      <View style={styles.iconCircle}>{icon}</View>
-      <Text style={styles.actionText}>{title}</Text>
-    </Pressable>
-  );
-}
-
-function QuickCard({ icon, title, subtitle }: QuickCardProps) {
-  return (
-    <View style={styles.quickCard}>
+const ActionCard = ({ icon, title, onPress }: ActionCardProps) => (
+  <Pressable onPress={onPress} style={styles.actionWrap}>
+    <LinearGradient colors={['#4FB3E8', '#1B86C6']} style={styles.actionCard}>
       {icon}
-      <Text style={{ fontWeight: '600' }}>{title}</Text>
-      {subtitle && <Text style={{ color: '#777', fontSize: 12 }}>{subtitle}</Text>}
-    </View>
-  );
-}
+      <Text style={styles.actionText}>{title}</Text>
+    </LinearGradient>
+  </Pressable>
+);
+
+const QuickCard = ({ icon, title }: QuickCardProps) => (
+  <View style={styles.quickCard}>
+    {icon}
+    <Text style={{ fontWeight: '600' }}>{title}</Text>
+  </View>
+);
+
+const JobItem = ({ label, value }: JobItemProps) => (
+  <View style={styles.jobItem}>
+    <Text style={styles.jobLabel}>{label}</Text>
+    <Text style={styles.jobValue}>{value}</Text>
+  </View>
+);
 
 /* ================= STYLES ================= */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f6f8fb',
-  },
+  container: { flex: 1, backgroundColor: '#f6f8fb' },
 
   header: {
-    padding: 24,
     paddingTop: 60,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    paddingBottom: 34,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
   },
 
-  hello: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-
-  id: {
-    color: '#eaf6ff',
-    fontSize: 12,
-  },
+  hello: { color: '#fff', fontSize: 20, fontWeight: '700', paddingHorizontal: 24 },
+  id: { color: '#eaf6ff', fontSize: 12, paddingHorizontal: 24, marginTop: 4 },
 
   statsBox: {
-    marginTop: 20,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    width: '80%',
+    marginTop: 24,
+    width: '90%',
     alignSelf: 'center',
-    borderRadius: 18,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 14,
+    paddingVertical: 26,
   },
 
-  statsLabel: {
-    color: '#eaf6ff',
-    fontSize: 12,
-    textAlign: 'center',
-  },
+  statItem: { alignItems: 'center' },
+  statsDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
+  statsLabel: { color: '#fff', fontSize: 12 },
+  statsValue: { color: '#fff', fontSize: 24, fontWeight: '700' },
 
-  statsValue: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-
-  divider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 30,
-  },
+  actions: { flexDirection: 'row', marginHorizontal: 20, marginTop: 24 },
+  actionWrap: { flex: 1 },
 
   actionCard: {
-    backgroundColor: '#fff',
-    width: width / 2.2,
-    height: 65,
-    borderRadius: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-
-  iconCircle: {
-    width: 36,
-    height: 36,
+    marginHorizontal: 6,
+    height: 58,
     borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#1B86C6',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
 
-  actionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1B86C6',
+  actionText: { color: '#fff', fontWeight: '600' },
+
+  jobCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 22,
   },
 
-  quick: {
-    padding: 20,
+  jobImage: { width: '100%', height: 200, borderRadius: 14, marginBottom: 12 },
+
+  jobGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+
+  jobItem: {
+    width: '48%',
+    backgroundColor: '#f7f9fc',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
   },
 
-  quickTitle: {
-    fontWeight: '600',
-    marginBottom: 10,
+  jobLabel: { fontSize: 11, color: '#888' },
+  jobValue: { fontWeight: '600' },
+
+  completeBtn: {
+    backgroundColor: '#1B86C6',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 10,
   },
 
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+  completeText: { color: '#fff', fontWeight: '600' },
+
+  quick: { paddingHorizontal: 20, marginTop: 30 },
+  quickTitle: { fontWeight: '600', marginBottom: 12 },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
 
   quickCard: {
     backgroundColor: '#fff',
-    width: width / 2.3,
+    width: '48%',
     height: 90,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
+    marginBottom: 16,
+    gap: 8,
   },
+});
 
-  supervisorFixed: {
-    position: 'absolute',
-    bottom: 105,
-    left: 20,
-    right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+/* ================= ALERT ================= */
+
+const alert = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
   },
-
-  active: {
-    backgroundColor: '#eafaf1',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
+  card: { width: '80%', backgroundColor: '#fff', borderRadius: 18, padding: 20 },
+  title: { fontSize: 17, fontWeight: '700' },
+  message: { color: '#666', marginVertical: 10 },
+  row: { flexDirection: 'row', justifyContent: 'flex-end', gap: 15 },
+  cancel: { color: '#888', fontWeight: '600' },
+  okBtn: {
+    backgroundColor: '#1B86C6',
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
   },
+  okText: { color: '#fff', fontWeight: '600' },
 });

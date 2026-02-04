@@ -1,23 +1,27 @@
 import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 
-export default function Layout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
+export default function RootLayout() {
+  const [hydrated, setHydrated] = useState(false);
 
-        // Smart animation
-        animation: 'slide_from_right',
+  useEffect(() => {
+    let mounted = true;
 
-        // Makes it smoother
-        animationDuration: 350,
+    (async () => {
+      await SecureStore.getItemAsync('access_token');
 
-        // iOS style gestures
-        gestureEnabled: true,
+      if (mounted) {
+        setHydrated(true);
+      }
+    })();
 
-        // Slight fade while sliding
-        presentation: 'card',
-      }}
-    />
-  );
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!hydrated) return null;
+
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

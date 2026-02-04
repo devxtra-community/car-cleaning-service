@@ -8,19 +8,20 @@ import {
   Image,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { Camera, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import axios from 'axios';
+import { API } from '../../src/api/api';
 
-const API = axios.create({
-  baseURL: 'http://10.10.2.230:3033',
-});
+/* ================= TYPES ================= */
 
 interface FieldProps {
   placeholder: string;
@@ -32,6 +33,8 @@ interface LabelProps {
   title: string;
 }
 
+/* ================= COMPONENT ================= */
+
 export default function AddJob() {
   const [image, setImage] = useState<ImagePickerAsset | null>(null);
 
@@ -42,33 +45,26 @@ export default function AddJob() {
   const [carColor, setCarColor] = useState('');
   const [carType, setCarType] = useState('');
   const [types, setTypes] = useState<string[]>([]);
-  const [workerId, setWorkerId] = useState('');
   const [loading, setLoading] = useState(false);
+
+  /* ================= LOAD VEHICLE TYPES ================= */
 
   useEffect(() => {
     const init = async () => {
       try {
-        const u = await AsyncStorage.getItem('user');
-        if (u) setWorkerId(JSON.parse(u).id);
-
-        const token = await AsyncStorage.getItem('token');
-
-        const res = await API.get('/api/vehicle/allVehicles', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const vehicleTypes: string[] = [
-          ...new Set((res.data.data as { type: string }[]).map((v) => v.type)),
-        ];
-
-        setTypes(vehicleTypes);
+        const res = await API.get('/api/vehicle/allVehicles');
+        const raw = res.data.data as { type: string }[];
+        const unique = [...new Set(raw.map((v) => v.type))];
+        setTypes(unique);
       } catch {
-        Alert.alert('Failed to load data');
+        Alert.alert('Failed to load vehicles');
       }
     };
 
     init();
   }, []);
+
+  /* ================= CAMERA ================= */
 
   const openCamera = async () => {
     const p = await ImagePicker.requestCameraPermissionsAsync();
@@ -78,113 +74,154 @@ export default function AddJob() {
     if (!res.canceled) setImage(res.assets[0]);
   };
 
+  /* ================= S3 UPLOAD ================= */
+
+  const uploadToS3 = async (image: ImagePickerAsset): Promise<string> => {
+    const presign = await API.post('/s3/presign', {
+      fileType: 'image/jpeg',
+    });
+
+    const { uploadUrl, fileUrl } = presign.data;
+
+    const blob = await (await fetch(image.uri)).blob();
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'image/jpeg',
+      },
+      body: blob,
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error('S3 upload failed');
+    }
+
+    return fileUrl;
+  };
+
   const canSubmit =
-    image && ownerName && ownerPhone && carNumber && carModel && carColor && carType && workerId;
+    image && ownerName && ownerPhone && carNumber && carModel && carColor && carType;
+
+  /* ================= SUBMIT ================= */
 
   const confirm = async () => {
     if (!canSubmit) return Alert.alert('Please fill all fields');
 
-    setLoading(true);
+    Alert.alert('Confirm Submission', 'Submit this job?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Yes',
+        onPress: async () => {
+          try {
+            setLoading(true);
+            if (!image) return;
 
-    try {
-      const token = await AsyncStorage.getItem('token');
+            const imageUrl = await uploadToS3(image);
 
-      if (!image?.uri) return;
+            await API.post('/tasks', {
+              owner_name: ownerName,
+              owner_phone: ownerPhone,
+              car_number: carNumber,
+              car_model: carModel,
+              car_color: carColor,
+              car_type: carType,
+              car_image_url: imageUrl,
+            });
 
-      const form = new FormData();
+            Alert.alert('Success', 'Job Added Successfully');
 
-      form.append('car_image', {
-        uri: image.uri,
-        name: 'car.jpg',
-        type: 'image/jpeg',
-      } as unknown as Blob);
+            setImage(null);
+            setOwnerName('');
+            setOwnerPhone('');
+            setCarNumber('');
+            setCarModel('');
+            setCarColor('');
+            setCarType('');
 
-      form.append('owner_name', ownerName);
-      form.append('owner_phone', ownerPhone);
-      form.append('car_number', carNumber);
-      form.append('car_model', carModel);
-      form.append('car_color', carColor);
-      form.append('car_type', carType);
-      form.append('worker_id', workerId);
+            router.replace('/(tabs)/Homepage');
+          } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+              console.log('UPLOAD ERROR:', err.response?.data);
+            } else {
+              console.log('UNKNOWN ERROR:', err);
+            }
 
-      await API.post('/tasks', form, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
+            Alert.alert('Upload failed');
+          } finally {
+            setLoading(false);
+          }
         },
-      });
-
-      Alert.alert('Job Added Successfully');
-
-      router.push('/Homepage');
-    } catch {
-      Alert.alert('Upload failed');
-    } finally {
-      setLoading(false);
-    }
+      },
+    ]);
   };
 
+  /* ================= UI ================= */
+
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#4FB3E8', '#3DA2CE']} style={styles.header}>
-        <Pressable onPress={() => router.push('/Homepage')}>
-          <ArrowLeft color="#fff" />
-        </Pressable>
-      </LinearGradient>
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <LinearGradient colors={['#fff', '#fff']} style={styles.header}>
+          <Pressable onPress={() => router.back()}>
+            <ArrowLeft color="black" />
+          </Pressable>
+        </LinearGradient>
 
-      <ScrollView style={styles.container}>
-        <Pressable style={styles.uploadBox} onPress={openCamera}>
-          {image ? (
-            <Image source={{ uri: image.uri }} style={styles.preview} />
-          ) : (
-            <>
-              <Camera size={36} color="#bbb" />
-              <Text style={{ color: '#bbb' }}>Add Photo</Text>
-            </>
-          )}
-        </Pressable>
+        <ScrollView style={styles.container}>
+          <Pressable style={styles.uploadBox} onPress={openCamera}>
+            {image ? (
+              <Image source={{ uri: image.uri }} style={styles.preview} />
+            ) : (
+              <>
+                <Camera size={36} color="#bbb" />
+                <Text style={{ color: '#bbb' }}>Add Photo of Car</Text>
+              </>
+            )}
+          </Pressable>
 
-        <Field placeholder="Enter Owner Name" value={ownerName} onChange={setOwnerName} />
-        <Label title="Phone Number" />
-        <Field placeholder="Enter Owner Number" value={ownerPhone} onChange={setOwnerPhone} />
-        <Label title="Vehicle Number" />
-        <Field placeholder="Enter vehicle Number" value={carNumber} onChange={setCarNumber} />
-        <Label title="Car Model Name *" />
-        <Field placeholder="" value={carModel} onChange={setCarModel} />
+          <Field placeholder="Owner Name" value={ownerName} onChange={setOwnerName} />
+          <Label title="Phone Number" />
+          <Field placeholder="Owner Number" value={ownerPhone} onChange={setOwnerPhone} />
+          <Label title="Vehicle Number" />
+          <Field placeholder="Vehicle Number" value={carNumber} onChange={setCarNumber} />
+          <Label title="Car Model" />
+          <Field placeholder="" value={carModel} onChange={setCarModel} />
 
-        <View style={styles.row}>
-          <View style={styles.pill}>
-            <TextInput
-              style={styles.pillInput}
-              placeholder="Color"
-              value={carColor}
-              onChangeText={setCarColor}
-            />
+          <View style={styles.row}>
+            <View style={styles.pill}>
+              <TextInput
+                style={styles.pillInput}
+                placeholder="Color"
+                value={carColor}
+                onChangeText={setCarColor}
+              />
+            </View>
+
+            <View style={styles.pill}>
+              <Picker selectedValue={carType} onValueChange={setCarType}>
+                <Picker.Item label="Type" value="" />
+                {types.map((t) => (
+                  <Picker.Item key={t} label={t} value={t} />
+                ))}
+              </Picker>
+            </View>
           </View>
 
-          <View style={styles.pill}>
-            <Picker selectedValue={carType} onValueChange={setCarType} style={styles.picker}>
-              <Picker.Item label="Type" value="" />
-              {types.map((t, i) => (
-                <Picker.Item key={i} label={t} value={t} />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        {/* CONFIRM BUTTON */}
-        <Pressable
-          style={[styles.submitBtn, (!canSubmit || loading) && { opacity: 0.5 }]}
-          onPress={confirm}
-        >
-          <Text style={styles.submitText}>
-            {loading ? 'Submitting...' : 'Confirm & Submit Job'}
-          </Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+          <Pressable style={styles.submitBtn} disabled={loading} onPress={confirm}>
+            <Text style={styles.submitText}>
+              {loading ? 'Submitting...' : 'Confirm & Submit Job'}
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+/* ================= SMALL COMPONENTS ================= */
 
 function Field({ placeholder, value, onChange }: FieldProps) {
   return (
@@ -201,19 +238,14 @@ function Label({ title }: LabelProps) {
   return <Text style={styles.label}>{title}</Text>;
 }
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
-  header: {
-    height: 100,
-    paddingTop: 50,
-    paddingHorizontal: 20,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-  },
+  header: { padding: 20 },
+  container: { paddingHorizontal: 20, backgroundColor: '#fff' },
+
   uploadBox: {
-    height: 200,
+    height: 180,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderRadius: 16,
@@ -221,7 +253,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 20,
   },
+
   preview: { width: '100%', height: '100%', borderRadius: 16 },
+
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -230,31 +264,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 12,
   },
-  label: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  pill: {
-    width: '48%',
-    backgroundColor: '#f2f2f2',
-    borderRadius: 12,
-    height: 48,
-    justifyContent: 'center',
-  },
-  pillInput: {
-    height: 48,
-    paddingHorizontal: 12,
-    fontSize: 14,
-  },
-  picker: {
-    height: 48,
-  },
+
+  label: { fontSize: 12, color: '#666', marginBottom: 4 },
+
+  row: { flexDirection: 'row', gap: 10 },
+
+  pill: { flex: 1, backgroundColor: '#f2f2f2', borderRadius: 12 },
+
+  pillInput: { height: 48, paddingHorizontal: 12 },
+
   submitBtn: {
     height: 55,
     backgroundColor: '#1B86C6',
@@ -263,9 +281,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 30,
   },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

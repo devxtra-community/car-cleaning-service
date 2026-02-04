@@ -13,6 +13,9 @@ import vechicleRoutes from './modules/vehicles/vechicleRoutes';
 import attendanceRoutes from './modules/attendance/attendance_routes';
 import salaryRoute from '../src/modules/salary/salary_routes';
 import taskRoutes from '../src/modules/tasks/tasks_routes';
+import workersRoutes from '../src/modules/Worker/workers_routes';
+
+import s3Routes from './routes/s3';
 const app = express();
 
 app.use(express.json());
@@ -23,7 +26,7 @@ app.use(
   cors({
     origin: [
       'http://localhost:5173',
-      'http://10.10.2.230:8081',
+      'http://10.10.3.21:8081',
       'http://10.10.3.182.1:8081',
       'http://10.10.2.19.1:8081',
     ],
@@ -48,6 +51,8 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api', attendanceRoutes);
+app.use('/s3', s3Routes);
+app.use('/workers', workersRoutes);
 
 app.use('/api/vehicle', vechicleRoutes);
 app.use('/tasks', taskRoutes);
