@@ -1,6 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
+import AddIncentiveModal from './AddIncentives';
 
-const AddNewSalary = () => {
+/* =========================
+   Reusable Input Component
+   ========================= */
+type InputProps = {
+  label: string;
+  placeholder: string;
+  full?: boolean;
+};
+
+const Input: React.FC<InputProps> = ({ label, placeholder, full }) => {
+  return (
+    <div className={full ? 'col-span-2' : ''}>
+      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <input
+        type="text"
+        placeholder={placeholder}
+        className="w-full border rounded-md px-3 py-2 text-sm outline-none"
+      />
+    </div>
+  );
+};
+
+/* =========================
+   Main Component
+   ========================= */
+const AddNewSalary: React.FC = () => {
+  const [open, setOpen] = useState<boolean>(false);
+
   return (
     <>
       {/* Header */}
@@ -11,7 +39,7 @@ const AddNewSalary = () => {
 
       {/* Content */}
       <div className="grid grid-cols-3 gap-6">
-        {/* Left Form */}
+        {/* Left Section */}
         <div className="col-span-2 space-y-6">
           {/* Personal Information */}
           <div className="bg-white border rounded-xl p-5">
@@ -49,9 +77,15 @@ const AddNewSalary = () => {
                 Incentives
                 <span className="text-xs text-green-600 ml-2">Total: $0.00</span>
               </h2>
-              <button className="bg-blue-500 text-white text-sm px-3 py-1.5 rounded">
-                Add Incentives
+
+              <button
+                onClick={() => setOpen(true)}
+                className="bg-blue-500 text-white text-sm px-3 py-1.5 rounded"
+              >
+                Add Incentive
               </button>
+
+              <AddIncentiveModal isOpen={open} onClose={() => setOpen(false)} />
             </div>
 
             <div className="text-center text-gray-400 text-sm py-10">
@@ -60,6 +94,7 @@ const AddNewSalary = () => {
               <p className="text-xs">Click "Add Incentives" to add bonuses</p>
             </div>
           </div>
+
           {/* Penalties */}
           <div className="bg-white border rounded-xl p-5">
             <div className="flex items-center justify-between mb-6">
@@ -67,6 +102,7 @@ const AddNewSalary = () => {
                 Penalties
                 <span className="text-xs text-red-500 ml-2">Total: $0.00</span>
               </h2>
+
               <button className="bg-blue-500 text-white text-sm px-3 py-1.5 rounded">
                 Add Penalties
               </button>
@@ -81,12 +117,7 @@ const AddNewSalary = () => {
 
           {/* Payment Details */}
           <div className="bg-white border rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">Payment Details</h2>
-              <button className="bg-blue-500 text-white text-sm px-3 py-1.5 rounded">
-                Add Penalties
-              </button>
-            </div>
+            <h2 className="font-semibold mb-4">Payment Details</h2>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -112,16 +143,17 @@ const AddNewSalary = () => {
 
         {/* Right Summary */}
         <div className="space-y-6">
-          {/* Salary Summary */}
           <div className="bg-white border rounded-xl p-5">
             <div className="flex justify-between text-sm mb-3">
               <span className="text-gray-500">Base Salary</span>
               <span>$0.00</span>
             </div>
+
             <div className="flex justify-between text-sm mb-3">
               <span className="text-gray-500">Total Incentives</span>
               <span className="text-green-600">$0.00</span>
             </div>
+
             <div className="flex justify-between text-sm mb-3">
               <span className="text-gray-500">Total Penalties</span>
               <span className="text-red-500">$0.00</span>
@@ -136,7 +168,6 @@ const AddNewSalary = () => {
             <button className="w-full mt-2 border py-2 rounded">Reset Form</button>
           </div>
 
-          {/* Important Box */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
             <p className="font-semibold mb-1">Important</p>
             <p>
@@ -151,24 +182,3 @@ const AddNewSalary = () => {
 };
 
 export default AddNewSalary;
-
-function Input({
-  label,
-  placeholder,
-  full,
-}: {
-  label: string;
-  placeholder: string;
-  full?: boolean;
-}) {
-  return (
-    <div className={full ? 'col-span-2' : ''}>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
-      <input
-        type="text"
-        placeholder={placeholder}
-        className="w-full border rounded-md px-3 py-2 text-sm outline-none"
-      />
-    </div>
-  );
-}
