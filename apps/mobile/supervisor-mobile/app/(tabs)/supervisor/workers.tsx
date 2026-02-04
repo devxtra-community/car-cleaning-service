@@ -3,36 +3,35 @@ import { useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = 'http://10.10.3.182:3033';
+
 interface LiveWorker {
   id: string;
   full_name: string;
   email: string;
-  task_id?: string;
-  started_at?: string;
+  task_id: string;
+  started_at: string;
 }
 
-export default function WorkersScreen() {
+export default function LiveWorkersScreen() {
   const [workers, setWorkers] = useState<LiveWorker[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadWorkers();
+    loadLiveWorkers();
   }, []);
 
-  const loadWorkers = async () => {
+  const loadLiveWorkers = async () => {
     try {
-      const token = await SecureStore.getItemAsync('token');
+      const token = await SecureStore.getItemAsync('access_token');
 
       if (!token) {
-        console.warn('No token found');
+        console.warn('No access token found');
         return;
       }
 
-      const res = await fetch(`${BASE_URL}/api/supervisor/workers`, {
-        method: 'GET',
+      const res = await fetch(`${BASE_URL}/api/supervisor/workers/live`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
@@ -41,10 +40,10 @@ export default function WorkersScreen() {
       if (json.success) {
         setWorkers(json.data);
       } else {
-        console.warn('API error:', json.message);
+        console.warn(json.message);
       }
-    } catch (err) {
-      console.error('Error loading workers', err);
+    } catch (error) {
+      console.error('Failed to load live workers', error);
     } finally {
       setLoading(false);
     }
@@ -53,7 +52,7 @@ export default function WorkersScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading workers...</Text>
+        <Text>Loading live workers...</Text>
       </View>
     );
   }
@@ -64,7 +63,7 @@ export default function WorkersScreen() {
         data={workers}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
-          <Text style={{ textAlign: 'center', marginTop: 20 }}>No workers found</Text>
+          <Text style={{ textAlign: 'center', marginTop: 20 }}>No workers are live right now</Text>
         }
         renderItem={({ item }) => (
           <View
@@ -77,7 +76,7 @@ export default function WorkersScreen() {
           >
             <Text style={{ fontWeight: '600', fontSize: 16 }}>{item.full_name}</Text>
             <Text style={{ color: '#6b7280' }}>{item.email}</Text>
-            <Text style={{ color: '#6b7280', fontSize: 12 }}>Role: {item.role}</Text>
+            <Text style={{ color: '#16a34a', marginTop: 4 }}>● Working on a task</Text>
           </View>
         )}
       />
