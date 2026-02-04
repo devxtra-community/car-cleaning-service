@@ -9,6 +9,8 @@ const Login = () => {
     password: '',
   });
 
+  const handleLogin = () => {};
+
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 flex items-center justify-center">
       <div className="w-full max-w-7xl bg-white shadow sm:rounded-lg flex flex-col lg:flex-row overflow-hidden">
@@ -37,7 +39,10 @@ const Login = () => {
                 placeholder="Password"
               />
 
-              <button className="mt-5 tracking-wide font-semibold bg-[#00AEFF] text-gray-100 w-full py-4 rounded-lg hover:bg-[#23b9ff] transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none">
+              <button
+                onClick={handleLogin}
+                className="mt-5 tracking-wide font-semibold bg-[#00AEFF] text-gray-100 w-full py-4 rounded-lg hover:bg-[#23b9ff] transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
+              >
                 <svg
                   className="w-6 h-6 -ml-2"
                   fill="none"
