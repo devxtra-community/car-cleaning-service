@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, StatusBar } from 'react-
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { User, UserCog, Calendar, Wallet, AlertCircle, QrCode } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 /* -------------------- ACTION CARD COMPONENT -------------------- */
 const ActionCard = ({
@@ -65,7 +66,10 @@ export default function HomePage() {
 
             {/* TOP ACTION BUTTONS */}
             <View style={styles.actionButtons}>
-              <Pressable style={styles.actionButton}>
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => router.push('/supervisor/workers')}
+              >
                 <Text style={styles.actionButtonText}>View Workers</Text>
               </Pressable>
 
