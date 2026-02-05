@@ -2,14 +2,14 @@ import React from 'react';
 
 const PrivacyPolicy = () => {
   return (
-    <div class="bg-gray-50 min-h-screen">
-      <div class="max-w-4xl mx-auto px-4 py-16">
-        <div class="bg-white rounded-2xl shadow-xl p-8">
-          <h1 class="text-3xl font-bold text-gray-900 mb-8">Terms of Service</h1>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Terms of Service</h1>
 
-          <section class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">1. Acceptance of Terms</h2>
-            <div class="prose text-gray-600">
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">1. Acceptance of Terms</h2>
+            <div className="prose text-gray-600">
               <p>
                 By accessing and using this website, you accept and agree to be bound by the terms
                 and provision of this agreement.
@@ -17,13 +17,13 @@ const PrivacyPolicy = () => {
             </div>
           </section>
 
-          <section class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">2. Use License</h2>
-            <div class="bg-gray-50 rounded-lg p-6">
-              <ul class="space-y-4 text-gray-600">
-                <li class="flex gap-3">
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">2. Use License</h2>
+            <div className="bg-gray-50 rounded-lg p-6">
+              <ul className="space-y-4 text-gray-600">
+                <li className="flex gap-3">
                   <svg
-                    class="h-6 w-6 text-blue-500 shrink-0"
+                    className="h-6 w-6 text-blue-500 shrink-0"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -40,9 +40,9 @@ const PrivacyPolicy = () => {
                     personal, non-commercial transitory viewing only.
                   </span>
                 </li>
-                <li class="flex gap-3">
+                <li className="flex gap-3">
                   <svg
-                    class="h-6 w-6 text-blue-500 shrink-0"
+                    className="h-6 w-6 text-blue-500 shrink-0"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -60,12 +60,12 @@ const PrivacyPolicy = () => {
             </div>
           </section>
 
-          <section class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">3. Disclaimer</h2>
-            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-              <div class="flex">
-                <div class="shrink-0">
-                  <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">3. Disclaimer</h2>
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+              <div className="flex">
+                <div className="shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
                     <path
                       fill-rule="evenodd"
                       d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -73,8 +73,8 @@ const PrivacyPolicy = () => {
                     />
                   </svg>
                 </div>
-                <div class="ml-3">
-                  <p class="text-sm text-yellow-700">
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
                     The materials on this website are provided on an 'as is' basis. We make no
                     warranties, expressed or implied, and hereby disclaim and negate all other
                     warranties including, without limitation, implied warranties or conditions of
@@ -86,23 +86,23 @@ const PrivacyPolicy = () => {
             </div>
           </section>
 
-          <section class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">4. Limitations</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="bg-gray-50 p-6 rounded-lg">
-                <h3 class="font-medium text-gray-900 mb-2">Time Limitations</h3>
-                <p class="text-gray-600">Claims must be filed within 30 days of incident.</p>
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">4. Limitations</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">Time Limitations</h3>
+                <p className="text-gray-600">Claims must be filed within 30 days of incident.</p>
               </div>
-              <div class="bg-gray-50 p-6 rounded-lg">
-                <h3 class="font-medium text-gray-900 mb-2">Liability</h3>
-                <p class="text-gray-600">We shall not be held liable for any damages.</p>
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h3 className="font-medium text-gray-900 mb-2">Liability</h3>
+                <p className="text-gray-600">We shall not be held liable for any damages.</p>
               </div>
             </div>
           </section>
 
-          <section class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">5. Revisions</h2>
-            <div class="prose text-gray-600">
+          <section className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">5. Revisions</h2>
+            <div className="prose text-gray-600">
               <p>
                 We may revise these terms of service at any time without notice. By using this
                 website you are agreeing to be bound by the current version of these terms of
@@ -112,14 +112,14 @@ const PrivacyPolicy = () => {
           </section>
 
           <section>
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">6. Contact</h2>
-            <div class="bg-gray-50 rounded-lg p-6 flex items-center justify-between">
-              <p class="text-gray-600">Questions about the Terms of Service?</p>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">6. Contact</h2>
+            <div className="bg-gray-50 rounded-lg p-6 flex items-center justify-between">
+              <p className="text-gray-600">Questions about the Terms of Service?</p>
               <a
                 href="mailto:legal@example.com"
-                class="inline-flex items-center text-blue-600 hover:text-blue-500"
+                className="inline-flex items-center text-blue-600 hover:text-blue-500"
               >
-                <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
