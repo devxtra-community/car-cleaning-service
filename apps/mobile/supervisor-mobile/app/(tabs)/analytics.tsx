@@ -11,34 +11,102 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle } from 'react-native-svg';
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
-  Clock,
   CheckCircle,
   AlertCircle,
   ChevronRight,
   Calendar,
+  Clock,
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
+// Topographic Pattern
+const TopoPattern = () => (
+  <Svg
+    height="100%"
+    width="100%"
+    style={StyleSheet.absoluteFillObject}
+    viewBox="0 0 400 400"
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <Path
+      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+      stroke="rgba(255,255,255,0.15)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+      stroke="rgba(255,255,255,0.15)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
+      stroke="rgba(255,255,255,0.12)"
+      strokeWidth="2"
+      fill="none"
+    />
+
+    <Circle cx="320" cy="100" r="30" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
+    <Circle cx="320" cy="100" r="45" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
+    <Circle cx="320" cy="100" r="60" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
+
+    <Path
+      d="M 60 180 Q 40 160, 60 140 Q 80 120, 100 140 Q 120 160, 100 180 Q 80 200, 60 180 Z"
+      stroke="rgba(255,255,255,0.15)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 50 180 Q 28 160, 50 135 Q 72 110, 110 135 Q 132 160, 110 185 Q 88 210, 50 180 Z"
+      stroke="rgba(255,255,255,0.12)"
+      strokeWidth="2"
+      fill="none"
+    />
+
+    <Path
+      d="M 0 240 Q 60 220, 120 240 T 240 240 T 360 240 T 400 240"
+      stroke="rgba(255,255,255,0.15)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 260 Q 60 245, 120 260 T 240 260 T 360 260 T 400 260"
+      stroke="rgba(255,255,255,0.12)"
+      strokeWidth="2"
+      fill="none"
+    />
+
+    <Circle cx="80" cy="320" r="25" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
+    <Circle cx="80" cy="320" r="38" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
+  </Svg>
+);
+
 export default function AnalyticsView() {
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Analytics</Text>
-            <Text style={styles.headerSubtitle}>Track your performance metrics</Text>
+      {/* HEADER WITH TOPOGRAPHIC BACKGROUND */}
+      <View style={styles.headerContainer}>
+        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.headerGradient}>
+          <TopoPattern />
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>Analytics</Text>
+              <Text style={styles.headerSubtitle}>Track your performance metrics</Text>
+            </View>
+            <TouchableOpacity style={styles.calendarButton}>
+              <Calendar size={20} color="#3DA2CE" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.calendarButton}>
-            <Calendar size={20} color="#3B82F6" />
-          </TouchableOpacity>
-        </View>
+        </LinearGradient>
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* OVERVIEW CARDS */}
         <View style={styles.overviewContainer}>
           {/* TOTAL EARNINGS */}
@@ -47,7 +115,7 @@ export default function AnalyticsView() {
             style={styles.largeCard}
           >
             <LinearGradient
-              colors={['#10B981', '#059669']}
+              colors={['#5AB9E0', '#3DA2CE']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.gradientCard}
@@ -68,48 +136,35 @@ export default function AnalyticsView() {
             </LinearGradient>
           </Pressable>
 
-          {/* SMALL CARDS ROW */}
-          <View style={styles.smallCardsRow}>
-            {/* COMPLETED TASKS */}
-            <Pressable style={styles.smallCard}>
-              <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.smallGradient}
-              >
-                <View style={styles.smallIconWrapper}>
-                  <CheckCircle size={20} color="#fff" strokeWidth={2.5} />
+          {/* COMPLETED TASKS CARD - NOW FULL WIDTH */}
+          <Pressable
+            style={styles.completedCard}
+            onPress={() => router.push('/(tabs)/analytics/tasks')}
+          >
+            <LinearGradient
+              colors={['#4FB3D9', '#3DA2CE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.completedGradient}
+            >
+              <View style={styles.completedLeft}>
+                <View style={styles.completedIconWrapper}>
+                  <CheckCircle size={24} color="#fff" strokeWidth={2.5} />
                 </View>
-                <Text style={styles.smallCardValue}>67</Text>
-                <Text style={styles.smallCardLabel}>Completed</Text>
-                <View style={styles.smallTrendRow}>
-                  <TrendingUp size={10} color="#fff" />
-                  <Text style={styles.smallTrendText}>+8.3%</Text>
+                <View style={styles.completedInfo}>
+                  <Text style={styles.completedValue}>67</Text>
+                  <Text style={styles.completedLabel}>Tasks Completed</Text>
                 </View>
-              </LinearGradient>
-            </Pressable>
-
-            {/* TOTAL HOURS */}
-            <Pressable style={styles.smallCard}>
-              <LinearGradient
-                colors={['#F59E0B', '#D97706']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.smallGradient}
-              >
-                <View style={styles.smallIconWrapper}>
-                  <Clock size={20} color="#fff" strokeWidth={2.5} />
+              </View>
+              <View style={styles.completedRight}>
+                <View style={styles.completedTrendBadge}>
+                  <TrendingUp size={10} color="#10B981" />
+                  <Text style={styles.completedTrendText}>+8.3%</Text>
                 </View>
-                <Text style={styles.smallCardValue}>42h</Text>
-                <Text style={styles.smallCardLabel}>Total Hours</Text>
-                <View style={styles.smallTrendRow}>
-                  <TrendingUp size={10} color="#fff" />
-                  <Text style={styles.smallTrendText}>+5.2%</Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-          </View>
+                <ChevronRight size={20} color="#fff" style={{ opacity: 0.7 }} />
+              </View>
+            </LinearGradient>
+          </Pressable>
 
           {/* PENALTY CARD */}
           <Pressable
@@ -165,7 +220,7 @@ export default function AnalyticsView() {
                 <TouchableOpacity key={item.day} style={styles.barColumn} activeOpacity={0.7}>
                   <Text style={styles.barValue}>{item.tasks}</Text>
                   <LinearGradient
-                    colors={['#3B82F6', '#2563EB']}
+                    colors={['#5AB9E0', '#3DA2CE']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 0, y: 1 }}
                     style={[styles.bar, { height: `${item.value}%` }]}
@@ -220,7 +275,6 @@ function Breakdown({
 }) {
   const percentage = (parseInt(value) / total) * 100;
 
-  // Generate icon based on label
   const getIcon = () => {
     switch (label) {
       case 'Completed':
@@ -234,7 +288,6 @@ function Breakdown({
     }
   };
 
-  // Get background color with opacity
   const getBackgroundColor = () => {
     return color + '15';
   };
@@ -267,27 +320,33 @@ function Breakdown({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F7FA',
   },
-  scrollContent: {
-    paddingBottom: 20,
+  headerContainer: {
+    height: 140,
+    marginBottom: 20,
+  },
+  headerGradient: {
+    flex: 1,
+    paddingTop: 12,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 12,
+    paddingHorizontal: 20,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#111827',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 4,
   },
   calendarButton: {
@@ -297,11 +356,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3B82F6',
+    shadowColor: '#3DA2CE',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 3,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   overviewContainer: {
     paddingHorizontal: 20,
@@ -310,7 +372,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#10B981',
+    shadowColor: '#3DA2CE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -373,53 +435,66 @@ const styles = StyleSheet.create({
     bottom: 20,
     opacity: 0.5,
   },
-  smallCardsRow: {
-    flexDirection: 'row',
+  completedCard: {
     marginBottom: 12,
-  },
-  smallCard: {
-    flex: 1,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowColor: '#3DA2CE',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 3,
-    marginRight: 12,
   },
-  smallGradient: {
-    padding: 16,
-    minHeight: 130,
+  completedGradient: {
+    padding: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  smallIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  completedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  completedIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: 14,
   },
-  smallCardValue: {
+  completedInfo: {
+    flex: 1,
+  },
+  completedValue: {
     fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 2,
   },
-  smallCardLabel: {
-    fontSize: 12,
+  completedLabel: {
+    fontSize: 13,
     color: '#fff',
     fontWeight: '600',
     opacity: 0.9,
   },
-  smallTrendRow: {
+  completedRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    gap: 8,
   },
-  smallTrendText: {
-    color: '#fff',
+  completedTrendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  completedTrendText: {
+    color: '#10B981',
     fontSize: 11,
     fontWeight: '700',
     marginLeft: 3,
@@ -504,7 +579,7 @@ const styles = StyleSheet.create({
   viewAll: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#3DA2CE',
   },
   chartCard: {
     backgroundColor: '#fff',
@@ -530,7 +605,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#3DA2CE',
     marginRight: 8,
   },
   legendText: {
@@ -558,14 +633,14 @@ const styles = StyleSheet.create({
   barValue: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#3B82F6',
+    color: '#3DA2CE',
     marginBottom: 4,
   },
   bar: {
     width: '100%',
     maxWidth: 32,
     borderRadius: 8,
-    shadowColor: '#3B82F6',
+    shadowColor: '#3DA2CE',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -578,7 +653,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   barLabelActive: {
-    color: '#3B82F6',
+    color: '#3DA2CE',
     fontWeight: '700',
   },
   breakdownCard: {

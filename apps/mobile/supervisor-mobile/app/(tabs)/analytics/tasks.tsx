@@ -1,53 +1,51 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DollarSign, TrendingUp } from 'lucide-react-native';
+import { Car } from 'lucide-react-native';
 
 type TabType = 'daily' | 'weekly' | 'monthly';
 
-interface ServiceStat {
+interface CarStat {
   id: string;
   type: string;
   count: number;
-  amount: number;
-  icon: string;
 }
 
-const DATA: Record<TabType, { total: number; services: ServiceStat[] }> = {
+const DATA: Record<TabType, { total: number; cars: CarStat[] }> = {
   daily: {
-    total: 2450,
-    services: [
-      { id: '1', type: 'SUV', count: 3, amount: 1200, icon: '🚙' },
-      { id: '2', type: 'Sedan', count: 5, amount: 800, icon: '🚗' },
-      { id: '3', type: 'Premium', count: 1, amount: 450, icon: '✨' },
+    total: 25,
+    cars: [
+      { id: '1', type: 'SUV', count: 12 },
+      { id: '2', type: 'Sedan', count: 8 },
+      { id: '3', type: 'Hatchback', count: 5 },
     ],
   },
   weekly: {
-    total: 15780,
-    services: [
-      { id: '1', type: 'SUV', count: 18, amount: 7200, icon: '🚙' },
-      { id: '2', type: 'Sedan', count: 32, amount: 5120, icon: '🚗' },
-      { id: '3', type: 'Premium', count: 8, amount: 3460, icon: '✨' },
+    total: 140,
+    cars: [
+      { id: '1', type: 'SUV', count: 62 },
+      { id: '2', type: 'Sedan', count: 48 },
+      { id: '3', type: 'Hatchback', count: 30 },
     ],
   },
   monthly: {
-    total: 68420,
-    services: [
-      { id: '1', type: 'SUV', count: 82, amount: 32800, icon: '🚙' },
-      { id: '2', type: 'Sedan', count: 145, amount: 23200, icon: '🚗' },
-      { id: '3', type: 'Premium', count: 35, amount: 12420, icon: '✨' },
+    total: 560,
+    cars: [
+      { id: '1', type: 'SUV', count: 260 },
+      { id: '2', type: 'Sedan', count: 190 },
+      { id: '3', type: 'Hatchback', count: 110 },
     ],
   },
 };
 
-export default function EarningsScreen() {
+export default function TaskSummaryScreen() {
   const [tab, setTab] = useState<TabType>('daily');
   const current = DATA[tab];
 
   return (
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
-      <Text style={styles.title}>Earnings</Text>
+      <Text style={styles.title}>Task Details</Text>
 
       {/* SEGMENTED BAR */}
       <View style={styles.segment}>
@@ -64,43 +62,32 @@ export default function EarningsScreen() {
         ))}
       </View>
 
-      {/* TOTAL EARNINGS CARD */}
+      {/* TOTAL TASKS CARD */}
       <View style={styles.totalCard}>
         <View style={styles.totalIcon}>
-          <DollarSign size={22} color="#2563EB" />
+          <Car size={22} color="#2563EB" />
         </View>
 
-        <Text style={styles.totalLabel}>Total Earnings</Text>
-        <Text style={styles.totalValue}>₹{current.total.toLocaleString()}</Text>
-
-        {/* TREND INDICATOR */}
-        <View style={styles.trendContainer}>
-          <TrendingUp size={14} color="#10B981" />
-          <Text style={styles.trendText}>
-            {tab === 'daily' ? '+12.5%' : tab === 'weekly' ? '+8.3%' : '+15.7%'}
-          </Text>
-        </View>
+        <Text style={styles.totalLabel}>Total Cars Cleaned</Text>
+        <Text style={styles.totalValue}>{current.total}</Text>
       </View>
 
-      {/* SERVICE BREAKDOWN */}
-      <Text style={styles.sectionTitle}>Service Breakdown</Text>
+      {/* CARS CLEANED */}
+      <Text style={styles.sectionTitle}>Cars Cleaned</Text>
 
       <FlatList
-        data={current.services}
+        data={current.cars}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={styles.serviceCard}>
+          <View style={styles.carCard}>
             <View style={styles.iconWrap}>
-              <Text style={styles.serviceIcon}>{item.icon}</Text>
+              <Car size={20} color="#2563EB" />
             </View>
 
-            <View style={styles.serviceInfo}>
-              <Text style={styles.serviceText}>{item.type} Cleaned</Text>
-              <Text style={styles.serviceCount}>{item.count} cars</Text>
-            </View>
+            <Text style={styles.carText}>{item.type} Cleaned</Text>
 
-            <View style={styles.amountBadge}>
-              <Text style={styles.amountText}>₹{item.amount.toLocaleString()}</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{item.count}</Text>
             </View>
           </View>
         )}
@@ -153,15 +140,6 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: '#1D4ED8',
   },
-
-  totalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-
   totalIcon: {
     width: 44,
     height: 44,
@@ -170,6 +148,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+  },
+
+  totalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+    marginBottom: 28,
   },
 
   totalLabel: {
@@ -182,23 +168,6 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '800',
     color: '#2563EB',
-    marginBottom: 8,
-  },
-
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-
-  trendText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#10B981',
   },
 
   sectionTitle: {
@@ -208,7 +177,7 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
-  serviceCard: {
+  carCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -227,36 +196,22 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
 
-  serviceIcon: {
-    fontSize: 22,
-  },
-
-  serviceInfo: {
+  carText: {
     flex: 1,
-  },
-
-  serviceText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 2,
   },
 
-  serviceCount: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-
-  amountBadge: {
+  countBadge: {
     backgroundColor: '#DBEAFE',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
   },
 
-  amountText: {
-    fontSize: 15,
+  countText: {
+    fontSize: 16,
     fontWeight: '800',
     color: '#2563EB',
   },

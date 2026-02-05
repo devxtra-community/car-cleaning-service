@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { API } from '@/src/api/api';
+import api from '@/src/api/api';
 import {
   View,
   Text,
@@ -103,7 +103,7 @@ export default function LoginScreen() {
     try {
       setLoading(true);
 
-      const res = await API.post('/api/auth/login', {
+      const res = await api.post('/api/auth/login', {
         email,
         password,
         client_type: 'mobile',
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
 
   wave: {
     position: 'absolute',
-    bottom: -1, // Slightly overlap to remove any gap
+    bottom: -1,
     left: 0,
     right: 0,
   },
@@ -248,21 +248,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F7FA',
     paddingHorizontal: 32,
-    paddingTop: 8, // Reduced from 20 to 8
+    paddingTop: 8,
   },
 
   title: {
     fontSize: 32,
     fontWeight: '700',
     color: '#2C2C2C',
-    marginBottom: 2, // Reduced from 4 to 2
+    marginBottom: 2,
   },
 
   line: {
     width: 40,
     height: 3,
     backgroundColor: '#3DA2CE',
-    marginBottom: 20, // Reduced from 24 to 20
+    marginBottom: 20,
     borderRadius: 2,
   },
 

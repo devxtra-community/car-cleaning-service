@@ -1,20 +1,57 @@
 import axios from 'axios';
-import * as secureStore from 'expo-secure-store';
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from '../tokenStorage';
 
-export const API = axios.create({
-  baseURL: 'http://10.10.1.203:3033',
-  headers: {
-    'Content-Type': 'application/json',
+const api = axios.create({
+  baseURL: `http://10.10.1.203:3033`,
+  timeout: 10000,
+});
+
+/* ================= REQUEST INTERCEPTOR ================= */
+
+api.interceptors.request.use(
+  async (config) => {
+    const accessToken = await getAccessToken();
+
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    return config;
   },
-  withCredentials: true,
-});
+  (error) => Promise.reject(error)
+);
 
-API.interceptors.request.use(async (config) => {
-  const token = await secureStore.getItemAsync('access_token');
+/* ================= RESPONSE INTERCEPTOR ================= */
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = await getRefreshToken();
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const res = await axios.post(`/http://10.10.1.203:3033/auth/refresh`, { refreshToken });
+
+        const { accessToken, refreshToken: newRefresh } = res.data;
+
+        await saveTokens(accessToken, newRefresh);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        return api(originalRequest);
+      } catch (err) {
+        await clearTokens();
+
+        return Promise.reject(err);
+      }
+    }
+
+    return Promise.reject(error);
   }
+);
 
-  return config;
-});
+export default api;

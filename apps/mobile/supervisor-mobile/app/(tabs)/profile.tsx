@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Dimensions, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Wallet, Settings, HelpCircle, LogOut, CheckCircle } from 'lucide-react-native';
+import { User, Settings, HelpCircle, LogOut, CheckCircle } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -34,31 +34,13 @@ export default function ProfileView() {
         <Text style={styles.role}>WORKER</Text>
       </LinearGradient>
 
-      {/* STATS */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Total Incentive</Text>
-          <Text style={styles.statValueNegative}>- $256.00</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Completed Works</Text>
-          <Text style={styles.statValue}>67</Text>
-        </View>
-      </View>
-
       {/* MENU */}
       <View style={styles.menu}>
         <MenuItem
+          onPress={() => router.push('/(tabs)/profile/edit-profile')}
           icon={<User size={20} color="#4FB3D9" />}
           title="My Account"
           subtitle="Make changes to your account"
-        />
-
-        <MenuItem
-          icon={<Wallet size={20} color="#4FB3D9" />}
-          title="Earnings"
-          subtitle="Manage your earnings"
         />
 
         <MenuItem
