@@ -45,7 +45,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         await clearTokens();
-        // 🔁 navigate to Login screen
+
         return Promise.reject(err);
       }
     }

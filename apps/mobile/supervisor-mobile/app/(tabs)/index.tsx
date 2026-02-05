@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { User, UserCog, Calendar, ClipboardList, AlertCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { fs } from '@/src/theme/scale';
 
 /* -------------------- ACTION CARD COMPONENT -------------------- */
 const ActionCard = ({
@@ -87,7 +88,7 @@ export default function HomePage() {
             <View style={styles.quickActionsCard}>
               <Text style={styles.quickActionsTitle}>Quick Actions</Text>
 
-              <Pressable style={styles.actionsGrid}>
+              <View style={styles.actionsGrid}>
                 <ActionCard
                   icon={<UserCog size={24} color="#3DA2CE" />}
                   title="Live Workers"
@@ -113,7 +114,7 @@ export default function HomePage() {
                   title="Report Issue"
                   subtitle="Get Help"
                 />
-              </Pressable>
+              </View>
             </View>
           </ScrollView>
         </LinearGradient>
@@ -156,13 +157,13 @@ const styles = StyleSheet.create({
   },
 
   greeting: {
-    fontSize: 18,
+    fontSize: fs(18),
     fontWeight: '700',
     color: '#FFF',
   },
 
   phoneNumber: {
-    fontSize: 13,
+    fontSize: fs(13),
     color: 'rgba(255,255,255,0.85)',
   },
 
@@ -176,6 +177,7 @@ const styles = StyleSheet.create({
   },
 
   earningsLabel: {
+    fontSize: fs(13),
     color: '#FFF',
     marginBottom: 6,
     fontWeight: '500',
@@ -187,19 +189,19 @@ const styles = StyleSheet.create({
   },
 
   currencySymbol: {
-    fontSize: 26,
+    fontSize: fs(26),
     color: '#FFF',
     marginTop: 6,
   },
 
   earningsAmount: {
-    fontSize: 46,
+    fontSize: fs(46),
     fontWeight: '700',
     color: '#FFF',
   },
 
   earningsCents: {
-    fontSize: 18,
+    fontSize: fs(18),
     color: '#FFF',
     marginTop: 10,
   },
@@ -213,7 +215,7 @@ const styles = StyleSheet.create({
   },
 
   badgeText: {
-    fontSize: 12,
+    fontSize: fs(12),
     color: '#3DA2CE',
     fontWeight: '600',
   },
@@ -237,6 +239,7 @@ const styles = StyleSheet.create({
   },
 
   actionButtonText: {
+    fontSize: fs(14),
     fontWeight: '600',
     color: '#2C2C2C',
   },
@@ -249,7 +252,7 @@ const styles = StyleSheet.create({
   },
 
   quickActionsTitle: {
-    fontSize: 16,
+    fontSize: fs(16),
     fontWeight: '600',
     marginBottom: 16,
   },
@@ -285,12 +288,12 @@ const styles = StyleSheet.create({
   },
 
   actionItemTitle: {
-    fontSize: 14,
+    fontSize: fs(14),
     fontWeight: '600',
   },
 
   actionItemSubtitle: {
-    fontSize: 11,
+    fontSize: fs(11),
     color: '#7A7A7A',
   },
 });
