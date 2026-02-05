@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import carlogo from '../assets/carlogo.png';
-
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { login } from '../services/allAPI';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
@@ -9,7 +9,31 @@ const Login = () => {
     password: '',
   });
 
-  const handleLogin = () => {};
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
+    const { email, password } = loginInput;
+    if (!email || !password) {
+      alert('Please enter both email and password');
+    }
+
+    try {
+      const response = await login({ email, password });
+
+      console.log('Login successful', response.data);
+      alert('Login Successful');
+
+      // Optional: preload admin dashboard
+      import('../components/admin/AdminDashboard');
+
+      navigate('/admin/dashboard');
+    } catch (error) {
+      console.error('Login failed', error);
+      alert('Login failed');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 flex items-center justify-center">
