@@ -1,6 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  Pressable,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   TrendingUp,
   TrendingDown,
@@ -8,419 +18,630 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  ChevronRight,
+  Calendar,
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
 export default function AnalyticsView() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* HEADER */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Analytics</Text>
-          <Text style={styles.headerSubtitle}>Track your performance</Text>
+          <View>
+            <Text style={styles.headerTitle}>Analytics</Text>
+            <Text style={styles.headerSubtitle}>Track your performance metrics</Text>
+          </View>
+          <TouchableOpacity style={styles.calendarButton}>
+            <Calendar size={20} color="#3B82F6" />
+          </TouchableOpacity>
         </View>
 
         {/* OVERVIEW CARDS */}
-        <View style={styles.overviewRow}>
-          <View style={[styles.overviewCard, { backgroundColor: '#10B981' }]}>
-            <View style={styles.iconCircle}>
-              <DollarSign size={20} color="#10B981" />
-            </View>
-            <Text style={styles.overviewValue}>$1,245</Text>
-            <Text style={styles.overviewLabel}>Total Earnings</Text>
-            <View style={styles.trendRow}>
-              <TrendingUp size={14} color="#fff" />
-              <Text style={styles.trendText}>+12.5%</Text>
-            </View>
+        <View style={styles.overviewContainer}>
+          {/* TOTAL EARNINGS */}
+          <Pressable
+            onPress={() => router.push('/(tabs)/analytics/earnings')}
+            style={styles.largeCard}
+          >
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientCard}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.iconWrapper}>
+                  <DollarSign size={24} color="#fff" strokeWidth={2.5} />
+                </View>
+                <View style={styles.trendBadge}>
+                  <TrendingUp size={12} color="#10B981" strokeWidth={3} />
+                  <Text style={styles.trendBadgeText}>+12.5%</Text>
+                </View>
+              </View>
+              <Text style={styles.cardValue}>₹1,245</Text>
+              <Text style={styles.cardLabel}>Total Earnings</Text>
+              <Text style={styles.cardSubtext}>This month</Text>
+              <ChevronRight size={20} color="#fff" style={styles.chevron} />
+            </LinearGradient>
+          </Pressable>
+
+          {/* SMALL CARDS ROW */}
+          <View style={styles.smallCardsRow}>
+            {/* COMPLETED TASKS */}
+            <Pressable style={styles.smallCard}>
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.smallGradient}
+              >
+                <View style={styles.smallIconWrapper}>
+                  <CheckCircle size={20} color="#fff" strokeWidth={2.5} />
+                </View>
+                <Text style={styles.smallCardValue}>67</Text>
+                <Text style={styles.smallCardLabel}>Completed</Text>
+                <View style={styles.smallTrendRow}>
+                  <TrendingUp size={10} color="#fff" />
+                  <Text style={styles.smallTrendText}>+8.3%</Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+
+            {/* TOTAL HOURS */}
+            <Pressable style={styles.smallCard}>
+              <LinearGradient
+                colors={['#F59E0B', '#D97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.smallGradient}
+              >
+                <View style={styles.smallIconWrapper}>
+                  <Clock size={20} color="#fff" strokeWidth={2.5} />
+                </View>
+                <Text style={styles.smallCardValue}>42h</Text>
+                <Text style={styles.smallCardLabel}>Total Hours</Text>
+                <View style={styles.smallTrendRow}>
+                  <TrendingUp size={10} color="#fff" />
+                  <Text style={styles.smallTrendText}>+5.2%</Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
           </View>
 
-          <View style={[styles.overviewCard, { backgroundColor: '#3B82F6' }]}>
-            <View style={styles.iconCircle}>
-              <CheckCircle size={20} color="#3B82F6" />
+          {/* PENALTY CARD */}
+          <Pressable
+            onPress={() => router.push('/(tabs)/penalty/penalty-history')}
+            style={styles.penaltyCard}
+          >
+            <View style={styles.penaltyContent}>
+              <View style={styles.penaltyLeft}>
+                <View style={styles.penaltyIconWrapper}>
+                  <AlertCircle size={20} color="#EF4444" strokeWidth={2.5} />
+                </View>
+                <View style={styles.penaltyInfo}>
+                  <Text style={styles.penaltyValue}>3 Penalties</Text>
+                  <Text style={styles.penaltyLabel}>Review required</Text>
+                </View>
+              </View>
+              <View style={styles.penaltyRight}>
+                <View style={styles.penaltyTrendBadge}>
+                  <Text style={styles.penaltyTrendText}>-15%</Text>
+                </View>
+                <ChevronRight size={18} color="#EF4444" />
+              </View>
             </View>
-            <Text style={styles.overviewValue}>67</Text>
-            <Text style={styles.overviewLabel}>Completed Tasks</Text>
-            <View style={styles.trendRow}>
-              <TrendingUp size={14} color="#fff" />
-              <Text style={styles.trendText}>+8.3%</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.overviewRow}>
-          <View style={[styles.overviewCard, { backgroundColor: '#F59E0B' }]}>
-            <View style={styles.iconCircle}>
-              <Clock size={20} color="#F59E0B" />
-            </View>
-            <Text style={styles.overviewValue}>42h</Text>
-            <Text style={styles.overviewLabel}>Total Hours</Text>
-            <View style={styles.trendRow}>
-              <TrendingUp size={14} color="#fff" />
-              <Text style={styles.trendText}>+5.2%</Text>
-            </View>
-          </View>
-
-          <View style={[styles.overviewCard, { backgroundColor: '#EF4444' }]}>
-            <View style={styles.iconCircle}>
-              <AlertCircle size={20} color="#EF4444" />
-            </View>
-            <Text style={styles.overviewValue}>3</Text>
-            <Text style={styles.overviewLabel}>Penalties</Text>
-            <View style={styles.trendRow}>
-              <TrendingDown size={14} color="#fff" />
-              <Text style={styles.trendText}>-15.00</Text>
-            </View>
-          </View>
+          </Pressable>
         </View>
 
         {/* WEEKLY PERFORMANCE */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weekly Performance</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Weekly Performance</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAll}>View All</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.chartCard}>
-            <View style={styles.barChartContainer}>
-              <View style={styles.barChart}>
-                <BarColumn label="Mon" value={65} color="#4FB3D9" />
-                <BarColumn label="Tue" value={80} color="#4FB3D9" />
-                <BarColumn label="Wed" value={75} color="#4FB3D9" />
-                <BarColumn label="Thu" value={90} color="#4FB3D9" />
-                <BarColumn label="Fri" value={70} color="#4FB3D9" />
-                <BarColumn label="Sat" value={45} color="#CBD5E1" />
-                <BarColumn label="Sun" value={30} color="#CBD5E1" />
+            <View style={styles.chartHeader}>
+              <View style={styles.chartLegend}>
+                <View style={styles.legendDot} />
+                <Text style={styles.legendText}>Tasks Completed</Text>
               </View>
+              <Text style={styles.chartAverage}>Avg: 9.5/day</Text>
+            </View>
+            <View style={styles.barChart}>
+              {[
+                { day: 'Mon', value: 40, tasks: 8 },
+                { day: 'Tue', value: 55, tasks: 11 },
+                { day: 'Wed', value: 62, tasks: 12 },
+                { day: 'Thu', value: 48, tasks: 9 },
+                { day: 'Fri', value: 75, tasks: 15 },
+                { day: 'Sat', value: 82, tasks: 16 },
+                { day: 'Sun', value: 68, tasks: 13 },
+              ].map((item, i) => (
+                <TouchableOpacity key={item.day} style={styles.barColumn} activeOpacity={0.7}>
+                  <Text style={styles.barValue}>{item.tasks}</Text>
+                  <LinearGradient
+                    colors={['#3B82F6', '#2563EB']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={[styles.bar, { height: `${item.value}%` }]}
+                  />
+                  <Text
+                    style={[
+                      styles.barLabel,
+                      i === new Date().getDay() - 1 && styles.barLabelActive,
+                    ]}
+                  >
+                    {item.day}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </View>
 
         {/* TASK BREAKDOWN */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Task Breakdown</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Task Breakdown</Text>
+            <TouchableOpacity>
+              <Text style={styles.viewAll}>Details</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.breakdownCard}>
-            <TaskBreakdownItem
-              label="Completed"
-              count={67}
-              total={78}
-              color="#10B981"
-              percentage={86}
-            />
-            <TaskBreakdownItem
-              label="In Progress"
-              count={8}
-              total={78}
-              color="#F59E0B"
-              percentage={10}
-            />
-            <TaskBreakdownItem
-              label="Pending"
-              count={3}
-              total={78}
-              color="#6B7280"
-              percentage={4}
-            />
+            <Breakdown label="Completed" value="67" total={78} color="#10B981" />
+            <Breakdown label="In Progress" value="8" total={78} color="#F59E0B" />
+            <Breakdown label="Pending" value="3" total={78} color="#6B7280" />
           </View>
         </View>
 
-        {/* EARNINGS TREND */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Monthly Earnings</Text>
-          <View style={styles.earningsCard}>
-            <View style={styles.earningsRow}>
-              <Text style={styles.earningsLabel}>January</Text>
-              <Text style={styles.earningsValue}>$425.00</Text>
-            </View>
-            <View style={styles.earningsRow}>
-              <Text style={styles.earningsLabel}>February</Text>
-              <Text style={styles.earningsValue}>$380.00</Text>
-            </View>
-            <View style={styles.earningsRow}>
-              <Text style={styles.earningsLabel}>March</Text>
-              <Text style={styles.earningsValue}>$440.00</Text>
-            </View>
-            <View style={[styles.earningsRow, { borderBottomWidth: 0 }]}>
-              <Text style={[styles.earningsLabel, { fontWeight: '700' }]}>Total</Text>
-              <Text style={[styles.earningsValue, { fontWeight: '700', color: '#10B981' }]}>
-                $1,245.00
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={{ height: 100 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/* ---------- BAR COLUMN COMPONENT ---------- */
+/* ---------------- COMPONENTS ---------------- */
 
-function BarColumn({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={styles.barColumn}>
-      <View style={styles.barWrapper}>
-        <View
-          style={[
-            styles.bar,
-            {
-              height: `${value}%`,
-              backgroundColor: color,
-            },
-          ]}
-        />
-      </View>
-      <Text style={styles.barLabel}>{label}</Text>
-    </View>
-  );
-}
-
-/* ---------- TASK BREAKDOWN ITEM ---------- */
-
-function TaskBreakdownItem({
+function Breakdown({
   label,
-  count,
+  value,
   total,
   color,
-  percentage,
 }: {
   label: string;
-  count: number;
+  value: string;
   total: number;
   color: string;
-  percentage: number;
 }) {
+  const percentage = (parseInt(value) / total) * 100;
+
+  // Generate icon based on label
+  const getIcon = () => {
+    switch (label) {
+      case 'Completed':
+        return <CheckCircle size={16} color={color} />;
+      case 'In Progress':
+        return <Clock size={16} color={color} />;
+      case 'Pending':
+        return <AlertCircle size={16} color={color} />;
+      default:
+        return null;
+    }
+  };
+
+  // Get background color with opacity
+  const getBackgroundColor = () => {
+    return color + '15';
+  };
+
   return (
-    <View style={styles.breakdownItem}>
-      <View style={styles.breakdownHeader}>
-        <View style={styles.breakdownLabelRow}>
-          <View style={[styles.colorDot, { backgroundColor: color }]} />
-          <Text style={styles.breakdownLabel}>{label}</Text>
+    <View style={styles.breakdownRow}>
+      <View style={styles.breakdownLeft}>
+        <View style={[styles.breakdownIconWrapper, { backgroundColor: getBackgroundColor() }]}>
+          {getIcon()}
         </View>
-        <Text style={styles.breakdownCount}>
-          {count}/{total}
-        </Text>
+        <View style={styles.breakdownInfo}>
+          <Text style={styles.breakdownLabel}>{label}</Text>
+          <View style={styles.progressBar}>
+            <View
+              style={[styles.progressFill, { width: `${percentage}%`, backgroundColor: color }]}
+            />
+          </View>
+        </View>
       </View>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${percentage}%`, backgroundColor: color }]} />
+      <View style={styles.breakdownRight}>
+        <Text style={styles.breakdownValue}>{value}</Text>
+        <Text style={styles.breakdownPercentage}>{percentage.toFixed(0)}%</Text>
       </View>
     </View>
   );
 }
 
-/* ---------- STYLES ---------- */
+/* ---------------- STYLES ---------------- */
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 12,
   },
-
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     color: '#111827',
+    letterSpacing: -0.5,
   },
-
   headerSubtitle: {
     fontSize: 14,
     color: '#6B7280',
     marginTop: 4,
   },
-
-  overviewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-
-  overviewCard: {
-    width: (width - 52) / 2,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
+  calendarButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  overviewContainer: {
+    paddingHorizontal: 20,
+  },
+  largeCard: {
+    marginBottom: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
     elevation: 5,
   },
-
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  gradientCard: {
+    padding: 20,
+    minHeight: 160,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  trendBadgeText: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  cardValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+    letterSpacing: -1,
+  },
+  cardLabel: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+    opacity: 0.95,
+  },
+  cardSubtext: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.75,
+    marginTop: 2,
+  },
+  chevron: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    opacity: 0.5,
+  },
+  smallCardsRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  smallCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    marginRight: 12,
+  },
+  smallGradient: {
+    padding: 16,
+    minHeight: 130,
+  },
+  smallIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
-
-  overviewValue: {
-    fontSize: 24,
-    fontWeight: '700',
+  smallCardValue: {
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 2,
   },
-
-  overviewLabel: {
+  smallCardLabel: {
     fontSize: 12,
     color: '#fff',
+    fontWeight: '600',
     opacity: 0.9,
-    marginBottom: 8,
   },
-
-  trendRow: {
+  smallTrendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    marginTop: 8,
   },
-
-  trendText: {
-    fontSize: 12,
-    fontWeight: '600',
+  smallTrendText: {
     color: '#fff',
-  },
-
-  section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-
-  sectionTitle: {
-    fontSize: 18,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
+    marginLeft: 3,
   },
-
-  chartCard: {
+  penaltyCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
-
-  barChartContainer: {
-    height: 200,
+  penaltyContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-
+  penaltyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  penaltyIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  penaltyInfo: {
+    marginTop: 2,
+  },
+  penaltyValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  penaltyLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  penaltyRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  penaltyTrendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  penaltyTrendText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 3,
+  },
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  viewAll: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
+    marginRight: 8,
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  chartAverage: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
   barChart: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    height: '100%',
+    height: 180,
   },
-
   barColumn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    marginHorizontal: 4,
   },
-
-  barWrapper: {
-    width: '70%',
-    height: 150,
-    justifyContent: 'flex-end',
+  barValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3B82F6',
+    marginBottom: 4,
   },
-
   bar: {
     width: '100%',
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
+    maxWidth: 32,
+    borderRadius: 8,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
-
   barLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#9CA3AF',
     marginTop: 8,
+    fontWeight: '600',
   },
-
+  barLabelActive: {
+    color: '#3B82F6',
+    fontWeight: '700',
+  },
   breakdownCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 2,
   },
-
-  breakdownItem: {
-    marginBottom: 16,
-  },
-
-  breakdownHeader: {
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-
-  breakdownLabelRow: {
+  breakdownLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flex: 1,
   },
-
-  colorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  breakdownIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-
+  breakdownInfo: {
+    flex: 1,
+  },
   breakdownLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#111827',
+    marginBottom: 6,
   },
-
-  breakdownCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-
   progressBar: {
-    height: 8,
+    height: 6,
     backgroundColor: '#F3F4F6',
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-
   progressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-
-  earningsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+  breakdownRight: {
+    alignItems: 'flex-end',
+    marginLeft: 12,
   },
-
-  earningsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-
-  earningsLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-
-  earningsValue: {
-    fontSize: 14,
-    fontWeight: '600',
+  breakdownValue: {
+    fontSize: 18,
+    fontWeight: '800',
     color: '#111827',
+  },
+  breakdownPercentage: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginTop: 2,
   },
 });

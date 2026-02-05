@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable, ScrollView, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { User, UserCog, Calendar, Wallet, AlertCircle, QrCode } from 'lucide-react-native';
+import { User, UserCog, Calendar, ClipboardList, AlertCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 /* -------------------- ACTION CARD COMPONENT -------------------- */
@@ -70,12 +70,16 @@ export default function HomePage() {
                 style={styles.actionButton}
                 onPress={() => router.push('/supervisor/workers')}
               >
+                <UserCog size={20} color="#3DA2CE" />
                 <Text style={styles.actionButtonText}>View Workers</Text>
               </Pressable>
 
-              <Pressable style={styles.actionButton}>
-                <QrCode size={20} color="#3DA2CE" />
-                <Text style={styles.actionButtonText}>Scan Vehicle</Text>
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => router.push('/(tabs)/penalty/add-penalties')}
+              >
+                <AlertCircle size={20} color="#EF4444" strokeWidth={2.5} />
+                <Text style={styles.actionButtonText}>Add Penalty</Text>
               </Pressable>
             </View>
 
@@ -83,11 +87,12 @@ export default function HomePage() {
             <View style={styles.quickActionsCard}>
               <Text style={styles.quickActionsTitle}>Quick Actions</Text>
 
-              <View style={styles.actionsGrid}>
+              <Pressable style={styles.actionsGrid}>
                 <ActionCard
                   icon={<UserCog size={24} color="#3DA2CE" />}
                   title="Live Workers"
                   subtitle="Current Status"
+                  onPress={() => router.push('/(tabs)/supervisor/live-worker')}
                 />
 
                 <ActionCard
@@ -97,9 +102,10 @@ export default function HomePage() {
                 />
 
                 <ActionCard
-                  icon={<Wallet size={24} color="#3DA2CE" />}
-                  title="Earnings"
-                  subtitle="Daily Summary"
+                  icon={<ClipboardList size={24} color="#3DA2CE" />}
+                  title="Tasks"
+                  subtitle="Tasks Summary"
+                  onPress={() => router.push('/(tabs)/supervisor/tasks-summary')}
                 />
 
                 <ActionCard
@@ -107,7 +113,7 @@ export default function HomePage() {
                   title="Report Issue"
                   subtitle="Get Help"
                 />
-              </View>
+              </Pressable>
             </View>
           </ScrollView>
         </LinearGradient>
