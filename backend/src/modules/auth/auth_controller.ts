@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { logger } from '../../config/logger';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from 'src/config/jwt';
+import { generateAccessToken, generateRefreshToken, hashToken, ClientType } from '../../config/jwt';
 import { pool } from '../../database/connectDatabase';
-import { hashToken } from '../../config/jwt';
 import { createUser } from './auth_service';
+import { v4 as uuidv4 } from 'uuid';
+import { AuthRequest } from 'src/middlewares/authMiddleware';
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
@@ -105,6 +106,8 @@ export const registerUser = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
+  const client = await pool.connect();
+
   try {
     const { email, password, client_type = 'web' } = req.body;
 
@@ -118,31 +121,28 @@ export const login = async (req: Request, res: Response) => {
     if (!['web', 'mobile'].includes(client_type)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid client_type. Must be "web" or "mobile"',
+        message: 'Invalid client_type',
       });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    const result = await pool.query(
+    const { rows } = await client.query(
       `
-      SELECT id, password, role
+      SELECT id, password, role, token_version
       FROM users
       WHERE email = $1
       `,
       [normalizedEmail]
     );
 
-    const user = result.rows[0];
-
+    const user = rows[0];
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
-
-    user.client_type = client_type;
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
@@ -152,38 +152,80 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    await pool.query(
-      `
-  UPDATE users
-  SET last_login = NOW()
-  WHERE id = $1
-  `,
-      [user.id]
+    const clientType = client_type as ClientType;
+    const tokenId = uuidv4();
+
+    const accessToken = generateAccessToken(
+      {
+        userId: user.id,
+        role: user.role,
+        tokenVersion: user.token_version,
+      },
+      clientType
     );
-    const accessToken = generateAccessToken({ userId: user.id, role: user.role }, user.client_type);
 
-    const refreshToken = generateRefreshToken({ userId: user.id }, user.client_type);
+    const refreshToken = generateRefreshToken(
+      {
+        userId: user.id,
+        tokenId,
+        tokenVersion: user.token_version,
+        clientType,
+      },
+      clientType
+    );
 
-    const refreshExpiry = user.client_type === 'web' ? '7 days' : '90 days';
+    await client.query('BEGIN');
 
-    await pool.query(
+    // Optional: revoke previous refresh tokens ONLY for same client
+    await client.query(
       `
       UPDATE refresh_tokens
       SET revoked = TRUE
-      WHERE user_id = $1 AND client_type = $2 AND revoked = FALSE
+      WHERE user_id = $1
+        AND client_type = $2
+        AND revoked = FALSE
       `,
-      [user.id, user.client_type]
+      [user.id, clientType]
     );
 
-    await pool.query(
+    await client.query(
       `
-      INSERT INTO refresh_tokens (user_id, token_hash, client_type, expires_at)
-      VALUES ($1, $2, $3, NOW() + INTERVAL '${refreshExpiry}')
+      INSERT INTO refresh_tokens (
+        user_id,
+        token_id,
+        token_hash,
+        client_type,
+        expires_at
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        NOW() + ($5 || ' seconds')::INTERVAL
+      )
       `,
-      [user.id, hashToken(refreshToken), user.client_type]
+      [
+        user.id,
+        tokenId,
+        hashToken(refreshToken),
+        clientType,
+        clientType === 'web' ? 7 * 24 * 60 * 60 : 90 * 24 * 60 * 60,
+      ]
     );
 
-    if (user.client_type === 'web') {
+    await client.query(
+      `
+      UPDATE users
+      SET last_login = NOW()
+      WHERE id = $1
+      `,
+      [user.id]
+    );
+
+    await client.query('COMMIT');
+
+    if (clientType === 'web') {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -196,92 +238,56 @@ export const login = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       accessToken,
-      ...(user.client_type === 'mobile' && { refreshToken }),
+      ...(clientType === 'mobile' && { refreshToken }),
     });
   } catch (err) {
+    await pool.query('ROLLBACK');
     logger.error('Login failed', { err });
+
     return res.status(500).json({
       success: false,
       message: 'Login failed',
     });
+  } finally {
+    client.release();
   }
 };
 
-export const refresh = async (req: Request, res: Response) => {
+export const logout = async (req: AuthRequest, res: Response) => {
   try {
-    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    const userId = req.user!.userId; // from auth middleware
 
-    const clientType = req.cookies.refreshToken ? 'web' : 'mobile';
-
-    if (!refreshToken) {
-      return res.status(401).json({ message: 'No refresh token' });
-    }
-
-    const payload = verifyRefreshToken(refreshToken);
-
-    const tokenHash = hashToken(refreshToken);
-
-    const result = await pool.query(
+    await pool.query(
       `
-      SELECT id
-      FROM refresh_tokens
-      WHERE user_id = $1
-        AND token_hash = $2
-        AND revoked = FALSE
-        AND expires_at > NOW()
+      UPDATE users
+      SET token_version = token_version + 1
+      WHERE id = $1
       `,
-      [payload.userId, tokenHash]
+      [userId]
     );
 
-    if (!result.rowCount) {
-      return res.status(403).json({ message: 'Invalid refresh token' });
-    }
-
-    const newAccessToken = generateAccessToken(
-      { userId: payload.userId, role: 'user' },
-      clientType
+    await pool.query(
+      `
+      UPDATE refresh_tokens
+      SET revoked = TRUE
+      WHERE user_id = $1
+      `,
+      [userId]
     );
-
-    return res.json({ accessToken: newAccessToken });
-  } catch {
-    return res.status(403).json({ message: 'Invalid refresh token' });
-  }
-};
-
-export const logout = async (req: Request, res: Response) => {
-  try {
-    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
-
-    if (refreshToken) {
-      await pool.query(
-        `
-        UPDATE refresh_tokens
-        SET revoked = TRUE
-        WHERE token_hash = $1 AND revoked = FALSE
-        `,
-        [hashToken(refreshToken)]
-      );
-    }
 
     res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/auth/refresh',
+      path: '/api/auth/refresh',
     });
-
-    logger.info('User logged out securely');
 
     return res.status(200).json({
       success: true,
-      message: 'Logged out securely',
+      message: 'Logged out from all devices',
     });
   } catch (err) {
-    logger.error('Logout failed', { err });
-
+    logger.error('Logout-all failed', { err });
     return res.status(500).json({
       success: false,
-      message: 'Logout failed',
+      message: 'Logout all failed',
     });
   }
 };

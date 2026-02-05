@@ -1,24 +1,19 @@
-/* global console */
-
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './tokenStorage';
 
-export const API = axios.create({
-  baseURL: 'http://10.10.3.21:3033',
-  timeout: 15000,
+const api = axios.create({
+  baseURL: `http://10.10.1.164:8081`,
+  timeout: 10000,
 });
 
 /* ================= REQUEST INTERCEPTOR ================= */
 
-API.interceptors.request.use(
+api.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('access_token');
+    const accessToken = await getAccessToken();
 
-    if (token) {
-      config.headers = {
-        ...config.headers,
-        Authorization: `Bearer ${token}`,
-      };
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
 
     return config;
@@ -27,22 +22,32 @@ API.interceptors.request.use(
 );
 
 /* ================= RESPONSE INTERCEPTOR ================= */
-
-API.interceptors.response.use(
+api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (!error.response) {
-      console.log('NETWORK ERROR');
-      return Promise.reject(error);
-    }
+    const originalRequest = error.config;
 
-    if (error.response.status === 401) {
-      console.log('401 — Session expired');
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
 
-      await SecureStore.deleteItemAsync('access_token');
+      try {
+        const refreshToken = await getRefreshToken();
+        if (!refreshToken) throw new Error('No refresh token');
 
-      const { router } = await import('expo-router');
-      router.replace('/');
+        const res = await axios.post(`/http://10.10.1.164:8081/auth/refresh`, { refreshToken });
+
+        const { accessToken, refreshToken: newRefresh } = res.data;
+
+        await saveTokens(accessToken, newRefresh);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        return api(originalRequest);
+      } catch (err) {
+        await clearTokens();
+        // 🔁 navigate to Login screen
+        return Promise.reject(err);
+      }
     }
 
     return Promise.reject(error);
