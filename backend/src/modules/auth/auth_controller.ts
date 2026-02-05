@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { logger } from '../../config/logger';
-import { generateAccessToken, generateRefreshToken } from 'src/config/jwt';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from 'src/config/jwt';
 import { pool } from '../../database/connectDatabase';
 import { hashToken } from '../../config/jwt';
 import { createUser } from './auth_service';
@@ -188,7 +188,7 @@ export const login = async (req: Request, res: Response) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        path: '/auth/refresh',
+        path: '/api/auth/refresh',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
     }
@@ -204,6 +204,47 @@ export const login = async (req: Request, res: Response) => {
       success: false,
       message: 'Login failed',
     });
+  }
+};
+
+export const refresh = async (req: Request, res: Response) => {
+  try {
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+    const clientType = req.cookies.refreshToken ? 'web' : 'mobile';
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: 'No refresh token' });
+    }
+
+    const payload = verifyRefreshToken(refreshToken);
+
+    const tokenHash = hashToken(refreshToken);
+
+    const result = await pool.query(
+      `
+      SELECT id
+      FROM refresh_tokens
+      WHERE user_id = $1
+        AND token_hash = $2
+        AND revoked = FALSE
+        AND expires_at > NOW()
+      `,
+      [payload.userId, tokenHash]
+    );
+
+    if (!result.rowCount) {
+      return res.status(403).json({ message: 'Invalid refresh token' });
+    }
+
+    const newAccessToken = generateAccessToken(
+      { userId: payload.userId, role: 'user' },
+      clientType
+    );
+
+    return res.json({ accessToken: newAccessToken });
+  } catch {
+    return res.status(403).json({ message: 'Invalid refresh token' });
   }
 };
 
