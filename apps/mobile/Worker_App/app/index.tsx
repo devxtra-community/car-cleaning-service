@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import api from '@/src/api/api';
 import {
   View,
   Text,
@@ -14,14 +15,11 @@ import Checkbox from 'expo-checkbox';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
-import { API } from '../src/api/api';
+import { saveTokens } from '@/src/api/tokenStorage';
 
 const { height, width } = Dimensions.get('window');
 
-/* ================= TOPO PATTERN ================= */
-
+// Topographic Pattern
 const TopoPattern = () => (
   <Svg
     height="100%"
@@ -59,6 +57,12 @@ const TopoPattern = () => (
       strokeWidth="2"
       fill="none"
     />
+    <Path
+      d="M 50 180 Q 28 160, 50 135 Q 72 110, 110 135 Q 132 160, 110 185 Q 88 210, 50 180 Z"
+      stroke="rgba(255,255,255,0.12)"
+      strokeWidth="2"
+      fill="none"
+    />
 
     <Path
       d="M 0 240 Q 60 220, 120 240 T 240 240 T 360 240 T 400 240"
@@ -66,9 +70,19 @@ const TopoPattern = () => (
       strokeWidth="2"
       fill="none"
     />
+    <Path
+      d="M 0 260 Q 60 245, 120 260 T 240 260 T 360 260 T 400 260"
+      stroke="rgba(255,255,255,0.12)"
+      strokeWidth="2"
+      fill="none"
+    />
+
+    <Circle cx="340" cy="380" r="25" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
+    <Circle cx="340" cy="380" r="38" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
   </Svg>
 );
 
+// Wave Curve Component
 const WaveCurve = () => (
   <Svg height={81} width={width} viewBox={`0 0 ${width} 81`} style={styles.wave}>
     <Path
@@ -78,8 +92,6 @@ const WaveCurve = () => (
   </Svg>
 );
 
-/* ================= SCREEN ================= */
-
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,34 +99,81 @@ export default function LoginScreen() {
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  /* ================= LOGIN ================= */
-
   const handleLogin = async () => {
     try {
       setLoading(true);
 
-      const res = await API.post('/api/auth/login', {
+      console.log('🔐 Attempting login...');
+      console.log('📤 Request data:', { email, client_type: 'mobile' });
+
+      const res = await api.post('/api/auth/login', {
         email,
         password,
         client_type: 'mobile',
       });
 
+      console.log('✅ Login response received');
+      console.log('📊 Full response data:', JSON.stringify(res.data, null, 2));
+
       const data = res.data;
 
       if (!data.success) {
+        console.error('❌ Login failed:', data.message);
         Alert.alert('Login failed', data.message);
         return;
       }
 
-      await SecureStore.setItemAsync('access_token', data.accessToken);
+      // DEBUG: Check what tokens we actually received
+      console.log('🔍 Checking tokens in response:');
+      console.log('  accessToken:', data.accessToken ? 'EXISTS' : '❌ MISSING');
+      console.log('  refreshToken:', data.refreshToken ? 'EXISTS' : '❌ MISSING');
+      console.log('  tokens.accessToken:', data.tokens?.accessToken ? 'EXISTS' : 'N/A');
+      console.log('  tokens.refreshToken:', data.tokens?.refreshToken ? 'EXISTS' : 'N/A');
 
-      router.replace('/(tabs)/Homepage');
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        Alert.alert('Login Error', err.response?.data?.message || err.message || 'Server error');
-      } else {
-        Alert.alert('Login Error', 'Unexpected error');
+      // Try different possible locations for the tokens
+      const accessToken = data.accessToken || data.tokens?.accessToken || data.access_token;
+      let refreshToken = data.refreshToken || data.tokens?.refreshToken || data.refresh_token;
+
+      if (!accessToken) {
+        console.error('❌ No access token found in response!');
+        console.error('Full response:', JSON.stringify(data, null, 2));
+        Alert.alert('Login Error', 'No access token received from server');
+        return;
       }
+
+      if (!refreshToken) {
+        console.warn('⚠️ No refresh token found in response!');
+        console.warn('This might cause issues when the access token expires.');
+        console.warn('Full response:', JSON.stringify(data, null, 2));
+
+        // For now, use the access token as refresh token (not ideal but prevents crashes)
+        refreshToken = accessToken;
+        console.warn('⚠️ Using access token as refresh token temporarily');
+      }
+
+      console.log('💾 Saving tokens to SecureStore...');
+      await saveTokens(accessToken, refreshToken);
+      console.log('✅ Tokens saved successfully');
+
+      console.log('🔐 ACCESS TOKEN:', accessToken.substring(0, 50) + '...');
+      console.log('🔐 REFRESH TOKEN:', refreshToken.substring(0, 50) + '...');
+
+      console.log('✅ Login successful, navigating to Homepage...');
+      router.replace('/Homepage');
+    } catch (error: unknown) {
+      const err = error as {
+        message?: string;
+        response?: { data?: { message?: string }; status?: number };
+      };
+      console.error('❌ ==========================================');
+      console.error('❌ LOGIN ERROR');
+      console.error('❌ ==========================================');
+      console.log('FULL ERROR:', err);
+      console.log('RESPONSE:', err?.response);
+      console.log('DATA:', err?.response?.data);
+      console.log('STATUS:', err?.response?.status);
+
+      Alert.alert('Login Error', err?.response?.data?.message || err?.message || 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -122,50 +181,72 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      {/* HEADER WITH TOPOGRAPHIC PATTERN */}
       <View style={styles.headerContainer}>
         <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.header}>
           <TopoPattern />
         </LinearGradient>
+        {/* WAVE CURVE */}
         <WaveCurve />
       </View>
 
+      {/* CARD */}
       <View style={styles.card}>
-        <Text style={styles.title}>Login</Text>
+        <Text style={styles.title}>Login in</Text>
         <View style={styles.line} />
 
+        {/* EMAIL */}
         <Text style={styles.label}>Email</Text>
         <View style={styles.inputRow}>
-          <Mail size={18} color="#A0A0A0" />
+          <Mail size={18} color="#A0A0A0" style={styles.icon} />
           <TextInput
-            placeholder="worker@email.com"
+            placeholder="Supervisor@email.com"
+            placeholderTextColor="#B0B0B0"
             value={email}
             onChangeText={setEmail}
             style={styles.input}
             autoCapitalize="none"
+            keyboardType="email-address"
           />
         </View>
 
+        {/* PASSWORD */}
         <Text style={[styles.label, { marginTop: 24 }]}>Password</Text>
         <View style={styles.inputRow}>
-          <Lock size={18} color="#A0A0A0" />
+          <Lock size={18} color="#A0A0A0" style={styles.icon} />
           <TextInput
+            placeholder="enter your password"
+            placeholderTextColor="#B0B0B0"
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
             style={styles.input}
           />
           <Pressable onPress={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPassword ? (
+              <EyeOff size={18} color="#A0A0A0" />
+            ) : (
+              <Eye size={18} color="#A0A0A0" />
+            )}
           </Pressable>
         </View>
 
+        {/* REMEMBER & FORGOT */}
         <View style={styles.row}>
           <View style={styles.rememberRow}>
-            <Checkbox value={remember} onValueChange={setRemember} />
-            <Text>Remember Me</Text>
+            <Checkbox
+              value={remember}
+              onValueChange={setRemember}
+              color={remember ? '#3DA2CE' : undefined}
+            />
+            <Text style={styles.rememberText}>Remember Me</Text>
           </View>
+          <Pressable>
+            <Text style={styles.forgot}>Forgot Password?</Text>
+          </Pressable>
         </View>
 
+        {/* LOGIN BUTTON */}
         <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -178,20 +259,57 @@ export default function LoginScreen() {
   );
 }
 
-/* ================= STYLES ================= */
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  headerContainer: { height: height * 0.4 },
-  header: { flex: 1 },
-  wave: { position: 'absolute', bottom: -1 },
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
 
-  card: { flex: 1, paddingHorizontal: 32, paddingTop: 8 },
+  headerContainer: {
+    height: height * 0.4,
+    position: 'relative',
+  },
 
-  title: { fontSize: 32, fontWeight: '700' },
-  line: { width: 40, height: 3, backgroundColor: '#3DA2CE', marginBottom: 20 },
+  header: {
+    flex: 1,
+    overflow: 'hidden',
+  },
 
-  label: { fontSize: 14, marginBottom: 8 },
+  wave: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+  },
+
+  card: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    paddingHorizontal: 32,
+    paddingTop: 8,
+  },
+
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#2C2C2C',
+    marginBottom: 2,
+  },
+
+  line: {
+    width: 40,
+    height: 3,
+    backgroundColor: '#3DA2CE',
+    marginBottom: 20,
+    borderRadius: 2,
+  },
+
+  label: {
+    fontSize: 14,
+    color: '#4A4A4A',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
 
   inputRow: {
     flexDirection: 'row',
@@ -199,13 +317,43 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#3DA2CE',
     paddingVertical: 12,
+    paddingHorizontal: 4,
   },
 
-  input: { flex: 1, marginLeft: 12 },
+  icon: {
+    marginRight: 12,
+  },
 
-  row: { marginTop: 20 },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: '#2C2C2C',
+    padding: 0,
+  },
 
-  rememberRow: { flexDirection: 'row', gap: 8 },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  rememberText: {
+    fontSize: 13,
+    color: '#4A4A4A',
+  },
+
+  forgot: {
+    fontSize: 13,
+    color: '#3DA2CE',
+    fontWeight: '500',
+  },
 
   button: {
     backgroundColor: '#4FB3D9',
@@ -214,7 +362,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,
+    shadowColor: '#3DA2CE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
 });

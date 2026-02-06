@@ -1,10 +1,10 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { createTaskService } from './tasks_service';
-import { logger } from '../../config/logger';
 import { pool } from '../../database/connectDatabase';
 
 /* ================= CREATE TASK ================= */
+
 export const createTaskController = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
@@ -12,7 +12,6 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
     if (!workerId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    console.log('🔥 REQ BODY:', req.body);
 
     const {
       owner_name,
@@ -21,11 +20,12 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_model,
       car_type,
       car_color,
-      car_image_url, // comes from frontend
+      car_image_url,
+      task_amount,
     } = req.body;
 
     if (!owner_name || !owner_phone || !car_number || !car_model || !car_type || !car_color) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing fields' });
     }
 
     const task = await createTaskService({
@@ -36,11 +36,13 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_type,
       car_color,
       car_image_url: car_image_url ?? null,
-      worker_id: workerId,
+      cleaner_id: workerId,
+      task_amount: task_amount ?? 0,
     });
 
     return res.status(201).json({ success: true, data: task });
-  } catch {
+  } catch (err) {
+    console.log('CREATE TASK ERROR:', err);
     return res.status(500).json({ success: false, message: 'Failed to create task' });
   }
 };
@@ -51,79 +53,95 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
 
-    if (!workerId) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
-    }
-
     const result = await pool.query(
       `
-    SELECT
- id,
- owner_name,
- owner_phone,
- car_number,
- car_model,
- car_color,
- car_type,
- status,
- car_image_url
-FROM tasks
-WHERE worker_id = $1
-AND status != 'completed'
-ORDER BY created_at DESC
-LIMIT 1
+      SELECT *
+      FROM tasks
+      WHERE cleaner_id=$1 AND status!='completed'
+      ORDER BY created_at DESC
+      LIMIT 1
       `,
       [workerId]
     );
-    console.log('WORKER ID IN CONTROLLER:', req.user?.userId);
 
-    return res.status(200).json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
-    logger.error('GetTaskpending failed', { err });
-    return res.status(500).json({ success: false, message: 'Failed to fetch tasks' });
+    console.log(err);
+    return res.status(500).json({ success: false });
   }
 };
 
+/* ================= COMPLETE TASK ================= */
+
 export const completeTaskController = async (req: AuthRequest, res: Response) => {
   const workerId = req.user?.userId;
+  const taskId = req.params.id;
 
-  await pool.query(`UPDATE tasks SET status='completed' WHERE id=$1`, [req.params.id]);
+  const client = await pool.connect();
 
-  // Increase completed jobs
-  await pool.query(
-    `UPDATE worker_incentives
-     SET completed_jobs = completed_jobs + 1
-     WHERE worker_id=$1`,
-    [workerId]
-  );
+  try {
+    await client.query('BEGIN');
 
-  // Check incentive
-  const incentive = await pool.query(
-    `
-    SELECT wi.id, i.target_jobs, i.incentive_amount
-    FROM worker_incentives wi
-    JOIN incentives i ON i.id = wi.incentive_id
-    WHERE wi.worker_id=$1 AND wi.earned=false
-  `,
-    [workerId]
-  );
+    // Complete task
+    const taskRes = await client.query(
+      `
+      UPDATE tasks
+      SET status='completed'
+      WHERE id=$1 AND cleaner_id=$2
+      RETURNING task_amount
+      `,
+      [taskId, workerId]
+    );
 
-  if (incentive.rows.length) {
-    const row = incentive.rows[0];
+    if (!taskRes.rows.length) throw new Error('TASK_NOT_FOUND');
 
-    if (row.completed_jobs >= row.target_jobs) {
-      // Add money to wallet
-      await pool.query(`UPDATE wallets SET balance = balance + $1 WHERE worker_id=$2`, [
-        row.incentive_amount,
-        workerId,
-      ]);
+    const taskAmount = taskRes.rows[0].task_amount;
 
-      // Mark earned
-      await pool.query(`UPDATE worker_incentives SET earned=true, earned_at=NOW() WHERE id=$1`, [
-        row.id,
-      ]);
+    // Update cleaner totals
+    await client.query(
+      `
+      UPDATE cleaners
+      SET total_tasks = total_tasks + 1,
+          total_earning = total_earning + $1
+      WHERE user_id=$2
+      `,
+      [taskAmount, workerId]
+    );
+
+    // Incentive check
+    const incentive = await client.query(
+      `
+      SELECT c.id, c.total_tasks, i.target_tasks, i.incentive_amount
+      FROM cleaners c
+      JOIN incentives i ON c.incentive_target=i.target_tasks
+      WHERE c.user_id=$1
+      `,
+      [workerId]
+    );
+
+    if (incentive.rows.length) {
+      const row = incentive.rows[0];
+
+      if (row.total_tasks >= row.target_tasks) {
+        await client.query(
+          `
+          UPDATE cleaners
+          SET total_earning = total_earning + $1
+          WHERE id=$2
+          `,
+          [row.incentive_amount, row.id]
+        );
+      }
     }
-  }
 
-  res.json({ success: true });
+    await client.query('COMMIT');
+
+    return res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.log('COMPLETE TASK ERROR:', err);
+    return res.status(500).json({ success: false });
+  } finally {
+    client.release();
+  }
 };

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+
 import {
   verifyRefreshToken,
   generateAccessToken,
@@ -7,12 +8,14 @@ import {
 } from '../../config/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from 'src/database/connectDatabase';
-import { logger } from 'src/config/logger';
 
 export const refresh = async (req: Request, res: Response) => {
   const client = await pool.connect();
 
   try {
+    console.log('==== REFRESH HIT ====');
+    console.log('BODY:', req.body);
+    console.log('COOKIES:', req.cookies);
     const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
     if (!refreshToken) {
@@ -23,14 +26,15 @@ export const refresh = async (req: Request, res: Response) => {
     }
 
     const payload = verifyRefreshToken(refreshToken);
+    console.log('REFRESH PAYLOAD:', payload);
+
     const { userId, tokenId, tokenVersion, clientType } = payload;
 
     await client.query('BEGIN');
 
-    // 1️⃣ Check refresh token in DB
     const { rows } = await client.query(
       `
-      SELECT rt.id, u.token_version
+      SELECT rt.user_id, u.token_version, u.role
       FROM refresh_tokens rt
       JOIN users u ON u.id = rt.user_id
       WHERE rt.token_id = $1
@@ -41,16 +45,8 @@ export const refresh = async (req: Request, res: Response) => {
       [tokenId, hashToken(refreshToken)]
     );
 
-    if (rows.length === 0) {
-      // TOKEN REUSE ATTACK
-      await client.query(
-        `
-        UPDATE refresh_tokens
-        SET revoked = TRUE
-        WHERE user_id = $1
-        `,
-        [userId]
-      );
+    if (!rows.length) {
+      await client.query(`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`, [userId]);
 
       await client.query('COMMIT');
 
@@ -60,16 +56,8 @@ export const refresh = async (req: Request, res: Response) => {
       });
     }
 
-    // 2️⃣ Token version check (logout-all support)
     if (rows[0].token_version !== tokenVersion) {
-      await client.query(
-        `
-        UPDATE refresh_tokens
-        SET revoked = TRUE
-        WHERE user_id = $1
-        `,
-        [userId]
-      );
+      await client.query(`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`, [userId]);
 
       await client.query('COMMIT');
 
@@ -79,35 +67,26 @@ export const refresh = async (req: Request, res: Response) => {
       });
     }
 
-    // 3️⃣ Rotate refresh token
-    await client.query(
-      `
-      DELETE FROM refresh_tokens
-      WHERE token_id = $1
-      `,
-      [tokenId]
-    );
+    // delete old token
+    await client.query(`DELETE FROM refresh_tokens WHERE token_id = $1`, [tokenId]);
 
     const newTokenId = uuidv4();
 
     const newRefreshToken = generateRefreshToken(
-      {
-        userId,
-        tokenId: newTokenId,
-        tokenVersion,
-        clientType,
-      },
+      { userId, tokenId: newTokenId, tokenVersion, clientType },
       clientType
     );
 
     const newAccessToken = generateAccessToken(
       {
         userId,
-        role: rows[0].role,
+        role: rows[0]?.role || 'user',
         tokenVersion,
       },
       clientType
     );
+
+    const expiresSeconds = clientType === 'web' ? 7 * 86400 : 90 * 86400;
 
     await client.query(
       `
@@ -118,33 +97,20 @@ export const refresh = async (req: Request, res: Response) => {
         client_type,
         expires_at
       )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        NOW() + ($5 || ' seconds')::INTERVAL
-      )
+      VALUES ($1,$2,$3,$4, NOW() + ($5 * INTERVAL '1 second'))
       `,
-      [
-        userId,
-        newTokenId,
-        hashToken(newRefreshToken),
-        clientType,
-        clientType === 'web' ? 7 * 24 * 60 * 60 : 90 * 24 * 60 * 60,
-      ]
+      [userId, newTokenId, hashToken(newRefreshToken), clientType, expiresSeconds]
     );
 
     await client.query('COMMIT');
 
-    // 4️⃣ Send tokens
     if (clientType === 'web') {
       res.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/api/auth/refresh',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 7 * 86400000,
       });
     }
 
@@ -155,11 +121,11 @@ export const refresh = async (req: Request, res: Response) => {
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    logger.error('Refresh failed', { err });
+    console.log('REFRESH ERROR:', err);
 
-    return res.status(401).json({
+    return res.status(500).json({
       success: false,
-      message: 'Invalid refresh token',
+      message: 'Refresh crashed',
     });
   } finally {
     client.release();

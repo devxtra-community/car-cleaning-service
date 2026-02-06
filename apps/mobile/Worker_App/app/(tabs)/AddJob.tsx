@@ -19,7 +19,7 @@ import { Camera, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import axios from 'axios';
-import { API } from '../../src/api/api';
+import api from '../../src/api/api';
 
 /* ================= TYPES ================= */
 
@@ -52,7 +52,7 @@ export default function AddJob() {
   useEffect(() => {
     const init = async () => {
       try {
-        const res = await API.get('/api/vehicle/allVehicles');
+        const res = await api.get('/api/vehicle/allVehicles');
         const raw = res.data.data as { type: string }[];
         const unique = [...new Set(raw.map((v) => v.type))];
         setTypes(unique);
@@ -77,7 +77,7 @@ export default function AddJob() {
   /* ================= S3 UPLOAD ================= */
 
   const uploadToS3 = async (image: ImagePickerAsset): Promise<string> => {
-    const presign = await API.post('/s3/presign', {
+    const presign = await api.post('/s3/presign', {
       fileType: 'image/jpeg',
     });
 
@@ -119,7 +119,7 @@ export default function AddJob() {
 
             const imageUrl = await uploadToS3(image);
 
-            await API.post('/tasks', {
+            await api.post('/tasks', {
               owner_name: ownerName,
               owner_phone: ownerPhone,
               car_number: carNumber,

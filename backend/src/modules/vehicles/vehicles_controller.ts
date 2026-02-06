@@ -1,69 +1,74 @@
 import { Response } from 'express';
-import { logger } from '../../config/logger';
-import { AuthRequest } from 'src/middlewares/authMiddleware';
-import { createVehicleService, getAllVehiclesService } from './vehicles_service';
+import { AuthRequest } from '../../middlewares/authMiddleware';
+import {
+  createVehicleService,
+  getAllVehiclesService,
+  getVehicleByIdService,
+  updateVehicleService,
+  deleteVehicleService,
+} from './vehicles_service';
 
-export const vehicleDetails = async (req: AuthRequest, res: Response) => {
+/* CREATE */
+
+export const createVehicle = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, brand, model, price_min, price_max } = req.body;
-
-    if (!type || !brand || !model || !price_min || !price_max) {
-      return res.status(400).json({
-        success: false,
-        message: 'All vehicle fields are required',
-      });
-    }
-
-    if (price_min >= price_max) {
-      return res.status(400).json({
-        success: false,
-        message: 'price_min must be less than price_max',
-      });
-    }
+    const { type, brand, model, base_price } = req.body;
 
     const vehicle = await createVehicleService({
       type,
       brand,
       model,
-      price_min,
-      price_max,
-      created_by: req.user!.userId,
+      base_price,
+      created_by: req.user?.userId || '',
     });
 
-    logger.info('Vehicle added', {
-      vehicleId: vehicle.id,
-      createdBy: req.user!.userId,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: 'Vehicle added successfully',
-      data: vehicle,
-    });
+    res.status(201).json(vehicle);
   } catch (err) {
-    logger.error('Failed to add vehicle', { err });
-
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to add vehicle',
-    });
+    console.log(err);
+    res.status(500).json({ message: 'Create vehicle failed' });
   }
 };
 
-export const getVehicleDetails = async (_req: AuthRequest, res: Response) => {
+/* GET ALL */
+
+export const getVehicles = async (_req: AuthRequest, res: Response) => {
   try {
     const vehicles = await getAllVehiclesService();
+    res.json(vehicles);
+  } catch {
+    res.status(500).json({ message: 'Fetch failed' });
+  }
+};
 
-    return res.status(200).json({
-      success: true,
-      data: vehicles,
-    });
-  } catch (err) {
-    logger.error('Failed to fetch vehicles', { err });
+/* GET ONE */
 
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch vehicle details',
-    });
+export const getVehicleById = async (req: AuthRequest, res: Response) => {
+  try {
+    const vehicle = await getVehicleByIdService(req.params.id as string);
+    res.json(vehicle);
+  } catch {
+    res.status(500).json({ message: 'Fetch failed' });
+  }
+};
+
+/* UPDATE */
+
+export const updateVehicle = async (req: AuthRequest, res: Response) => {
+  try {
+    const vehicle = await updateVehicleService(req.params.id as string, req.body);
+    res.json(vehicle);
+  } catch {
+    res.status(500).json({ message: 'Update failed' });
+  }
+};
+
+/* DELETE */
+
+export const deleteVehicle = async (req: AuthRequest, res: Response) => {
+  try {
+    await deleteVehicleService(req.params.id as string);
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: 'Delete failed' });
   }
 };
