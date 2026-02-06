@@ -1,8 +1,50 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AlertCircle, User } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import api from '@/src/api/api';
+
+/* ---------------- TYPES ---------------- */
+
+interface Task {
+  id: string;
+  car_type: string;
+  worker_name: string;
+  completed_at: string;
+}
+
+/* ---------------- CONSTANTS ---------------- */
+
+const DAILY_TARGET = 12;
+
+/* ---------------- SCREEN ---------------- */
 
 export default function DailyTasksScreen() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const completed = tasks.length;
+  const remaining = Math.max(DAILY_TARGET - completed, 0);
+  const progressPercent = (completed / DAILY_TARGET) * 100;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const res = await api.get('/api/supervisor/tasks?period=daily');
+        if (isMounted) {
+          setTasks(res.data.data);
+        }
+      } catch (err) {
+        console.log('Failed to load daily tasks', err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* DAILY TASK PROGRESS */}
@@ -13,32 +55,34 @@ export default function DailyTasksScreen() {
           <View style={styles.circleOuter}>
             <View style={styles.circleProgress} />
             <View style={styles.circleInner}>
-              <Text style={styles.circleValue}>4/12</Text>
+              <Text style={styles.circleValue}>
+                {completed}/{DAILY_TARGET}
+              </Text>
               <Text style={styles.circleSub}>Cars Cleaned</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.statsRow}>
-          <Stat label="Completed" value="4" />
-          <Stat label="Remaining" value="8" />
-          <Stat label="Target" value="12" />
+          <Stat label="Completed" value={String(completed)} />
+          <Stat label="Remaining" value={String(remaining)} />
+          <Stat label="Target" value={String(DAILY_TARGET)} />
         </View>
       </View>
 
       {/* DAILY TARGET */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Daily Task Target</Text>
-        <Text style={styles.subText}>Clean 8 more cars to reach today’s target</Text>
+        <Text style={styles.subText}>Clean {remaining} more cars to reach today’s target</Text>
 
         <View style={styles.progressBar}>
           <LinearGradient
             colors={['#3DA2CE', '#8ED6F8']}
-            style={[styles.progressFill, { width: '35%' }]}
+            style={[styles.progressFill, { width: `${progressPercent}%` }]}
           />
         </View>
 
-        <Text style={styles.targetText}>Target: 12 cars</Text>
+        <Text style={styles.targetText}>Target: {DAILY_TARGET} cars</Text>
       </View>
 
       {/* PENALTY (OPTIONAL UI) */}
@@ -55,11 +99,17 @@ export default function DailyTasksScreen() {
       <View style={styles.card}>
         <View style={styles.rowBetween}>
           <Text style={styles.sectionTitle}>Today’s Tasks</Text>
-          <Text style={styles.date}>Oct 24</Text>
+          <Text style={styles.date}>{new Date().toDateString()}</Text>
         </View>
 
-        <TaskItem />
-        <TaskItem />
+        {tasks.map((task) => (
+          <TaskItem
+            key={task.id}
+            worker={task.worker_name}
+            car={task.car_type}
+            time={task.completed_at}
+          />
+        ))}
       </View>
     </ScrollView>
   );
@@ -74,16 +124,16 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
   </View>
 );
 
-const TaskItem = () => (
+const TaskItem = ({ worker, car, time }: { worker: string; car: string; time: string }) => (
   <View style={styles.taskItem}>
     <View style={styles.avatar}>
       <User size={16} color="#3DA2CE" />
     </View>
 
     <View style={{ flex: 1 }}>
-      <Text style={styles.taskName}>Sarah Jenkins</Text>
-      <Text style={styles.taskSub}>Ford Explorer SUV</Text>
-      <Text style={styles.taskTime}>Done at 09:45 AM</Text>
+      <Text style={styles.taskName}>{worker}</Text>
+      <Text style={styles.taskSub}>{car}</Text>
+      <Text style={styles.taskTime}>Done at {new Date(time).toLocaleTimeString()}</Text>
     </View>
 
     <Text style={styles.completedBadge}>Completed</Text>

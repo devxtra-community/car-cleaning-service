@@ -116,7 +116,7 @@ export default function LoginScreen() {
         return;
       }
 
-      await SecureStore.setItemAsync('access_token', data.accessToken);
+      await SecureStore.setItemAsync('accessToken', data.accessToken);
 
       console.log('ACCESS TOKEN:', data.accessToken);
 

@@ -1,6 +1,4 @@
 import { pool } from '../../database/connectDatabase';
-
-/** ✅ Task Insert Payload Type */
 export interface CreateTaskPayload {
   owner_name: string;
   owner_phone: string;
@@ -13,7 +11,6 @@ export interface CreateTaskPayload {
   worker_id: string;
 }
 
-/** ✅ Task Row Type (matches DB result) */
 export interface TaskRow {
   id: string;
   owner_name: string;
