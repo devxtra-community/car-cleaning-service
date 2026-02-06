@@ -9,6 +9,7 @@ import { globalErrorHandler } from './middlewares/error-handler';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import authRouter from './modules/auth/auth_routes';
+import userRouter from './modules/users/user_Routes';
 import vechicleRoutes from './modules/vehicles/vechicleRoutes';
 import attendanceRoutes from './modules/attendance/attendance_routes';
 import salaryRoute from '../src/modules/salary/salary_routes';
@@ -54,6 +55,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/member', userRouter);
 app.use('/api', attendanceRoutes);
 app.use('/s3', s3Routes);
 app.use('/workers', workersRoutes);

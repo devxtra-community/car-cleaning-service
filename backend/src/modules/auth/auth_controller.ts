@@ -6,81 +6,23 @@ import { pool } from '../../database/connectDatabase';
 import { createUser } from './auth_service';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthRequest } from 'src/middlewares/authMiddleware';
+import { validateCreateUser } from './validator_User';
 
-export const registerUser = async (req: Request, res: Response) => {
+export const RegisterUser = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      email,
-      password,
-      role,
-      full_name,
-      client_type = 'web',
-      document_id,
-      age,
-      nationality,
-      document,
-    } = req.body;
-
-    const documentUrl = req.file ? `/uploads/documents/${req.file.filename}` : document;
-
-    if (!documentUrl) {
-      return res.status(400).json({
+    // 🔐 Only admin / super_admin
+    if (!['admin', 'super_admin'].includes(req.user!.role)) {
+      return res.status(403).json({
         success: false,
-        message: 'Document image is required',
+        message: 'Access denied',
       });
     }
 
-    if (
-      !email ||
-      !password ||
-      !role ||
-      !full_name ||
-      !document_id ||
-      !age ||
-      !nationality ||
-      !documentUrl
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields are required',
-      });
-    }
-
-    if (!['web', 'mobile'].includes(client_type)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid client_type',
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 8 characters',
-      });
-    }
-
-    const { staff, supervisor, cleaner } = req.body;
+    // ✅ Validate body based on role
+    validateCreateUser(req.body);
 
     const user = await createUser({
-      email,
-      password,
-      role,
-      client_type,
-      full_name,
-      document: documentUrl,
-      document_id: document_id,
-      age: age,
-      nationality,
-      ...(staff && { staff }),
-      ...(supervisor && { supervisor }),
-      ...(cleaner && { cleaner }),
-    });
-
-    logger.info('User registered successfully', {
-      userId: user.id,
-      role: user.role,
-      clientType: user.client_type,
+      ...req.body,
     });
 
     return res.status(201).json({
@@ -88,17 +30,19 @@ export const registerUser = async (req: Request, res: Response) => {
       message: 'User registered successfully',
       data: user,
     });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'USER_ALREADY_EXISTS') {
-      return res.status(409).json({
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      if (err.message === 'USER_ALREADY_EXISTS') {
+        return res.status(409).json({ success: false, message: 'User already exists' });
+      }
+
+      return res.status(400).json({
         success: false,
-        message: 'User already exists',
+        message: err.message || 'Registration failed',
       });
     }
 
-    logger.error('Registration failed', { err });
-
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
       message: 'Registration failed',
     });
@@ -176,7 +120,6 @@ export const login = async (req: Request, res: Response) => {
 
     await client.query('BEGIN');
 
-    // Optional: revoke previous refresh tokens ONLY for same client
     await client.query(
       `
       UPDATE refresh_tokens
@@ -225,10 +168,11 @@ export const login = async (req: Request, res: Response) => {
 
     await client.query('COMMIT');
 
+    /* ---------------- WEB FIX ONLY ---------------- */
     if (clientType === 'web') {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         sameSite: 'lax',
         path: '/api/auth/refresh',
         maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -241,7 +185,7 @@ export const login = async (req: Request, res: Response) => {
       ...(clientType === 'mobile' && { refreshToken }),
     });
   } catch (err) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     logger.error('Login failed', { err });
 
     return res.status(500).json({

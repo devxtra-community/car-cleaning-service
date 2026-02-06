@@ -1,7 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import profileImg from '../../assets/profileImg.png';
 import { Link } from 'react-router-dom';
+import { getAllSupervisors } from '../../services/allAPI';
+import { useAuth } from '../../context/AuthContext';
+
+type Supervisor = {
+  id: string;
+  full_name: string;
+  location?: string;
+};
+
 const Supervisors = () => {
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
+  const { loading, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) return;
+
+    const allSupervisors = async () => {
+      try {
+        const data: Supervisor[] = await getAllSupervisors();
+        setSupervisors(data);
+        console.log(data);
+      } catch (err) {
+        console.error('Failed to fetch supervisors', err);
+      }
+    };
+
+    allSupervisors();
+  }, [loading, isAuthenticated]);
+
   return (
     <>
       <div className="p-6 min-h-screen">
@@ -9,6 +38,7 @@ const Supervisors = () => {
           <h1 className="text-xl font-semibold">Supervisors</h1>
           <p className="text-sm text-gray-500">Overview and System Management</p>
         </div>
+
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Supervisors</h1>
@@ -19,102 +49,17 @@ const Supervisors = () => {
 
         {/* Cards Grid */}
         <div className="grid grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
+          {supervisors.map((sup) => (
+            <Link key={sup.id} to="/admin/supervisors/cleaner">
+              <div className="bg-white rounded-xl p-4 flex items-center gap-4">
+                <img src={profileImg} className="w-12 h-12 rounded-full" />
+                <div>
+                  <p className="font-medium">{sup.full_name}</p>
+                  <p className="text-xs text-gray-500">{sup.location || 'Unknown'}</p>
+                </div>
               </div>
-            </div>
-          </Link>
-
-          {/* Card 2 */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card 3 */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card 4 */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
-
-          {/* Card 5 */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
-          {/* Selected Card */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-blue-500 text-white rounded-xl p-4 flex items-center gap-4 relative">
-              <img src={profileImg} className="w-12 h-12 rounded-full border-2 border-white" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs opacity-80">Dubai Marina</p>
-              </div>
-              <span className="absolute top-3 right-3 text-sm">🔔</span>
-            </div>
-          </Link>
-
-          {/* More Cards */}
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link to="/admin/supervisors/cleaner">
-            <div className="bg-white rounded-xl p-4 flex items-center gap-4">
-              <img src={profileImg} className="w-12 h-12 rounded-full" />
-              <div>
-                <p className="font-medium">Shemit Noah</p>
-                <p className="text-xs text-gray-500">Dubai Marina</p>
-              </div>
-            </div>
-          </Link>
+            </Link>
+          ))}
         </div>
 
         {/* Pagination */}

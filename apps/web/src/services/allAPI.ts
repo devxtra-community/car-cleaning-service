@@ -1,18 +1,6 @@
-import { api, setAccessToken } from './commonAPI';
+import { api } from './commonAPI';
 
-interface LoginPayload {
-  email: string;
-  password: string;
-}
-
-export const login = async ({ email, password }: LoginPayload) => {
-  const response = await api.post('/api/auth/login', {
-    email,
-    password,
-    client_type: 'web',
-  });
-
-  setAccessToken(response.data.accessToken);
-
-  return response;
+export const getAllSupervisors = async () => {
+  const res = await api.get('/api/member/allsupervisors');
+  return res.data.supervisors;
 };
