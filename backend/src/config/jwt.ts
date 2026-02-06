@@ -60,12 +60,9 @@ export const generateRefreshToken = (
 export const hashToken = (token: string): string =>
   crypto.createHash('sha256').update(token).digest('hex');
 
-export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
-  try {
-    return jwt.verify(token, REFRESH_SECRET, {
-      issuer: ISSUER,
-    }) as RefreshTokenPayload;
-  } catch {
-    throw new Error('Invalid or expired refresh token');
-  }
+export const verifyRefreshToken = (token: string, clientType: ClientType) => {
+  return jwt.verify(token, REFRESH_SECRET, {
+    issuer: ISSUER,
+    audience: clientType,
+  }) as RefreshTokenPayload;
 };

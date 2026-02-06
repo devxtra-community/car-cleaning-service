@@ -25,7 +25,7 @@ const Cleaners = () => {
               <span className="absolute left-2 top-2 text-gray-400">🔍</span>
             </div>
 
-            <Link to="/admin/cleaners/addCleaners">
+            <Link to="/admin/AddMemebers">
               <button className="bg-blue-500 text-white px-4 py-1.5 rounded text-sm">
                 + Add Cleaner
               </button>

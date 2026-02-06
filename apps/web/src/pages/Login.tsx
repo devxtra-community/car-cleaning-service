@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import carlogo from '../assets/carlogo.png';
 import { Link, useNavigate } from 'react-router-dom';
-import { login } from '../services/allAPI';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
@@ -9,29 +9,47 @@ const Login = () => {
     password: '',
   });
 
+  const { login, loading, user } = useAuth(); // ✅ single call
   const navigate = useNavigate();
+
+  /* ================= REDIRECT AFTER LOGIN ================= */
+
+  useEffect(() => {
+    if (!user) return;
+
+    switch (user.role) {
+      case 'admin':
+      case 'super_admin':
+        navigate('/admin/dashboard', { replace: true });
+        break;
+
+      case 'accountant':
+        navigate('/accountant/dashboard', { replace: true });
+        break;
+
+      default:
+        // fallback → safe page
+        navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
+
+  /* ================= LOGIN HANDLER ================= */
 
   const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
     const { email, password } = loginInput;
+
     if (!email || !password) {
       alert('Please enter both email and password');
+      return;
     }
 
     try {
-      const response = await login({ email, password });
-
-      console.log('Login successful', response.data);
-      alert('Login Successful');
-
-      // Optional: preload admin dashboard
-      import('../components/admin/AdminDashboard');
-
-      navigate('/admin/dashboard');
-    } catch (error) {
-      console.error('Login failed', error);
-      alert('Login failed');
+      await login(email, password);
+      // navigation handled by useEffect
+    } catch {
+      alert('Invalid email or password');
     }
   };
 
@@ -48,7 +66,12 @@ const Login = () => {
               <label>Enter your email here</label>
               <input
                 value={loginInput.email}
-                onChange={(e) => setLoginInput({ ...loginInput, email: e.target.value })}
+                onChange={(e) =>
+                  setLoginInput({
+                    ...loginInput,
+                    email: e.target.value,
+                  })
+                }
                 className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
                 type="email"
                 placeholder="Email"
@@ -57,7 +80,12 @@ const Login = () => {
               <label className="block mt-5">Enter your password here</label>
               <input
                 value={loginInput.password}
-                onChange={(e) => setLoginInput({ ...loginInput, password: e.target.value })}
+                onChange={(e) =>
+                  setLoginInput({
+                    ...loginInput,
+                    password: e.target.value,
+                  })
+                }
                 className="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
                 type="password"
                 placeholder="Password"
@@ -65,7 +93,8 @@ const Login = () => {
 
               <button
                 onClick={handleLogin}
-                className="mt-5 tracking-wide font-semibold bg-[#00AEFF] text-gray-100 w-full py-4 rounded-lg hover:bg-[#23b9ff] transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
+                disabled={loading}
+                className="mt-5 tracking-wide font-semibold bg-[#00AEFF] text-gray-100 w-full py-4 rounded-lg hover:bg-[#23b9ff] transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none disabled:opacity-60"
               >
                 <svg
                   className="w-6 h-6 -ml-2"
@@ -79,7 +108,7 @@ const Login = () => {
                   <circle cx="8.5" cy="7" r="4" />
                   <path d="M20 8v6M23 11h-6" />
                 </svg>
-                <span className="ml-3">Sign In</span>
+                <span className="ml-3">{loading ? 'Signing in…' : 'Sign In'}</span>
               </button>
 
               <p className="mt-6 text-xs text-gray-600 text-center">

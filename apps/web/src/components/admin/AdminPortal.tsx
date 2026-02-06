@@ -29,10 +29,10 @@ const AdminPortal = () => {
               Dashboard
             </div>
           </Link>
-          <Link to="/admin/cleaners">
+          <Link to="/admin/AddMemebers">
             <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
               <UserPlusIcon className="w-5 h-5" />
-              Cleaner
+              Add Staff
             </div>
           </Link>
 
