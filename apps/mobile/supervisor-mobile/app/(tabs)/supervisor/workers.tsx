@@ -1,5 +1,6 @@
 import { View, Text, FlatList } from 'react-native';
 import { useEffect, useState } from 'react';
+
 import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = 'http://10.10.3.182:3033';
@@ -22,7 +23,7 @@ export default function LiveWorkersScreen() {
 
   const loadLiveWorkers = async () => {
     try {
-      const token = await SecureStore.getItemAsync('access_token');
+      const token = await SecureStore.getItemAsync('accessToken');
 
       if (!token) {
         console.warn('No access token found');

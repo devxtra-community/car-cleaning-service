@@ -34,7 +34,7 @@ api.interceptors.response.use(
         const refreshToken = await getRefreshToken();
         if (!refreshToken) throw new Error('No refresh token');
 
-        const res = await axios.post(`/http://10.10.1.203:3033/auth/refresh`, { refreshToken });
+        const res = await axios.post(`http://10.10.1.203:3033/api/auth/refresh`, { refreshToken });
 
         const { accessToken, refreshToken: newRefresh } = res.data;
 
