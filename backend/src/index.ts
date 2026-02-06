@@ -14,6 +14,8 @@ import attendanceRoutes from './modules/attendance/attendance_routes';
 import salaryRoute from '../src/modules/salary/salary_routes';
 import taskRoutes from '../src/modules/tasks/tasks_routes';
 import workersRoutes from '../src/modules/Worker/workers_routes';
+import buildingsRoutes from './modules/buildings/buildings_routes';
+import floorsRoutes from './modules/floors/floors_routes';
 
 import s3Routes from './routes/s3';
 const app = express();
@@ -59,6 +61,8 @@ app.use('/s3', s3Routes);
 app.use('/workers', workersRoutes);
 
 app.use('/api/vehicle', vechicleRoutes);
+app.use('/api/buildings', buildingsRoutes);
+app.use('/api/floors', floorsRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/salary', salaryRoute);
 app.use(globalErrorHandler);
