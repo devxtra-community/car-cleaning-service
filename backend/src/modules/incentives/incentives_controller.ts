@@ -1,48 +1,38 @@
 import { Request, Response } from 'express';
 import { pool } from '../../database/connectDatabase';
 
-/*
-ADMIN creates incentive
-Applies to ALL cleaners
-Resets progress
-Only ONE active incentive
-*/
+/* ================= CREATE INCENTIVE ================= */
 
 export const createIncentive = async (req: Request, res: Response) => {
   try {
-    const { target_jobs, incentive_amount } = req.body;
+    const { target_tasks, incentive_amount } = req.body;
 
-    // Disable previous incentives
+    if (!target_tasks || !incentive_amount) {
+      return res.status(400).json({ message: 'Missing fields' });
+    }
+
+    // Disable previous incentive
     await pool.query(`UPDATE incentives SET active=false`);
 
-    // Create new incentive
     const result = await pool.query(
       `
-      INSERT INTO incentives (target_jobs, incentive_amount, active)
+      INSERT INTO incentives (target_tasks,incentive_amount,active)
       VALUES ($1,$2,true)
       RETURNING *
       `,
-      [target_jobs, incentive_amount]
+      [target_tasks, incentive_amount]
     );
-
-    // Reset all cleaner progress
-    await pool.query(`
-      UPDATE workers
-      SET completed_jobs=0,
-          incentive_earned=0
-      WHERE role='cleaner'
-    `);
 
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('INCENTIVE CREATE ERROR:', err);
+    console.log('CREATE INCENTIVE ERROR:', err);
     res.status(500).json({ message: 'Failed to create incentive' });
   }
 };
 
-/* GET ACTIVE INCENTIVE */
+/* ================= GET ACTIVE INCENTIVE ================= */
 
-export const getIncentives = async (_: Request, res: Response) => {
+export const getActiveIncentive = async (_: Request, res: Response) => {
   try {
     const result = await pool.query(`SELECT * FROM incentives WHERE active=true LIMIT 1`);
 
@@ -52,30 +42,22 @@ export const getIncentives = async (_: Request, res: Response) => {
   }
 };
 
-/* UPDATE ACTIVE INCENTIVE */
+/* ================= UPDATE INCENTIVE ================= */
 
 export const updateIncentive = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { target_jobs, incentive_amount } = req.body;
+    const { target_tasks, incentive_amount } = req.body;
 
     await pool.query(
       `
       UPDATE incentives
-      SET target_jobs=$1,
+      SET target_tasks=$1,
           incentive_amount=$2
       WHERE id=$3
       `,
-      [target_jobs, incentive_amount, id]
+      [target_tasks, incentive_amount, id]
     );
-
-    // Reset all cleaners again
-    await pool.query(`
-      UPDATE workers
-      SET completed_jobs=0,
-          incentive_earned=0
-      WHERE role='cleaner'
-    `);
 
     res.json({ success: true });
   } catch {
@@ -83,7 +65,7 @@ export const updateIncentive = async (req: Request, res: Response) => {
   }
 };
 
-/* DELETE INCENTIVE */
+/* ================= DELETE INCENTIVE ================= */
 
 export const deleteIncentive = async (req: Request, res: Response) => {
   try {

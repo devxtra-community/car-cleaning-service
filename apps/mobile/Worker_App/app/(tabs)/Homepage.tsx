@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, QrCode, Wallet, ClipboardCheck, AlertTriangle } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { API } from '../../src/api/api';
+import api from '../../src/api/api';
 
 /* ================= TYPES ================= */
 
@@ -99,14 +99,30 @@ export default function HomeScreen() {
 
   /* ================= LOADERS (DECLARE FIRST) ================= */
 
+  /* ================= LOADERS (DECLARE FIRST) ================= */
   const loadDashboard = async () => {
-    const res = await API.get('/workers/dashboard');
-    setWorker(res.data);
+    try {
+      const res = await api.get('/api/auth/profile'); // Assuming profile endpoint gives dashboard data
+      if (res.data.success) {
+        setWorker({
+          name: res.data.data.full_name,
+          empId: res.data.data.document_id,
+          jobsDone: res.data.data.total_tasks || 0,
+          totalRevenue: res.data.data.total_earning || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard:', error);
+    }
   };
 
   const loadJob = async () => {
-    const res = await API.get('/tasks/my');
-    setActiveJob(res.data?.[0] || null);
+    try {
+      const res = await api.get('/api/tasks/my');
+      setActiveJob(res.data?.[0] || null);
+    } catch (error) {
+      console.error('Failed to load job:', error);
+    }
   };
 
   /* ================= FOCUS REFRESH ================= */
@@ -196,9 +212,9 @@ export default function HomeScreen() {
         visible={showAlert}
         onCancel={() => setShowAlert(false)}
         onConfirm={async () => {
-          await API.patch(`/tasks/${activeJob?.id}/complete`);
+          await api.patch(`/tasks/${activeJob?.id}/complete`);
           setActiveJob(null);
-          loadDashboard();
+          // loadDashboard();
           setShowAlert(false);
         }}
       />

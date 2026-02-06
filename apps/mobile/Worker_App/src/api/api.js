@@ -1,42 +1,51 @@
+/* global console */
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './tokenStorage';
 
 const api = axios.create({
-  baseURL: `http://10.10.1.164:8081`,
-  timeout: 10000,
+  baseURL: 'http://10.10.3.21:3033',
+  timeout: 30000,
 });
 
-/* ================= REQUEST INTERCEPTOR ================= */
+/* ================= REQUEST ================= */
 
-api.interceptors.request.use(
-  async (config) => {
-    const accessToken = await getAccessToken();
+api.interceptors.request.use(async (config) => {
+  const accessToken = await getAccessToken();
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
 
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  return config;
+});
 
-/* ================= RESPONSE INTERCEPTOR ================= */
+/* ================= RESPONSE ================= */
+
 api.interceptors.response.use(
-  (response) => response,
+  (res) => res,
+
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url.includes('/api/auth/refresh')
+    ) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = await getRefreshToken();
+
+        console.log('REFRESH TOKEN:', refreshToken);
+
         if (!refreshToken) throw new Error('No refresh token');
 
-        const res = await axios.post(`/http://10.10.1.164:8081/auth/refresh`, { refreshToken });
+        const response = await axios.post('http://10.10.3.21:3033/api/auth/refresh', {
+          refreshToken,
+        });
 
-        const { accessToken, refreshToken: newRefresh } = res.data;
+        const { accessToken, refreshToken: newRefresh } = response.data;
 
         await saveTokens(accessToken, newRefresh);
 
@@ -44,7 +53,9 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (err) {
+        console.log('REFRESH ERROR:', err.response?.data || err.message);
         await clearTokens();
+        console.log('Refresh failed → logout');
 
         return Promise.reject(err);
       }
@@ -53,3 +64,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export default api;
