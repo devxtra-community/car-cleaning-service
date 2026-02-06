@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import appLogo from '../../assets/appLogo.png';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { api, getAccessToken, setAccessToken } from '../../services/commonAPI';
 
 import {
   HomeIcon,
@@ -13,6 +14,40 @@ import {
 } from '@heroicons/react/24/outline';
 
 const AdminPortal = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      // If we already have a token in memory, we're good
+      if (getAccessToken()) {
+        return;
+      }
+
+      // No token in memory - try to refresh from the cookie
+      try {
+        console.log('AdminPortal: No token in memory, attempting refresh...');
+        const { data } = await api.post('/api/auth/refresh');
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+          console.log('AdminPortal: Token refreshed successfully');
+          return;
+        }
+      } catch (error) {
+        console.log('AdminPortal: Refresh failed, redirecting to login', error);
+      }
+
+      // If we get here, both memory token and refresh failed
+      navigate('/Login');
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  const handleLogout = () => {
+    setAccessToken(null);
+    navigate('/Login');
+  };
+
   return (
     <div className="min-h-screen ">
       {/* Sidebar */}
@@ -50,7 +85,21 @@ const AdminPortal = () => {
             </div>
           </Link>
 
-          <Link to="/admin/customer">
+          <Link to="/admin/buildings">
+            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
+              <DocumentTextIcon className="w-5 h-5" />
+              Buildings
+            </div>
+          </Link>
+
+          <Link to="/admin/floors">
+            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
+              <DocumentTextIcon className="w-5 h-5" />
+              Floors
+            </div>
+          </Link>
+
+          <Link to="/admin/register-user">
             <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
               <ClockIcon className="w-5 h-5" />
               Customers
@@ -74,7 +123,10 @@ const AdminPortal = () => {
               <p className="text-xs text-gray-500">admin</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-3 py-2 rounded bg-gray-100 font-medium">
+          <div
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2 rounded bg-gray-100 font-medium cursor-pointer hover:bg-gray-200 transition-colors"
+          >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
             Log out
           </div>

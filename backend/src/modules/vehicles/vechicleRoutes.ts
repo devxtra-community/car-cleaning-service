@@ -1,17 +1,23 @@
 import { Router } from 'express';
-import { protect } from 'src/middlewares/authMiddleware';
-import { getVehicleDetails, vehicleDetails } from './vehicles_controller';
-import { allowRoles } from 'src/middlewares/roleMiddleware';
+import {
+  createVehicle,
+  getVehicles,
+  getVehicleById,
+  updateVehicle,
+  deleteVehicle,
+} from './vehicles_controller';
+
+import { protect } from '../../middlewares/authMiddleware';
+import { allowRoles } from '../../middlewares/roleMiddleware';
 
 const router = Router();
 
-router.post('/add', protect, allowRoles('admin', 'super_admin'), vehicleDetails);
+/* ADMIN ONLY */
 
-router.get(
-  '/allVehicles',
-  protect,
-  allowRoles('admin', 'cleaner', 'superviser', 'accountant', 'super_admin'),
-  getVehicleDetails
-);
+router.post('/', protect, allowRoles('admin'), createVehicle);
+router.get('/', protect, getVehicles);
+router.get('/:id', protect, getVehicleById);
+router.put('/:id', protect, allowRoles('admin'), updateVehicle);
+router.delete('/:id', protect, allowRoles('admin'), deleteVehicle);
 
 export default router;

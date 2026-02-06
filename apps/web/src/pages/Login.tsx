@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import carlogo from '../assets/carlogo.png';
 import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../services/allAPI';
+import { setAccessToken } from '../services/commonAPI';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
@@ -23,6 +24,12 @@ const Login = () => {
       const response = await login({ email, password });
 
       console.log('Login successful', response.data);
+      if (response.data.accessToken) {
+        setAccessToken(response.data.accessToken);
+        console.log('✅ Access token has been set successfully');
+      } else {
+        console.error('❌ No access token in response!', response.data);
+      }
       alert('Login Successful');
 
       // Optional: preload admin dashboard

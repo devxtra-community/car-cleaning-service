@@ -1,7 +1,7 @@
 import express from 'express';
 import {
   createIncentive,
-  getIncentives,
+  getActiveIncentive,
   updateIncentive,
   deleteIncentive,
 } from './incentives_controller';
@@ -9,7 +9,7 @@ import {
 const router = express.Router();
 
 router.post('/', createIncentive);
-router.get('/', getIncentives);
+router.get('/', getActiveIncentive);
 router.put('/:id', updateIncentive);
 router.delete('/:id', deleteIncentive);
 
