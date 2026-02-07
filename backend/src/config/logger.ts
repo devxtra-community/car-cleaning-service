@@ -1,5 +1,5 @@
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-type LogMeta = Record<string,unknown>
+type LogMeta = Record<string, unknown>;
 const isProduction = process.env.NODE_ENV === 'production';
 
 function log(level: LogLevel, message: string, meta?: LogMeta) {
@@ -25,15 +25,11 @@ function log(level: LogLevel, message: string, meta?: LogMeta) {
 }
 
 export const logger = {
-  info: (message: string, meta?: LogMeta) =>
-    log('info', message, meta),
+  info: (message: string, meta?: LogMeta) => log('info', message, meta),
 
-  warn: (message: string, meta?: LogMeta) =>
-    log('warn', message, meta),
+  warn: (message: string, meta?: LogMeta) => log('warn', message, meta),
 
-  error: (message: string, meta?: LogMeta) =>
-    log('error', message, meta),
+  error: (message: string, meta?: LogMeta) => log('error', message, meta),
 
-  debug: (message: string, meta?: LogMeta) =>
-    log('debug', message, meta),
+  debug: (message: string, meta?: LogMeta) => log('debug', message, meta),
 };

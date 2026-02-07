@@ -1,4 +1,3 @@
-/* global console */
 import { lazy, Suspense } from 'react';
 import Loader from './pages/Loader';
 import { Routes, Route } from 'react-router-dom';

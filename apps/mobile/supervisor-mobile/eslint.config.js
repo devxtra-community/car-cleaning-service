@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-/* eslint-disable no-undef */
 // @ts-check
 const { FlatCompat } = require('@eslint/eslintrc');
 const js = require('@eslint/js');

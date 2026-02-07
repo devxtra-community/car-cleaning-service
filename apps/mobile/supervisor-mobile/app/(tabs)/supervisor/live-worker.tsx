@@ -1,35 +1,75 @@
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
 import { User } from 'lucide-react-native';
 
-interface LiveWorkerUI {
+import api from '@/src/api/api';
+
+interface LiveWorker {
   id: string;
   full_name: string;
   email: string;
   started_at: string;
 }
 
-const MOCK_LIVE_WORKERS: LiveWorkerUI[] = [
-  {
-    id: '1',
-    full_name: 'Abu Rahman',
-    email: 'abu@gmail.com',
-    started_at: '10:15 AM',
-  },
-  {
-    id: '2',
-    full_name: 'Mahesh Kumar',
-    email: 'mahesh@gmail.com',
-    started_at: '10:42 AM',
-  },
-];
-
 export default function LiveWorkersScreen() {
+  const [workers, setWorkers] = useState<LiveWorker[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadLiveWorkers();
+  }, []);
+
+  const loadLiveWorkers = async () => {
+    try {
+      setError(null);
+      const res = await api.get('/api/supervisor/workers/live');
+
+      if (res.data.success) {
+        setWorkers(res.data.data);
+      } else {
+        setError(res.data.message || 'Failed to load live workers');
+      }
+    } catch (err) {
+      console.error('Failed to load live workers', err);
+      setError('Failed to load live workers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#3DA2CE" />
+        <Text style={styles.loadingText}>Loading live workers...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Live Workers</Text>
 
       <FlatList
-        data={MOCK_LIVE_WORKERS}
+        data={workers}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 40 }}
         ListEmptyComponent={<Text style={styles.emptyText}>No workers are live right now</Text>}
@@ -46,7 +86,7 @@ export default function LiveWorkersScreen() {
               <View style={styles.statusRow}>
                 <View style={styles.liveDot} />
                 <Text style={styles.liveText}>LIVE</Text>
-                <Text style={styles.timer}>• Since {item.started_at}</Text>
+                <Text style={styles.timer}>• Since {formatTime(item.started_at)}</Text>
               </View>
             </View>
           </View>
@@ -61,6 +101,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F7FA',
     padding: 16,
+  },
+
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 
   header: {

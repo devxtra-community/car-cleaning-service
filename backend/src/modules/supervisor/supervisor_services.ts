@@ -3,10 +3,31 @@ import { pool } from '../../database/connectDatabase';
 export const getSupervisorWorkersService = async (supervisorId: string) => {
   const result = await pool.query(
     `
-    SELECT u.id, u.full_name, u.email, u.role
-    FROM supervisor_workers sw
-    JOIN users u ON u.id = sw.worker_id
-    WHERE sw.supervisor_id=$1
+    SELECT 
+      u.id, 
+      u.full_name, 
+      u.email, 
+      u.role,
+      t.id AS current_task_id,
+      t.owner_name,
+      t.owner_phone,
+      t.car_number,
+      t.car_model,
+      t.car_type,
+      t.car_color,
+      t.task_amount,
+      t.created_at AS task_started_at,
+      CASE WHEN t.id IS NOT NULL THEN 'working' ELSE 'idle' END AS status
+    FROM cleaners c
+    JOIN users u ON u.id = c.user_id
+    LEFT JOIN LATERAL (
+      SELECT * FROM tasks 
+      WHERE cleaner_id = c.user_id AND status != 'completed'
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) t ON true
+    WHERE c.supervisor_id = $1
+    ORDER BY status DESC, u.full_name ASC
     `,
     [supervisorId]
   );

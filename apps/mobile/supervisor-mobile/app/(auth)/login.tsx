@@ -15,7 +15,7 @@ import Checkbox from 'expo-checkbox';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
-import * as SecureStore from 'expo-secure-store';
+import { saveTokens } from '../../src/tokenStorage';
 
 const { height, width } = Dimensions.get('window');
 
@@ -116,9 +116,9 @@ export default function LoginScreen() {
         return;
       }
 
-      await SecureStore.setItemAsync('accessToken', data.accessToken);
+      await saveTokens(data.accessToken, data.refreshToken);
 
-      console.log('ACCESS TOKEN:', data.accessToken);
+      console.log('TOKENS SAVED:', { access: !!data.accessToken, refresh: !!data.refreshToken });
 
       router.replace('/(tabs)');
     } catch (error: unknown) {
