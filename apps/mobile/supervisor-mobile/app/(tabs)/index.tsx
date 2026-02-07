@@ -69,7 +69,7 @@ export default function HomePage() {
             <View style={styles.actionButtons}>
               <Pressable
                 style={styles.actionButton}
-                onPress={() => router.push('/supervisor/workers')}
+                onPress={() => router.push('/(tabs)/supervisor/add-task')}
               >
                 <UserCog size={20} color="#3DA2CE" />
                 <Text style={styles.actionButtonText}>Add Tasks</Text>
@@ -93,7 +93,7 @@ export default function HomePage() {
                   icon={<UserCog size={24} color="#3DA2CE" />}
                   title="Live Workers"
                   subtitle="Current Status"
-                  onPress={() => router.push('/(tabs)/supervisor/live-worker')}
+                  onPress={() => router.push('/supervisor/live-worker')}
                 />
 
                 <ActionCard

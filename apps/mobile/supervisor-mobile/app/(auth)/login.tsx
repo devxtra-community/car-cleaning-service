@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Checkbox from 'expo-checkbox';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -142,7 +143,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* HEADER WITH TOPOGRAPHIC PATTERN */}
       <View style={styles.headerContainer}>
         <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.header}>
@@ -217,7 +218,7 @@ export default function LoginScreen() {
           )}
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

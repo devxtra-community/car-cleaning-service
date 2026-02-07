@@ -1,5 +1,6 @@
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from 'lucide-react-native';
 
 import api from '@/src/api/api';
@@ -65,7 +66,7 @@ export default function LiveWorkersScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Live Workers</Text>
 
       <FlatList
@@ -92,7 +93,7 @@ export default function LiveWorkersScreen() {
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

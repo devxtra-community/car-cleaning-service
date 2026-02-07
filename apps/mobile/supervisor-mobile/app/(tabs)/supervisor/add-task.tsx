@@ -142,7 +142,7 @@ export default function AddTasksScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Assign or Update Tasks</Text>
       </View>
@@ -152,6 +152,8 @@ export default function AddTasksScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.emptyText}>No workers assigned to you</Text>}
+        onRefresh={loadWorkers}
+        refreshing={loading}
         renderItem={({ item }) => (
           <View style={styles.workerCard}>
             <View style={styles.cardHeader}>
@@ -175,6 +177,16 @@ export default function AddTasksScreen() {
                   >
                     {item.status === 'working' ? 'Working' : 'Idle'}
                   </Text>
+                  {item.status === 'working' && item.task_started_at && (
+                    <Text style={styles.statusTime}>
+                      {' '}
+                      • Since{' '}
+                      {new Date(item.task_started_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>
@@ -420,6 +432,10 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  statusTime: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   taskInfoContainer: {
     backgroundColor: '#F8FAFB',
