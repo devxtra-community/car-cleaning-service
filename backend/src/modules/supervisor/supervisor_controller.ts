@@ -5,14 +5,19 @@ import { getSupervisorWorkersService, supervisorReportService } from './supervis
 
 /* ================= WORKERS ================= */
 export const getSupervisorWorkers = async (req: AuthRequest, res: Response) => {
-  if (!req.user?.userId) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  try {
+    if (!req.user?.userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const supervisorId = req.user.userId;
+    const workers = await getSupervisorWorkersService(supervisorId);
+
+    return res.json({ success: true, data: workers });
+  } catch (err) {
+    console.error('getSupervisorWorkers error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch workers' });
   }
-
-  const supervisorId = req.user.userId;
-  const workers = await getSupervisorWorkersService(supervisorId);
-
-  return res.json({ success: true, data: workers });
 };
 
 /* ================= REPORT ================= */
@@ -62,9 +67,9 @@ export const getSupervisorTasks = async (req: AuthRequest, res: Response) => {
         t.completed_at,
         u.full_name AS worker_name
       FROM tasks t
-      JOIN supervisor_workers sw ON sw.worker_id = t.worker_id
-      JOIN users u ON u.id = t.worker_id
-      WHERE sw.supervisor_id = $1
+      JOIN cleaners c ON c.user_id = t.cleaner_id
+      JOIN users u ON u.id = t.cleaner_id
+      WHERE c.supervisor_id = $1
         AND t.status = 'completed'
         AND ${dateFilter}
       ORDER BY t.completed_at DESC
@@ -82,6 +87,200 @@ export const getSupervisorTasks = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch tasks',
+    });
+  }
+};
+
+/* ================= LIVE WORKERS ================= */
+export const getLiveWorkers = async (req: AuthRequest, res: Response) => {
+  try {
+    const supervisorId = req.user?.userId;
+
+    if (!supervisorId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT DISTINCT
+        u.id,
+        u.full_name,
+        u.email,
+        t.created_at AS started_at
+      FROM tasks t
+      JOIN cleaners c ON c.user_id = t.cleaner_id
+      JOIN users u ON u.id = t.cleaner_id
+      WHERE c.supervisor_id = $1
+        AND t.status != 'completed'
+      ORDER BY t.created_at DESC
+      `,
+      [supervisorId]
+    );
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error('Live workers error', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch live workers',
+    });
+  }
+};
+
+/* ================= ASSIGN TASK TO WORKER ================= */
+export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
+  try {
+    const supervisorId = req.user?.userId;
+
+    if (!supervisorId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const {
+      worker_id,
+      owner_name,
+      owner_phone,
+      car_number,
+      car_model,
+      car_type,
+      car_color,
+      task_amount,
+    } = req.body;
+
+    // Validate required fields
+    if (
+      !worker_id ||
+      !owner_name ||
+      !owner_phone ||
+      !car_number ||
+      !car_model ||
+      !car_type ||
+      !car_color
+    ) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // Verify worker belongs to this supervisor
+    const workerCheck = await pool.query(
+      `SELECT c.user_id FROM cleaners c WHERE c.user_id = $1 AND c.supervisor_id = $2`,
+      [worker_id, supervisorId]
+    );
+
+    if (!workerCheck.rows.length) {
+      return res.status(403).json({ success: false, message: 'Worker not assigned to you' });
+    }
+
+    // Create the task
+    const result = await pool.query(
+      `
+      INSERT INTO tasks (
+        owner_name,
+        owner_phone,
+        car_number,
+        car_model,
+        car_type,
+        car_color,
+        cleaner_id,
+        task_amount,
+        status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+      RETURNING *
+      `,
+      [
+        owner_name,
+        owner_phone,
+        car_number,
+        car_model,
+        car_type,
+        car_color,
+        worker_id,
+        task_amount ? parseFloat(task_amount) : 0,
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Task assigned successfully',
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error('Assign task error', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to assign task',
+    });
+  }
+};
+
+/* ================= UPDATE TASK ================= */
+export const updateTask = async (req: AuthRequest, res: Response) => {
+  try {
+    const supervisorId = req.user?.userId;
+    const taskId = req.params.id;
+
+    if (!supervisorId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { owner_name, owner_phone, car_number, car_model, car_type, car_color, task_amount } =
+      req.body;
+
+    // Verify task belongs to a worker managed by this supervisor
+    const taskCheck = await pool.query(
+      `
+      SELECT t.id 
+      FROM tasks t
+      JOIN cleaners c ON c.user_id = t.cleaner_id
+      WHERE t.id = $1 AND c.supervisor_id = $2
+      `,
+      [taskId, supervisorId]
+    );
+
+    if (!taskCheck.rows.length) {
+      return res.status(404).json({ success: false, message: 'Task not found or not authorized' });
+    }
+
+    // Update the task
+    const result = await pool.query(
+      `
+      UPDATE tasks 
+      SET 
+        owner_name = COALESCE($1, owner_name),
+        owner_phone = COALESCE($2, owner_phone),
+        car_number = COALESCE($3, car_number),
+        car_model = COALESCE($4, car_model),
+        car_type = COALESCE($5, car_type),
+        car_color = COALESCE($6, car_color),
+        task_amount = COALESCE($7, task_amount)
+      WHERE id = $8
+      RETURNING *
+      `,
+      [
+        owner_name || null,
+        owner_phone || null,
+        car_number || null,
+        car_model || null,
+        car_type || null,
+        car_color || null,
+        task_amount ? parseFloat(task_amount) : null,
+        taskId,
+      ]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Task updated successfully',
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error('Update task error', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update task',
     });
   }
 };

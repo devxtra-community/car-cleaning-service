@@ -5,12 +5,18 @@ import {
   getSupervisorWorkers,
   supervisorReport,
   getSupervisorTasks,
+  getLiveWorkers,
+  assignTaskToWorker,
+  updateTask,
 } from './supervisor_controller';
 
 const router = express.Router();
 
 router.get('/workers', protect, allowRoles('supervisor', 'super_admin'), getSupervisorWorkers);
+router.get('/workers/live', protect, allowRoles('supervisor', 'super_admin'), getLiveWorkers);
 router.get('/report', protect, allowRoles('supervisor'), supervisorReport);
 router.get('/tasks', protect, allowRoles('supervisor'), getSupervisorTasks);
+router.post('/tasks', protect, allowRoles('supervisor'), assignTaskToWorker);
+router.patch('/tasks/:id', protect, allowRoles('supervisor'), updateTask);
 
 export default router;

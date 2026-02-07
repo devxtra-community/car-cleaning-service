@@ -72,7 +72,7 @@ export default function HomePage() {
                 onPress={() => router.push('/supervisor/workers')}
               >
                 <UserCog size={20} color="#3DA2CE" />
-                <Text style={styles.actionButtonText}>View Workers</Text>
+                <Text style={styles.actionButtonText}>Add Tasks</Text>
               </Pressable>
 
               <Pressable

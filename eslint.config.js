@@ -3,6 +3,7 @@ import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettierPlugin from 'eslint-plugin-prettier';
+import globals from 'globals';
 
 export default [
   js.configs.recommended,
@@ -47,9 +48,21 @@ export default [
     files: ['apps/web/**/*.{js,jsx}'],
     languageOptions: {
       globals: {
-        document: 'readonly',
-        window: 'readonly',
+        ...globals.browser,
       },
+    },
+  },
+
+  // Backend (node) and Config files
+  {
+    files: ['backend/**/*.{js,ts}', '**/*.config.{js,cjs,mts}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 ];
