@@ -12,13 +12,23 @@ import {
 
 export const createVehicle = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, brand, model, base_price } = req.body;
+    const { type, category, size, base_price, premium_price, wash_time, status } = req.body;
+
+    // Validation
+    if (!type || !category || !size || !base_price || !premium_price || !wash_time) {
+      return res.status(400).json({
+        message: 'Missing required fields: type, category, size, base_price, premium_price, wash_time'
+      });
+    }
 
     const vehicle = await createVehicleService({
       type,
-      brand,
-      model,
-      base_price,
+      category,
+      size,
+      base_price: Number(base_price),
+      premium_price: Number(premium_price),
+      wash_time: Number(wash_time),
+      status: status || 'Active',
       created_by: req.user?.userId || '',
     });
 
