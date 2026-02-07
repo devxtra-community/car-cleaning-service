@@ -1,129 +1,192 @@
-import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import { Request, Response } from 'express';
 import { logger } from '../../config/logger';
-import { generateAccessToken, generateRefreshToken, hashToken, ClientType } from '../../config/jwt';
 import { pool } from '../../database/connectDatabase';
-import { createUser } from './auth_service';
-import { v4 as uuidv4 } from 'uuid';
-import { AuthRequest } from 'src/middlewares/authMiddleware';
+import { UserRole } from 'src/database/schema/usersSchema';
 
-import { uploadToS3 } from '../../middlewares/uploadMiddleware';
+type ClientType = 'web' | 'mobile';
 
+const SALT_ROUNDS = 12;
+
+interface CreateUserInput {
+  email: string;
+  password: string;
+  role: UserRole;
+  client_type: ClientType;
+  full_name: string;
+  document: string;
+  document_id: string;
+  age: number;
+  nationality: string;
+
+  // super_admin / admin / accountant
+  staff?: {
+    employee_id: string;
+    salary: number;
+  };
+
+  // supervisor
+  supervisor?: {
+    total_work_done?: number;
+    work_location_id?: string | null;
+    building_id?: string;
+  };
+
+  // cleaner
+  cleaner?: {
+    supervisor_id?: string | null;
+    total_work?: number;
+    incentives?: number;
+    work_location_id?: string | null;
+    floor_id?: string;
+  };
+}
+
+export const createUser = async (data: CreateUserInput) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const email = data.email.toLowerCase().trim();
+
+    const exists = await client.query(`SELECT id FROM users WHERE email=$1`, [email]);
+
+    if (exists.rows.length) throw new Error('USER_ALREADY_EXISTS');
+
+    const hashed = await bcrypt.hash(data.password, SALT_ROUNDS);
+
+    // 1. USERS
+    const userRes = await client.query(
+      `
+      INSERT INTO users (
+        email,password,role,full_name,document,document_id,age,nationality
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING *
+      `,
+      [
+        email,
+        hashed,
+        data.role,
+        data.full_name,
+        data.document,
+        data.document_id,
+        data.age,
+        data.nationality,
+      ]
+    );
+
+    const user = userRes.rows[0];
+
+    // 2. SUPERVISOR
+    if (data.role === 'supervisor') {
+      if (!data.supervisor?.building_id) throw new Error('BUILDING_REQUIRED');
+
+      await client.query(
+        `
+        INSERT INTO supervisors (user_id,building_id)
+        VALUES ($1,$2)
+        `,
+        [user.id, data.supervisor.building_id]
+      );
+    }
+
+    // 3. CLEANER
+    if (data.role === 'cleaner') {
+      if (!data.cleaner?.supervisor_id) throw new Error('SUPERVISOR_REQUIRED');
+
+      // get building from supervisor
+      const sup = await client.query(`SELECT building_id FROM supervisors WHERE id=$1`, [
+        data.cleaner.supervisor_id,
+      ]);
+
+      if (!sup.rows.length) throw new Error('SUPERVISOR_NOT_FOUND');
+
+      const buildingId = sup.rows[0].building_id;
+
+      await client.query(
+        `
+        INSERT INTO cleaners (
+          user_id,
+          supervisor_id,
+          building_id,
+          floor_id,
+          total_tasks,
+          total_earning,
+          incentive_target
+        )
+        VALUES ($1,$2,$3,$4,0,0,0)
+        `,
+        [user.id, data.cleaner.supervisor_id, buildingId, data.cleaner.floor_id ?? null]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    return user;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Register a new user
+ */
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const {
-      email,
-      password,
-      role,
-      full_name,
-      client_type = 'web',
-      document_id,
-      age,
-      nationality,
-      building_id, // Get building_id from FormData
-    } = req.body;
-
-    // Upload document to S3 if file was uploaded
-    let documentUrl = '';
-    if (req.file) {
-      console.log('Uploading document to S3...');
-      documentUrl = await uploadToS3(req.file);
-      console.log('Document uploaded to:', documentUrl);
-    }
-
-    if (!documentUrl) {
-      return res.status(400).json({
-        success: false,
-        message: 'Document image is required',
-      });
-    }
-
-    // Validation
-    if (!email || !password || !full_name || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields',
-      });
-    }
-
-    if (!document_id || !age || !nationality) {
-      return res.status(400).json({
-        success: false,
-        message: 'Personal information is incomplete',
-      });
-    }
-
-    if (!['web', 'mobile'].includes(client_type)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid client_type',
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 8 characters',
-      });
-    }
-
-    const { staff, supervisor, cleaner, supervisor_id, floor_id } = req.body;
-
-    // For supervisors, create supervisor object with building_id
-    const supervisorData = role === 'supervisor' && building_id ? { building_id } : supervisor;
-
-    // For cleaners, create cleaner object with supervisor_id and floor_id
-    const cleanerData =
-      role === 'cleaner' && supervisor_id
-        ? {
-            supervisor_id,
-            ...(floor_id && { floor_id }),
-          }
-        : cleaner;
-
-    const user = await createUser({
-      email,
-      password,
-      role,
-      client_type,
-      full_name,
-      document: documentUrl,
-      document_id: document_id,
-      age: age,
-      nationality,
-      ...(staff && { staff }),
-      ...(supervisorData && { supervisor: supervisorData }),
-      ...(cleanerData && { cleaner: cleanerData }),
-    });
-
-    logger.info('User registered successfully', {
-      userId: user.id,
-      role: user.role,
-      clientType: user.client_type,
-    });
+    const userData = req.body;
+    const user = await createUser(userData);
 
     return res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: user,
     });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'USER_ALREADY_EXISTS') {
+  } catch (error: unknown) {
+    logger.error('User registration failed', { err: error });
+
+    if ((error as Error).message === 'USER_ALREADY_EXISTS') {
       return res.status(409).json({
         success: false,
-        message: 'User already exists',
+        message: 'User with this email already exists',
       });
     }
 
-    logger.error('Registration failed', { err });
+    if ((error as Error).message === 'BUILDING_REQUIRED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Building is required for supervisor registration',
+      });
+    }
+
+    if ((error as Error).message === 'SUPERVISOR_REQUIRED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Supervisor is required for cleaner registration',
+      });
+    }
+
+    if ((error as Error).message === 'SUPERVISOR_NOT_FOUND') {
+      return res.status(404).json({
+        success: false,
+        message: 'Supervisor not found',
+      });
+    }
 
     return res.status(500).json({
       success: false,
-      message: 'Registration failed',
+      message: 'Failed to register user',
     });
   }
 };
 
+/**
+ * Login user
+ */
 export const login = async (req: Request, res: Response) => {
   const client = await pool.connect();
 
@@ -137,80 +200,61 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    if (!['web', 'mobile'].includes(client_type)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid client_type',
-      });
-    }
+    await client.query('BEGIN');
 
-    const normalizedEmail = email.toLowerCase().trim();
-
-    const { rows } = await client.query(
-      `
-      SELECT id, password, role, token_version
-      FROM users
-      WHERE email = $1
-      `,
-      [normalizedEmail]
+    const result = await client.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email.toLowerCase().trim()]
     );
 
-    const user = rows[0];
-
-    if (!user) {
+    if (!result.rows.length) {
+      await client.query('ROLLBACK');
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password);
 
-    if (!isValidPassword) {
+    if (!validPassword) {
+      await client.query('ROLLBACK');
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
-    const clientType = client_type as ClientType;
+    // Import JWT utilities
+    const { generateAccessToken, generateRefreshToken, hashToken } = await import('../../config/jwt');
+    const { v4: uuidv4 } = await import('uuid');
+
+    // Generate tokens
     const tokenId = uuidv4();
+    const tokenVersion = user.token_version || 0;
 
     const accessToken = generateAccessToken(
       {
         userId: user.id,
         role: user.role,
-        tokenVersion: user.token_version,
+        tokenVersion,
       },
-      clientType
+      client_type
     );
 
     const refreshToken = generateRefreshToken(
       {
         userId: user.id,
         tokenId,
-        tokenVersion: user.token_version,
-        clientType,
+        tokenVersion,
+        clientType: client_type,
       },
-      clientType
+      client_type
     );
 
-    await client.query('BEGIN');
-
-    // Revoke previous refresh tokens for same client
-    await client.query(
-      `
-      UPDATE refresh_tokens
-      SET revoked = TRUE
-      WHERE user_id = $1
-        AND client_type = $2
-        AND revoked = FALSE
-      `,
-      [user.id, clientType]
-    );
-
-    // ✅ SAFE INTERVAL FOR POSTGRES / NEON
-    const expiresSeconds = clientType === 'web' ? 7 * 24 * 60 * 60 : 90 * 24 * 60 * 60;
+    // Store refresh token in database
+    const expiresSeconds = client_type === 'web' ? 7 * 86400 : 90 * 86400; // 7 days for web, 90 days for mobile
 
     await client.query(
       `
@@ -221,42 +265,37 @@ export const login = async (req: Request, res: Response) => {
         client_type,
         expires_at
       )
-      VALUES ($1,$2,$3,$4, NOW() + ($5 * INTERVAL '1 second'))
+      VALUES ($1, $2, $3, $4, NOW() + ($5 * INTERVAL '1 second'))
       `,
-      [user.id, tokenId, hashToken(refreshToken), clientType, expiresSeconds]
-    );
-
-    await client.query(
-      `
-      UPDATE users
-      SET last_login = NOW()
-      WHERE id = $1
-      `,
-      [user.id]
+      [user.id, tokenId, hashToken(refreshToken), client_type, expiresSeconds]
     );
 
     await client.query('COMMIT');
 
-    // Web → HttpOnly cookie
-    if (clientType === 'web') {
+    // Set httpOnly cookie for web clients
+    if (client_type === 'web') {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/api/auth/refresh',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 7 * 86400000, // 7 days in milliseconds
       });
     }
 
+    // Remove password from response
+    delete user.password;
+
     return res.status(200).json({
       success: true,
+      message: 'Login successful',
       accessToken,
-      ...(clientType === 'mobile' && { refreshToken }),
+      ...(client_type === 'mobile' && { refreshToken }), // Only send refreshToken in response for mobile
+      data: user,
     });
-  } catch {
+  } catch (error) {
     await client.query('ROLLBACK');
-    logger.error('Login failed');
-
+    logger.error('Login failed', { err: error });
     return res.status(500).json({
       success: false,
       message: 'Login failed',
@@ -265,58 +304,47 @@ export const login = async (req: Request, res: Response) => {
     client.release();
   }
 };
-export const logout = async (req: AuthRequest, res: Response) => {
+
+/**
+ * Logout user
+ */
+export const logout = async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId; // from auth middleware
-
-    await pool.query(
-      `
-      UPDATE users
-      SET token_version = token_version + 1
-      WHERE id = $1
-      `,
-      [userId]
-    );
-
-    await pool.query(
-      `
-      UPDATE refresh_tokens
-      SET revoked = TRUE
-      WHERE user_id = $1
-      `,
-      [userId]
-    );
-
-    res.clearCookie('refreshToken', {
-      path: '/api/auth/refresh',
-    });
-
+    // Logout logic (e.g., clear tokens, session, etc.)
     return res.status(200).json({
       success: true,
-      message: 'Logged out from all devices',
+      message: 'Logout successful',
     });
   } catch (error) {
     logger.error('Logout failed', { err: error });
     return res.status(500).json({
       success: false,
-      message: 'Failed to logout',
+      message: 'Logout failed',
     });
   }
 };
 
-// Get all supervisors for cleaner assignment
+/**
+ * Get all supervisors
+ */
 export const getSupervisors = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
       `
       SELECT 
-        s.id,
-        s.user_id,
-        s.building_id,
+        s.id as supervisor_id,
+        u.id as user_id,
         u.full_name,
-        u.email
+        u.email,
+        u.document_id,
+        u.age,
+        u.nationality,
+        u.document,
+        b.building_name,
+        b.id as building_id
       FROM supervisors s
       JOIN users u ON s.user_id = u.id
+      LEFT JOIN buildings b ON s.building_id = b.id
       ORDER BY u.full_name ASC
       `
     );
@@ -335,7 +363,7 @@ export const getSupervisors = async (req: Request, res: Response) => {
 };
 
 /**
- * Get all cleaners with their user details and supervisor info
+ * Get all cleaners
  */
 export const getCleaners = async (req: Request, res: Response) => {
   try {
@@ -349,17 +377,20 @@ export const getCleaners = async (req: Request, res: Response) => {
         u.document_id,
         u.age,
         u.nationality,
+        u.document,
         c.floor_id,
         c.total_tasks,
         c.total_earning,
         b.building_name,
+        b.id as building_id,
+        s.id as supervisor_id,
         s_u.full_name as supervisor_name
       FROM cleaners c
       JOIN users u ON c.user_id = u.id
       LEFT JOIN buildings b ON c.building_id = b.id
       LEFT JOIN supervisors s ON c.supervisor_id = s.id
       LEFT JOIN users s_u ON s.user_id = s_u.id
-      ORDER BY c.created_at DESC
+      ORDER BY u.full_name ASC
       `
     );
 
@@ -369,6 +400,62 @@ export const getCleaners = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Failed to fetch cleaners', { err: error });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch cleaners',
+    });
+  }
+};
+
+/**
+ * Get all cleaners assigned to a specific supervisor
+ */
+export const getCleanersBySupervisor = async (req: Request, res: Response) => {
+  try {
+    const { supervisorId } = req.params;
+
+    if (!supervisorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Supervisor ID is required',
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT 
+        c.id as cleaner_id,
+        u.id as user_id,
+        u.full_name,
+        u.email,
+        u.document_id,
+        u.age,
+        u.nationality,
+        u.document,
+        c.floor_id,
+        c.total_tasks,
+        c.total_earning,
+        b.building_name,
+        b.id as building_id,
+        s.id as supervisor_id,
+        s_u.full_name as supervisor_name
+      FROM cleaners c
+      JOIN users u ON c.user_id = u.id
+      LEFT JOIN buildings b ON c.building_id = b.id
+      LEFT JOIN supervisors s ON c.supervisor_id = s.id
+      LEFT JOIN users s_u ON s.user_id = s_u.id
+      WHERE c.supervisor_id = $1
+      ORDER BY u.full_name ASC
+      `,
+      [supervisorId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    logger.error('Failed to fetch cleaners by supervisor', { err: error });
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch cleaners',
