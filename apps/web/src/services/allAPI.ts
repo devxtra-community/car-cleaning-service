@@ -16,3 +16,24 @@ export const login = async ({ email, password }: LoginPayload) => {
 
   return response;
 };
+
+export const getAllSupervisors = async () => {
+  const response = await api.get('/api/auth/supervisors');
+  return response.data.data;
+};
+
+export const getCleanersBySupervisor = async (supervisorId: string) => {
+  const response = await api.get(`/api/auth/supervisors/${supervisorId}/cleaners`);
+  return response.data.data;
+};
+export const createBuilding = (data: {
+  building_name: string;
+  location: string;
+  floors: {
+    floor_number: number;
+    floor_name: string;
+    notes?: string;
+  }[];
+}) => {
+  return api.post("/api/buildings", data);
+};

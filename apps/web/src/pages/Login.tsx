@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import carlogo from '../assets/carlogo.png';
 import { Link, useNavigate } from 'react-router-dom';
-import { login } from '../services/allAPI';
-import { setAccessToken } from '../services/commonAPI';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
@@ -11,6 +10,7 @@ const Login = () => {
   });
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -18,18 +18,13 @@ const Login = () => {
     const { email, password } = loginInput;
     if (!email || !password) {
       alert('Please enter both email and password');
+      return;
     }
 
     try {
-      const response = await login({ email, password });
-
-      console.log('Login successful', response.data);
-      if (response.data.accessToken) {
-        setAccessToken(response.data.accessToken);
-        console.log('✅ Access token has been set successfully');
-      } else {
-        console.error('❌ No access token in response!', response.data);
-      }
+      await login(email, password);
+      
+      console.log('✅ Login successful via AuthContext');
       alert('Login Successful');
 
       // Optional: preload admin dashboard
