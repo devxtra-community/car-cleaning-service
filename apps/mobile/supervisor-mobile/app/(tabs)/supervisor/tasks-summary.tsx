@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertCircle, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import api from '@/src/api/api';
@@ -46,72 +47,78 @@ export default function DailyTasksScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* DAILY TASK PROGRESS */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>DAILY TASK PROGRESS</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* DAILY TASK PROGRESS */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>DAILY TASK PROGRESS</Text>
 
-        <View style={styles.circleWrapper}>
-          <View style={styles.circleOuter}>
-            <View style={styles.circleProgress} />
-            <View style={styles.circleInner}>
-              <Text style={styles.circleValue}>
-                {completed}/{DAILY_TARGET}
-              </Text>
-              <Text style={styles.circleSub}>Cars Cleaned</Text>
+          <View style={styles.circleWrapper}>
+            <View style={styles.circleOuter}>
+              <View style={styles.circleProgress} />
+              <View style={styles.circleInner}>
+                <Text style={styles.circleValue}>
+                  {completed}/{DAILY_TARGET}
+                </Text>
+                <Text style={styles.circleSub}>Cars Cleaned</Text>
+              </View>
             </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <Stat label="Completed" value={String(completed)} />
+            <Stat label="Remaining" value={String(remaining)} />
+            <Stat label="Target" value={String(DAILY_TARGET)} />
           </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <Stat label="Completed" value={String(completed)} />
-          <Stat label="Remaining" value={String(remaining)} />
-          <Stat label="Target" value={String(DAILY_TARGET)} />
-        </View>
-      </View>
+        {/* DAILY TARGET */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Daily Task Target</Text>
+          <Text style={styles.subText}>Clean {remaining} more cars to reach today’s target</Text>
 
-      {/* DAILY TARGET */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Daily Task Target</Text>
-        <Text style={styles.subText}>Clean {remaining} more cars to reach today’s target</Text>
+          <View style={styles.progressBar}>
+            <LinearGradient
+              colors={['#3DA2CE', '#8ED6F8']}
+              style={[styles.progressFill, { width: `${progressPercent}%` }]}
+            />
+          </View>
 
-        <View style={styles.progressBar}>
-          <LinearGradient
-            colors={['#3DA2CE', '#8ED6F8']}
-            style={[styles.progressFill, { width: `${progressPercent}%` }]}
-          />
+          <Text style={styles.targetText}>Target: {DAILY_TARGET} cars</Text>
         </View>
 
-        <Text style={styles.targetText}>Target: {DAILY_TARGET} cars</Text>
-      </View>
-
-      {/* PENALTY (OPTIONAL UI) */}
-      <View style={[styles.card, styles.penaltyCard]}>
-        <View style={styles.row}>
-          <AlertCircle size={18} color="#EF4444" />
-          <Text style={styles.penaltyTitle}>Late Arrival Penalty</Text>
-        </View>
-        <Text style={styles.penaltySub}>Applied today at 9:15 AM</Text>
-        <Text style={styles.penaltyAmount}>-1 Task Count</Text>
-      </View>
-
-      {/* TODAY TASKS */}
-      <View style={styles.card}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.sectionTitle}>Today’s Tasks</Text>
-          <Text style={styles.date}>{new Date().toDateString()}</Text>
+        {/* PENALTY (OPTIONAL UI) */}
+        <View style={[styles.card, styles.penaltyCard]}>
+          <View style={styles.row}>
+            <AlertCircle size={18} color="#EF4444" />
+            <Text style={styles.penaltyTitle}>Late Arrival Penalty</Text>
+          </View>
+          <Text style={styles.penaltySub}>Applied today at 9:15 AM</Text>
+          <Text style={styles.penaltyAmount}>-1 Task Count</Text>
         </View>
 
-        {tasks.map((task) => (
-          <TaskItem
-            key={task.id}
-            worker={task.worker_name}
-            car={task.car_type}
-            time={task.completed_at}
-          />
-        ))}
-      </View>
-    </ScrollView>
+        {/* TODAY TASKS */}
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <Text style={styles.sectionTitle}>Today’s Tasks</Text>
+            <Text style={styles.date}>{new Date().toDateString()}</Text>
+          </View>
+
+          {tasks.length > 0 ? (
+            tasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                worker={task.worker_name}
+                car={task.car_type}
+                time={task.completed_at}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No tasks completed today</Text>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -297,6 +304,13 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 11,
     color: '#6B7280',
+  },
+
+  emptyText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    marginTop: 20,
+    fontSize: 14,
   },
 
   taskItem: {
