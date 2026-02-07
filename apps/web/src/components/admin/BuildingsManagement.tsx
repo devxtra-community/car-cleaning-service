@@ -1,77 +1,54 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/commonAPI';
-import {
-  BuildingOfficeIcon,
-  PencilIcon,
-  TrashIcon,
-  PlusIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+
+interface Floor {
+  id: string;
+  floor_number: number;
+  floor_name: string;
+}
 
 interface Building {
   id: string;
-  building_id: string;
   building_name: string;
   location?: string;
+  floors: Floor[];
+  created_at?: string;
 }
 
 const BuildingsManagement = () => {
-  const navigate = useNavigate();
+  console.log('🏢 BuildingsManagement component rendering');
+  
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    building_id: '',
-    building_name: '',
-    location: '',
-  });
-
-  const loadBuildings = React.useCallback(async () => {
-    try {
-      const res = await api.get('/api/buildings');
-      setBuildings(res.data.data);
-    } catch (error) {
-      console.log('Failed to load buildings', error);
-    }
-  }, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
-    Promise.resolve().then(() => loadBuildings());
-  }, [loadBuildings]);
+    console.log('🏢 BuildingsManagement useEffect triggered');
+    loadBuildings();
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loadBuildings = async () => {
+    console.log('🏢 Loading buildings...');
     try {
-      if (editingId) {
-        await api.put(`/api/buildings/${editingId}`, form);
-      } else {
-        await api.post('/api/buildings', form);
-      }
-      setForm({ building_id: '', building_name: '', location: '' });
-      setEditingId(null);
-      loadBuildings();
-    } catch (error) {
-      console.error('Failed to save building:', error);
-      alert('Failed to save building');
+      setError(null);
+      const response = await api.get('/api/buildings');
+      console.log('🏢 Buildings loaded:', response.data);
+      setBuildings(response.data?.data || []);
+    } catch (error: unknown) {
+      console.error('❌ Failed to load buildings:', error);
+      setError((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load buildings. Please check the console for details.');
+    } finally {
+      setLoading(false);
+      console.log('🏢 Loading complete');
     }
-  };
-
-  const handleEdit = (building: Building) => {
-    setEditingId(building.id);
-    setForm({
-      building_id: building.building_id,
-      building_name: building.building_name,
-      location: building.location || '',
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this building?')) return;
+    if (!window.confirm('Are you sure you want to delete this building? This will also delete all associated floors.')) return;
+    
     try {
       await api.delete(`/api/buildings/${id}`);
       loadBuildings();
@@ -81,147 +58,172 @@ const BuildingsManagement = () => {
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setForm({ building_id: '', building_name: '', location: '' });
-  };
+  // Calculate stats
+  const totalFloors = buildings.reduce((sum, b) => sum + (b.floors?.length || 0), 0);
+  const avgFloorsPerBuilding = buildings.length > 0 
+    ? Math.round(totalFloors / buildings.length) 
+    : 0;
+
+  // Pagination
+  const totalPages = Math.ceil(buildings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBuildings = buildings.slice(startIndex, endIndex);
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <BuildingOfficeIcon className="w-8 h-8 text-blue-600" />
-            Buildings Management
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">Manage all your buildings and locations</p>
-        </div>
-        <div className="text-sm text-gray-600">
-          Total Buildings: <span className="font-semibold text-gray-900">{buildings.length}</span>
+    <div className="p-6 min-h-screen">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">Buildings Management</h1>
+        <p className="text-sm text-gray-500">Overview and System Management</p>
+      </div>
+
+      {/* Top Stats Banner */}
+      <div className="bg-gradient-to-r from-purple-500 to-purple-400 rounded-xl p-6 text-white mb-6">
+        <div className="grid grid-cols-3 text-center">
+          <div>
+            <p className="text-sm opacity-90">TOTAL BUILDINGS</p>
+            <p className="text-2xl font-semibold mt-1">{buildings.length}</p>
+          </div>
+          <div>
+            <p className="text-sm opacity-90">TOTAL FLOORS</p>
+            <p className="text-2xl font-semibold mt-1">{totalFloors}</p>
+          </div>
+          <div>
+            <p className="text-sm opacity-90">AVG FLOORS/BUILDING</p>
+            <p className="text-2xl font-semibold mt-1">{avgFloorsPerBuilding}</p>
+          </div>
         </div>
       </div>
 
-      {/* Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-8"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            {editingId ? (
+      {/* Add Button */}
+      <Link to="/admin/buildings/add">
+        <div className="flex justify-end mb-4">
+          <button className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-1.5 rounded text-sm cursor-pointer transition">
+            + Add Building
+          </button>
+        </div>
+      </Link>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-gray-500">Loading buildings...</div>
+        ) : error ? (
+          <div className="p-12 text-center">
+            <div className="text-red-500 font-semibold mb-2">Error Loading Buildings</div>
+            <div className="text-gray-600 text-sm mb-4">{error}</div>
+            <button 
+              onClick={loadBuildings}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        ) : buildings.length === 0 ? (
+          <div className="p-12 text-center text-gray-500">
+            No buildings found. Add your first building.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-500">
+              <tr>
+                <th className="text-left p-3">BUILDING NAME</th>
+                <th className="text-left">LOCATION</th>
+                <th className="text-center">FLOORS</th>
+                <th className="text-center">ACTIONS</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {currentBuildings.map((building) => (
+                <tr key={building.id} className="border-t hover:bg-gray-50">
+                  <td className="p-3 flex items-center gap-3">
+                    🏢 {building.building_name}
+                  </td>
+                  <td className="text-left">{building.location || 'N/A'}</td>
+                  <td className="text-center">
+                    <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-600">
+                      {building.floors?.length || 0} floors
+                    </span>
+                  </td>
+                  <td className="text-center">
+                    <Link 
+                      to={`/admin/buildings/floors?building=${building.id}`}
+                      className="inline-block mr-2 text-lg cursor-pointer hover:scale-110 transition"
+                      title="Manage Floors"
+                    >
+                      📋
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(building.id)}
+                      className="text-lg cursor-pointer hover:scale-110 transition"
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {buildings.length > itemsPerPage && (
+        <div className="flex justify-between items-center mt-6 text-sm">
+          <button 
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="border px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            ← Previous
+          </button>
+
+          <div className="flex gap-2">
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-2 rounded cursor-pointer ${
+                    currentPage === pageNum 
+                      ? 'bg-purple-100 text-purple-600 font-semibold' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {totalPages > 5 && (
               <>
-                <PencilIcon className="w-5 h-5 text-blue-600" />
-                Update Building
-              </>
-            ) : (
-              <>
-                <PlusIcon className="w-5 h-5 text-blue-600" />
-                Add New Building
+                <span>…</span>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  className={`px-2 rounded cursor-pointer ${
+                    currentPage === totalPages 
+                      ? 'bg-purple-100 text-purple-600 font-semibold' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  {totalPages}
+                </button>
               </>
             )}
-          </h2>
-          {editingId && (
-            <button
-              type="button"
-              onClick={handleCancelEdit}
-              className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-            >
-              <XMarkIcon className="w-4 h-4" />
-              Cancel
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Building ID *</label>
-            <input
-              name="building_id"
-              value={form.building_id}
-              onChange={handleChange}
-              required
-              placeholder="e.g., BLD-001, TOWER-A"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Building Name *</label>
-            <input
-              name="building_name"
-              value={form.building_name}
-              onChange={handleChange}
-              required
-              placeholder="e.g., Main Tower, Block A"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-            <input
-              name="location"
-              value={form.location}
-              onChange={handleChange}
-              placeholder="Dubai Marina, Downtown, etc."
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-3 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-        >
-          {editingId ? 'Update Building' : 'Add Building'}
-        </button>
-      </form>
-
-      {/* List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {buildings.map((building) => (
-          <div
-            key={building.id}
-            className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
+          <button 
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="border px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4">
-              <h3 className="text-white font-semibold text-lg">{building.building_name}</h3>
-              <p className="text-blue-100 text-sm">ID: {building.building_id}</p>
-              {building.location && <p className="text-blue-100 text-sm">{building.location}</p>}
-            </div>
-
-            <div className="p-6">
-              <div className="space-y-2 mb-4">{/* No additional details to show */}</div>
-
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(building)}
-                    className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(building.id)}
-                    className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                    Delete
-                  </button>
-                </div>
-                <button
-                  onClick={() => navigate(`/admin/floors?buildingId=${building.id}`)}
-                  className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors border flex items-center justify-center gap-2"
-                >
-                  <BuildingOfficeIcon className="w-4 h-4" />
-                  Manage Floors
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 };

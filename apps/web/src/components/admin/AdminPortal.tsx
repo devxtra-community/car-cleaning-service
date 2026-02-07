@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import appLogo from '../../assets/appLogo.png';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { api, getAccessToken, setAccessToken } from '../../services/commonAPI';
+import { useAuth } from '../../context/AuthContext';
 
 import {
   HomeIcon,
@@ -15,38 +15,24 @@ import {
 
 const AdminPortal = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, loading, logout } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // If we already have a token in memory, we're good
-      if (getAccessToken()) {
-        return;
-      }
-
-      // No token in memory - try to refresh from the cookie
-      try {
-        console.log('AdminPortal: No token in memory, attempting refresh...');
-        const { data } = await api.post('/api/auth/refresh');
-        if (data.accessToken) {
-          setAccessToken(data.accessToken);
-          console.log('AdminPortal: Token refreshed successfully');
-          return;
-        }
-      } catch (error) {
-        console.log('AdminPortal: Refresh failed, redirecting to login', error);
-      }
-
-      // If we get here, both memory token and refresh failed
+    if (!loading && !isAuthenticated) {
+      console.log('AdminPortal: Not authenticated, redirecting to login');
       navigate('/Login');
-    };
+    }
+  }, [isAuthenticated, loading, navigate]);
 
-    checkAuth();
-  }, [navigate]);
-
-  const handleLogout = () => {
-    setAccessToken(null);
+  const handleLogout = async () => {
+    await logout();
     navigate('/Login');
   };
+
+  // Show nothing while loading to prevent flicker
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen ">
