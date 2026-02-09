@@ -1,23 +1,50 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
+import api from '@/src/api/api';
+
+interface Worker {
+  id: string;
+  cleaner_id: string;
+  full_name: string;
+}
 
 export default function SelectWorkerScreen() {
   const [search, setSearch] = useState('');
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const workers = [
-    { id: '1', name: 'Ramesh' },
-    { id: '2', name: 'Mahesh' },
-    { id: '3', name: 'Anil' },
-    { id: '4', name: 'Suresh' },
-  ];
+  useEffect(() => {
+    fetchWorkers();
+  }, []);
+
+  const fetchWorkers = async () => {
+    try {
+      const res = await api.get('/api/supervisor/workers');
+      if (res.data.success) {
+        setWorkers(res.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch workers', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredWorkers = useMemo(
-    () => workers.filter((w) => w.name.toLowerCase().includes(search.toLowerCase())),
-    [search]
+    () => workers.filter((w) => w.full_name.toLowerCase().includes(search.toLowerCase())),
+    [search, workers]
   );
 
   return (
@@ -36,19 +63,31 @@ export default function SelectWorkerScreen() {
           />
         </View>
 
-        {/* WORKER LIST */}
-        {filteredWorkers.map((worker) => (
-          <Pressable
-            key={worker.id}
-            onPress={() => setSelectedWorker(worker.id)}
-            style={[styles.workerCard, selectedWorker === worker.id && styles.workerActive]}
-          >
-            <View style={styles.avatar}>
-              <User size={18} color="#3DA2CE" />
-            </View>
-            <Text style={styles.workerName}>{worker.name}</Text>
-          </Pressable>
-        ))}
+        {/* LOADING */}
+        {loading ? (
+          <ActivityIndicator size="large" color="#3DA2CE" style={{ marginTop: 20 }} />
+        ) : (
+          <>
+            {/* WORKER LIST */}
+            {filteredWorkers.map((worker) => (
+              <Pressable
+                key={worker.id}
+                onPress={() => setSelectedWorker(worker.cleaner_id)}
+                style={[
+                  styles.workerCard,
+                  selectedWorker === worker.cleaner_id && styles.workerActive,
+                ]}
+              >
+                <View style={styles.avatar}>
+                  <User size={18} color="#3DA2CE" />
+                </View>
+                <Text style={styles.workerName}>{worker.full_name}</Text>
+              </Pressable>
+            ))}
+
+            {filteredWorkers.length === 0 && <Text style={styles.emptyText}>No workers found</Text>}
+          </>
+        )}
 
         {/* CONTINUE */}
         <Pressable
@@ -77,6 +116,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
+    paddingBottom: 100,
   },
   title: {
     fontSize: 24,
@@ -136,5 +176,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#9CA3AF',
+    marginTop: 20,
   },
 });

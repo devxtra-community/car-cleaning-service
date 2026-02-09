@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IndianRupee, AlertCircle, FileText } from 'lucide-react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
+import api from '@/src/api/api';
 
 export default function PenaltyDetailsScreen() {
   const { workerId } = useLocalSearchParams();
@@ -10,12 +19,47 @@ export default function PenaltyDetailsScreen() {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!amount || !reason) {
+      Alert.alert('Error', 'Please enter amount and reason');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        worker_id: workerId,
+        amount: parseFloat(amount),
+        reason: note ? `${reason} - ${note}` : reason,
+      };
+
+      const res = await api.post('/api/supervisor/penalties', payload);
+
+      if (res.data.success) {
+        Alert.alert('Success', 'Penalty added successfully', [
+          { text: 'OK', onPress: () => router.navigate('/(tabs)') },
+        ]);
+      } else {
+        Alert.alert('Error', res.data.message || 'Failed to add penalty');
+      }
+    } catch (error: unknown) {
+      console.error('Add penalty error', error);
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage =
+        err.response?.data?.message || err.message || 'Failed to add penalty. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Add Penalty</Text>
-        <Text style={styles.subtitle}>Worker ID: {workerId}</Text>
+        <Text style={styles.subtitle}>Worker ID: {String(workerId).substring(0, 8)}...</Text>
 
         {/* AMOUNT */}
         <View style={styles.inputRow}>
@@ -53,8 +97,16 @@ export default function PenaltyDetailsScreen() {
         </View>
 
         {/* SUBMIT */}
-        <Pressable style={styles.submitButton}>
-          <Text style={styles.submitText}>Add Penalty</Text>
+        <Pressable
+          style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.submitText}>Add Penalty</Text>
+          )}
         </Pressable>
       </View>
     </SafeAreaView>
@@ -108,6 +160,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 80,
     fontSize: 14,
+    textAlignVertical: 'top',
   },
   submitButton: {
     backgroundColor: '#EF4444',

@@ -34,6 +34,7 @@ interface TaskInput {
   car_model: string;
   car_type: string;
   car_color: string;
+  car_location?: string | null;
   car_image_url: string | null;
   cleaner_id: string;
   task_amount: number;
@@ -49,11 +50,12 @@ export const createTaskService = async (data: TaskInput) => {
       car_model,
       car_type,
       car_color,
+      car_location,
       car_image_url,
       cleaner_id,
       task_amount
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     RETURNING *
     `,
     [
@@ -63,6 +65,7 @@ export const createTaskService = async (data: TaskInput) => {
       data.car_model,
       data.car_type,
       data.car_color,
+      data.car_location || null,
       data.car_image_url,
       data.cleaner_id,
       data.task_amount,

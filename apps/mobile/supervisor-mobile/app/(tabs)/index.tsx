@@ -1,11 +1,12 @@
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Pressable, ScrollView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, StatusBar, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { User, UserCog, Calendar, ClipboardList, AlertCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { fs } from '@/src/theme/scale';
+import api from '../../src/api/api';
 
 /* -------------------- ACTION CARD COMPONENT -------------------- */
 const ActionCard = ({
@@ -31,6 +32,27 @@ const ActionCard = ({
 
 /* -------------------- MAIN SCREEN -------------------- */
 export default function HomePage() {
+  const [user, setUser] = React.useState<{
+    full_name?: string;
+    role?: string;
+    profile_image?: string;
+  } | null>(null);
+
+  const fetchUserProfile = async () => {
+    try {
+      const res = await api.get('/api/users/me');
+      if (res.data.success) {
+        setUser(res.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile', error);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#5AB9E0" />
@@ -43,12 +65,24 @@ export default function HomePage() {
           >
             {/* PROFILE HEADER */}
             <View style={styles.profileSection}>
-              <View style={styles.profileIcon}>
-                <User size={26} color="#3DA2CE" />
+              <View
+                style={[
+                  styles.profileIcon,
+                  user?.profile_image && { padding: 0, overflow: 'hidden' },
+                ]}
+              >
+                {user?.profile_image ? (
+                  <Image
+                    source={{ uri: user.profile_image }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                ) : (
+                  <User size={26} color="#3DA2CE" />
+                )}
               </View>
               <View>
-                <Text style={styles.greeting}>Hi, Mahesh Babu</Text>
-                <Text style={styles.phoneNumber}>Supervisor</Text>
+                <Text style={styles.greeting}>Hi, {user?.full_name || 'Supervisor'}</Text>
+                <Text style={styles.phoneNumber}>{user?.role?.toUpperCase() || 'ROLE'}</Text>
               </View>
             </View>
 

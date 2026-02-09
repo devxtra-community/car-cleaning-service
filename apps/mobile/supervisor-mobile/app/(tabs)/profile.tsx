@@ -1,5 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable, Dimensions, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  Dimensions,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import api from '../../src/api/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Settings, HelpCircle, LogOut, CheckCircle } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +18,32 @@ import * as SecureStore from 'expo-secure-store';
 const { width } = Dimensions.get('window');
 
 export default function ProfileView() {
+  const [user, setUser] = React.useState<{
+    full_name?: string;
+    role?: string;
+    profile_image?: string;
+    building_name?: string;
+  } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const res = await api.get('/api/users/me');
+      if (res.data.success) {
+        setUser(res.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert('Logout', 'are You sure want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -24,14 +60,30 @@ export default function ProfileView() {
     ]);
   };
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#4FB3D9" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       {/* HEADER */}
       <LinearGradient colors={['#4FB3D9', '#EAF6FB']} style={styles.header}>
-        <Image source={{ uri: 'https://i.pravatar.cc/300?img=12' }} style={styles.avatar} />
+        <Image
+          source={{ uri: user?.profile_image || 'https://i.pravatar.cc/300?img=12' }}
+          style={styles.avatar}
+        />
 
-        <Text style={styles.name}>MUHD YASIR</Text>
-        <Text style={styles.role}>WORKER</Text>
+        <Text style={styles.name}>{user?.full_name || 'User'}</Text>
+        <Text style={styles.role}>{user?.role?.toUpperCase() || 'ROLE'}</Text>
+        {user?.building_name && (
+          <Text style={[styles.role, { marginTop: 4, fontWeight: '500' }]}>
+            {user.building_name}
+          </Text>
+        )}
       </LinearGradient>
 
       {/* MENU */}

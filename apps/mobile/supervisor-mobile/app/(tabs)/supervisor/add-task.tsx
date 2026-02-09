@@ -9,10 +9,12 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Car, X } from 'lucide-react-native';
+import { User, Car, X, Camera, ChevronDown, MapPin, ImageIcon } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import api from '@/src/api/api';
 
@@ -31,6 +33,8 @@ interface Worker {
   car_color?: string;
   task_amount?: string;
   task_started_at?: string;
+  car_image_url?: string;
+  car_location?: string;
 }
 
 export default function AddTasksScreen() {
@@ -52,11 +56,107 @@ export default function AddTasksScreen() {
     car_type: '',
     car_color: '',
     task_amount: '',
+    car_image_url: '',
+    car_location: '',
   });
+
+  const [carTypes, setCarTypes] = useState<{ id: string; type: string }[]>([]);
+  const [showTypePicker, setShowTypePicker] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     loadWorkers();
+    fetchCarTypes();
   }, []);
+
+  const fetchCarTypes = async () => {
+    try {
+      const res = await api.get('/api/vehicle');
+      setCarTypes(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch car types', err);
+    }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need gallery permissions to upload a car photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      handleImageUpload(result.assets[0].uri);
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need camera permissions to take a car photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      handleImageUpload(result.assets[0].uri);
+    }
+  };
+
+  const handleImageUpload = async (uri: string) => {
+    try {
+      setUploadingImage(true);
+
+      // 1. Get presigned URL
+      const presignRes = await api.post('/s3/presign', {
+        fileType: 'image/jpeg',
+        folder: 'tasks',
+      });
+      const { uploadUrl, fileUrl } = presignRes.data;
+
+      // 2. Upload to S3
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: blob,
+        headers: {
+          'Content-Type': 'image/jpeg',
+        },
+      });
+
+      if (!uploadRes.ok) throw new Error('Failed to upload image');
+
+      setFormData({ ...formData, car_image_url: fileUrl });
+      Alert.alert('Success', 'Car photo uploaded successfully');
+    } catch (error) {
+      console.error('Image upload error', error);
+      Alert.alert('Error', 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const showImageOptions = () => {
+    Alert.alert('Car Photo', 'Choose an option', [
+      { text: 'Take Photo', onPress: takePhoto },
+      { text: 'Choose from Gallery', onPress: pickImage },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const loadWorkers = async () => {
     try {
@@ -87,6 +187,8 @@ export default function AddTasksScreen() {
         car_type: worker.car_type || '',
         car_color: worker.car_color || '',
         task_amount: worker.task_amount?.toString() || '',
+        car_image_url: worker.car_image_url || '',
+        car_location: worker.car_location || '',
       });
     } else {
       setFormData({
@@ -97,6 +199,8 @@ export default function AddTasksScreen() {
         car_type: '',
         car_color: '',
         task_amount: '',
+        car_image_url: '',
+        car_location: '',
       });
     }
     setModalVisible(true);
@@ -295,12 +399,23 @@ export default function AddTasksScreen() {
               />
 
               <Text style={styles.inputLabel}>Car Type</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Sedan / SUV"
-                value={formData.car_type}
-                onChangeText={(text) => setFormData({ ...formData, car_type: text })}
-              />
+              <Pressable style={styles.dropdownTrigger} onPress={() => setShowTypePicker(true)}>
+                <Text style={[styles.dropdownValue, !formData.car_type && { color: '#9CA3AF' }]}>
+                  {formData.car_type || 'Select Car Type'}
+                </Text>
+                <ChevronDown size={20} color="#6B7280" />
+              </Pressable>
+
+              <Text style={styles.inputLabel}>Car Location (Optional)</Text>
+              <View style={styles.inputWithIcon}>
+                <MapPin size={18} color="#9CA3AF" style={styles.fieldIcon} />
+                <TextInput
+                  style={[styles.input, { marginBottom: 0, flex: 1, borderWidth: 0 }]}
+                  placeholder="Ex: Parking Level 2, Spot B12"
+                  value={formData.car_location}
+                  onChangeText={(text) => setFormData({ ...formData, car_location: text })}
+                />
+              </View>
 
               <Text style={styles.inputLabel}>Car Color</Text>
               <TextInput
@@ -309,6 +424,26 @@ export default function AddTasksScreen() {
                 value={formData.car_color}
                 onChangeText={(text) => setFormData({ ...formData, car_color: text })}
               />
+
+              <Text style={styles.inputLabel}>Car Photo</Text>
+              <Pressable style={styles.photoUploadButton} onPress={showImageOptions}>
+                {uploadingImage ? (
+                  <ActivityIndicator color="#3DA2CE" />
+                ) : formData.car_image_url ? (
+                  <View style={styles.photoPreviewContainer}>
+                    <Image source={{ uri: formData.car_image_url }} style={styles.photoPreview} />
+                    <View style={styles.photoOverlay}>
+                      <Camera size={20} color="#FFF" />
+                      <Text style={styles.photoOverlayText}>Change Photo</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <ImageIcon size={24} color="#3DA2CE" />
+                    <Text style={styles.photoUploadText}>Upload Car Photo</Text>
+                  </>
+                )}
+              </Pressable>
 
               <Text style={styles.inputLabel}>Task Amount (₹)</Text>
               <TextInput
@@ -337,6 +472,40 @@ export default function AddTasksScreen() {
             </Pressable>
           </View>
         </View>
+      </Modal>
+
+      {/* CAR TYPE PICKER MODAL */}
+      <Modal
+        visible={showTypePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTypePicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowTypePicker(false)}>
+          <View style={styles.pickerContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Car Type</Text>
+              <Pressable onPress={() => setShowTypePicker(false)}>
+                <X size={20} color="#6B7280" />
+              </Pressable>
+            </View>
+            <ScrollView>
+              {carTypes.map((type) => (
+                <Pressable
+                  key={type.id}
+                  style={styles.pickerItem}
+                  onPress={() => {
+                    setFormData({ ...formData, car_type: type.type });
+                    setShowTypePicker(false);
+                  }}
+                >
+                  <Text style={styles.pickerItemText}>{type.type}</Text>
+                  {formData.car_type === type.type && <View style={styles.selectedDot} />}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -586,5 +755,116 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
     fontSize: 16,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  dropdownValue: {
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  fieldIcon: {
+    marginRight: 10,
+  },
+  photoUploadButton: {
+    height: 120,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  photoUploadText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#3DA2CE',
+    fontWeight: '600',
+  },
+  photoPreviewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 6,
+  },
+  photoOverlayText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pickerContent: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 20,
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '60%',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9FAFB',
+  },
+  pickerItemText: {
+    fontSize: 15,
+    color: '#4B5563',
+  },
+  selectedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3DA2CE',
   },
 });
