@@ -11,7 +11,10 @@ export const getSupervisorWorkers = async (req: AuthRequest, res: Response) => {
     }
 
     const supervisorId = req.user.userId;
+    console.log('getSupervisorWorkers: Fetching workers for supervisorId:', supervisorId);
+
     const workers = await getSupervisorWorkersService(supervisorId);
+    console.log(`getSupervisorWorkers: Found ${workers.length} workers`);
 
     return res.json({ success: true, data: workers });
   } catch (err) {
@@ -67,9 +70,10 @@ export const getSupervisorTasks = async (req: AuthRequest, res: Response) => {
         t.completed_at,
         u.full_name AS worker_name
       FROM tasks t
-      JOIN cleaners c ON c.user_id = t.cleaner_id
+      JOIN cleaners c ON c.id = t.cleaner_id
       JOIN users u ON u.id = t.cleaner_id
-      WHERE c.supervisor_id = $1
+      JOIN supervisors s ON c.supervisor_id = s.id
+      WHERE s.user_id = $1
         AND t.status = 'completed'
         AND ${dateFilter}
       ORDER BY t.completed_at DESC
@@ -108,9 +112,10 @@ export const getLiveWorkers = async (req: AuthRequest, res: Response) => {
         u.email,
         t.created_at AS started_at
       FROM tasks t
-      JOIN cleaners c ON c.user_id = t.cleaner_id
+      JOIN cleaners c ON c.id = t.cleaner_id
       JOIN users u ON u.id = t.cleaner_id
-      WHERE c.supervisor_id = $1
+      JOIN supervisors s ON c.supervisor_id = s.id
+      WHERE s.user_id = $1
         AND t.status != 'completed'
       ORDER BY t.created_at DESC
       `,
@@ -148,18 +153,12 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
       car_type,
       car_color,
       task_amount,
+      car_image_url,
+      car_location,
     } = req.body;
 
     // Validate required fields
-    if (
-      !worker_id ||
-      !owner_name ||
-      !owner_phone ||
-      !car_number ||
-      !car_model ||
-      !car_type ||
-      !car_color
-    ) {
+    if (!worker_id || !owner_name || !owner_phone || !car_number || !car_model || !car_type) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
@@ -183,11 +182,13 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
         car_model,
         car_type,
         car_color,
+        car_image_url,
+        car_location,
         cleaner_id,
         task_amount,
         status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
       RETURNING *
       `,
       [
@@ -196,7 +197,9 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
         car_number,
         car_model,
         car_type,
-        car_color,
+        car_color || null,
+        car_image_url || null,
+        car_location || null,
         worker_id,
         task_amount ? parseFloat(task_amount) : 0,
       ]
@@ -226,8 +229,17 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    const { owner_name, owner_phone, car_number, car_model, car_type, car_color, task_amount } =
-      req.body;
+    const {
+      owner_name,
+      owner_phone,
+      car_number,
+      car_model,
+      car_type,
+      car_color,
+      task_amount,
+      car_image_url,
+      car_location,
+    } = req.body;
 
     // Verify task belongs to a worker managed by this supervisor
     const taskCheck = await pool.query(
@@ -255,8 +267,10 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         car_model = COALESCE($4, car_model),
         car_type = COALESCE($5, car_type),
         car_color = COALESCE($6, car_color),
-        task_amount = COALESCE($7, task_amount)
-      WHERE id = $8
+        task_amount = COALESCE($7, task_amount),
+        car_image_url = COALESCE($8, car_image_url),
+        car_location = COALESCE($9, car_location)
+      WHERE id = $10
       RETURNING *
       `,
       [
@@ -267,6 +281,8 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         car_type || null,
         car_color || null,
         task_amount ? parseFloat(task_amount) : null,
+        car_image_url || null,
+        car_location || null,
         taskId,
       ]
     );
@@ -282,5 +298,61 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       success: false,
       message: 'Failed to update task',
     });
+  }
+};
+
+/* ================= UPDATE SUPERVISOR PROFILE ================= */
+export const updateSupervisorProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { full_name, profile_image } = req.body;
+
+    // Only full_name and profile_image can be updated
+    if (!full_name && !profile_image) {
+      return res.status(400).json({ success: false, message: 'No fields to update' });
+    }
+
+    const updates: string[] = [];
+    const values: (string | number | boolean | null)[] = [];
+    let paramIndex = 1;
+
+    if (full_name) {
+      updates.push(`full_name = $${paramIndex++}`);
+      values.push(full_name);
+    }
+
+    if (profile_image) {
+      updates.push(`profile_image = $${paramIndex++}`);
+      values.push(profile_image);
+    }
+
+    values.push(userId);
+
+    const query = `
+      UPDATE users 
+      SET ${updates.join(', ')}, updated_at = NOW()
+      WHERE id = $${paramIndex}
+      RETURNING id, email, full_name, profile_image, role
+    `;
+
+    const result = await pool.query(query, values);
+
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error('updateSupervisorProfile error', err);
+    return res.status(500).json({ success: false, message: 'Failed to update profile' });
   }
 };

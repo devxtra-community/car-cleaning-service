@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { Camera, ArrowLeft, Save, Mail, User, Phone, MapPin } from 'lucide-react
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path, Circle } from 'react-native-svg';
+import api from '@/src/api/api';
 
 // Topographic Pattern
 const TopoPattern = () => (
@@ -45,11 +46,37 @@ const TopoPattern = () => (
 
 export default function MyAccountScreen() {
   const [profileImage, setProfileImage] = useState('https://i.pravatar.cc/300?img=12');
-  const [name, setName] = useState('MUHD YASIR');
-  const [email, setEmail] = useState('yasir@email.com');
-  const [phone, setPhone] = useState('+1 234 567 8900');
-  const [address, setAddress] = useState('123 Main Street, City');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const res = await api.get('/api/users/me');
+      if (res.data.success) {
+        const user = res.data.data;
+        setName(user.full_name || '');
+        setEmail(user.email || '');
+        setPhone(user.phone || '');
+        setAddress(user.address || '');
+        if (user.profile_image) {
+          setProfileImage(user.profile_image);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const pickImage = async () => {
     // Request permissions
@@ -106,21 +133,73 @@ export default function MyAccountScreen() {
     try {
       setLoading(true);
 
-      // TODO: Add your API call here to save the profile data
-      // Example:
-      // await api.put('/api/profile', { name, email, phone, address, profileImage });
+      console.log('Sending update to API:', { full_name: name, profile_image: profileImage });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      let profileImageUrl = profileImage;
 
-      Alert.alert('Success', 'Profile updated successfully!');
-      router.back();
+      // If image is a local URI (newly selected), upload it to S3
+      if (profileImage && !profileImage.startsWith('http')) {
+        console.log('Uploading image to S3...');
+
+        // 1. Get presigned URL
+        const presignRes = await api.post('/s3/presign', {
+          fileType: 'image/jpeg',
+          folder: 'profiles',
+        });
+        const { uploadUrl, fileUrl } = presignRes.data;
+
+        // 2. Upload to S3
+        const response = await fetch(profileImage);
+        const blob = await response.blob();
+
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: blob,
+          headers: {
+            'Content-Type': 'image/jpeg',
+          },
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error('Failed to upload image to S3');
+        }
+
+        profileImageUrl = fileUrl;
+      }
+
+      const res = await api.patch('/api/supervisor/profile', {
+        full_name: name,
+        profile_image: profileImageUrl,
+      });
+
+      if (res.data.success) {
+        Alert.alert('Success', 'Profile updated successfully!');
+        router.back();
+      } else {
+        Alert.alert('Error', res.data.message || 'Failed to update profile');
+      }
     } catch (error) {
+      console.error('Update profile error', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#F5F7FA',
+        }}
+      >
+        <ActivityIndicator size="large" color="#4FB3D9" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -169,17 +248,20 @@ export default function MyAccountScreen() {
 
           {/* EMAIL */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              Email Address{' '}
+              <Text style={{ color: '#9CA3AF', fontSize: 11 }}>(cannot be changed)</Text>
+            </Text>
+            <View style={[styles.inputContainer, styles.inputDisabled]}>
               <Mail size={18} color="#A0A0A0" style={styles.inputIcon} />
               <TextInput
                 value={email}
-                onChangeText={setEmail}
                 placeholder="Enter your email"
                 placeholderTextColor="#B0B0B0"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={styles.input}
+                editable={false}
+                style={[styles.input, styles.inputTextDisabled]}
               />
             </View>
           </View>
@@ -372,6 +454,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2C2C2C',
     paddingVertical: 12,
+  },
+
+  inputDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+
+  inputTextDisabled: {
+    color: '#9CA3AF',
   },
 
   buttonContainer: {

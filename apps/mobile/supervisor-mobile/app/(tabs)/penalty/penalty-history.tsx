@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertCircle, User } from 'lucide-react-native';
 import { fs } from '@/src/theme/scale';
+import api from '@/src/api/api';
 
 type TabType = 'daily' | 'weekly' | 'monthly';
 
@@ -13,25 +14,29 @@ interface PenaltyItem {
   totalAmount: number;
 }
 
-const DATA: Record<TabType, PenaltyItem[]> = {
-  daily: [
-    { id: '1', workerName: 'Ramesh', count: 1, totalAmount: 100 },
-    { id: '2', workerName: 'Anil', count: 2, totalAmount: 200 },
-  ],
-  weekly: [
-    { id: '1', workerName: 'Ramesh', count: 4, totalAmount: 400 },
-    { id: '2', workerName: 'Mahesh', count: 3, totalAmount: 300 },
-    { id: '3', workerName: 'Anil', count: 5, totalAmount: 500 },
-  ],
-  monthly: [
-    { id: '1', workerName: 'Ramesh', count: 12, totalAmount: 1200 },
-    { id: '2', workerName: 'Mahesh', count: 9, totalAmount: 900 },
-    { id: '3', workerName: 'Anil', count: 15, totalAmount: 1500 },
-  ],
-};
-
 export default function PenaltyHistory() {
   const [activeTab, setActiveTab] = useState<TabType>('daily');
+  const [penalties, setPenalties] = useState<PenaltyItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchPenalties = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/supervisor/penalties?period=${activeTab}`);
+
+      if (response.data.success) {
+        setPenalties(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch penalties', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchPenalties();
+  }, [fetchPenalties]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -57,30 +62,36 @@ export default function PenaltyHistory() {
       </View>
 
       {/* LIST */}
-      <FlatList
-        data={DATA[activeTab]}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>No penalties found</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.iconBox}>
-              <AlertCircle size={18} color="#EF4444" />
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <View style={styles.workerRow}>
-                <User size={14} color="#6B7280" />
-                <Text style={styles.workerName}>{item.workerName}</Text>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3DA2CE" />
+        </View>
+      ) : (
+        <FlatList
+          data={penalties}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
+          ListEmptyComponent={<Text style={styles.emptyText}>No penalties found</Text>}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.iconBox}>
+                <AlertCircle size={18} color="#EF4444" />
               </View>
 
-              <Text style={styles.penaltyCount}>{item.count} penalties</Text>
-            </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.workerRow}>
+                  <User size={14} color="#6B7280" />
+                  <Text style={styles.workerName}>{item.workerName}</Text>
+                </View>
 
-            <Text style={styles.amount}>₹{item.totalAmount}</Text>
-          </View>
-        )}
-      />
+                <Text style={styles.penaltyCount}>{item.count} penalties</Text>
+              </View>
+
+              <Text style={styles.amount}>₹{item.totalAmount}</Text>
+            </View>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }

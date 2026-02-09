@@ -8,7 +8,9 @@ import {
   getLiveWorkers,
   assignTaskToWorker,
   updateTask,
+  updateSupervisorProfile,
 } from './supervisor_controller';
+import { addPenalty, getSupervisorPenalties } from '../penalties/penalties_controller';
 
 const router = express.Router();
 
@@ -18,5 +20,13 @@ router.get('/report', protect, allowRoles('supervisor'), supervisorReport);
 router.get('/tasks', protect, allowRoles('supervisor'), getSupervisorTasks);
 router.post('/tasks', protect, allowRoles('supervisor'), assignTaskToWorker);
 router.patch('/tasks/:id', protect, allowRoles('supervisor'), updateTask);
+
+// Profile
+router.patch('/profile', protect, allowRoles('supervisor'), updateSupervisorProfile);
+console.log(' Supervisor profile route registered: PATCH /api/supervisor/profile');
+
+// Penalties
+router.post('/penalties', protect, allowRoles('supervisor'), addPenalty);
+router.get('/penalties', protect, allowRoles('supervisor'), getSupervisorPenalties);
 
 export default router;

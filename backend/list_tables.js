@@ -1,26 +1,26 @@
 const { Pool } = require('pg');
-const dotenv = require('dotenv');
-dotenv.config();
+require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
 });
 
-async function listTables() {
+async function listColumns() {
   try {
-    const res = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public';
+    const columns = await pool.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'penalties'
     `);
-    console.log('TABLES IN DB:');
-    res.rows.forEach((row) => console.log('- ' + row.table_name));
-    process.exit(0);
+    console.log('Penalties columns:');
+    columns.rows.forEach((col) => {
+      console.log(`- ${col.column_name} (${col.data_type})`);
+    });
   } catch (err) {
     console.error(err);
-    process.exit(1);
+  } finally {
+    await pool.end();
   }
 }
 
-listTables();
+listColumns();

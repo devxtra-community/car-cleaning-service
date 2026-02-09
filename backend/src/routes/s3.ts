@@ -7,10 +7,14 @@ const router = express.Router();
 const s3 = new AWS.S3({ region: process.env.AWS_REGION });
 
 router.post('/presign', protect, async (req, res) => {
-  const { fileType } = req.body;
+  const { fileType, folder = 'tasks' } = req.body;
 
-  const key = `tasks/${Date.now()}.jpg`;
-  console.log('PRESIGN HIT');
+  // Validate allowed folders
+  const allowedFolders = ['tasks', 'profiles'];
+  const targetFolder = allowedFolders.includes(folder) ? folder : 'tasks';
+
+  const key = `${targetFolder}/${Date.now()}.jpg`;
+  console.log(`PRESIGN HIT: ${key}`);
 
   const params = {
     Bucket: process.env.AWS_S3_BUCKET_NAME!,
