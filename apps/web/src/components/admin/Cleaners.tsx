@@ -141,7 +141,6 @@ const Cleaners = () => {
           </div>
         </div>
 
-        {/* Pagination - For visual consistency, kept static as per original */}
         <div className="flex justify-between items-center mt-6 text-sm">
           <button className="border px-3 py-1.5 rounded">← Previous</button>
 

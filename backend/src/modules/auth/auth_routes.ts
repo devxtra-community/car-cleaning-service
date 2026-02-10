@@ -1,36 +1,36 @@
 import { Router } from 'express';
-import { registerUser, login, logout, getSupervisors, getCleaners, getCleanersBySupervisor } from './auth_controller';
-import { protect } from '../../middlewares/authMiddleware';
-import { allowRoles } from '../../middlewares/roleMiddleware';
-import { uploadDocumentToS3 } from '../../middlewares/uploadMiddleware';
+import {
+  registerUser,
+  login,
+  logout,
+  getSupervisors,
+  getCleaners,
+  getCleanersBySupervisor,
+} from './auth_controller';
+import { uploadDocumentToS3, handleMulterError } from '../../middlewares/uploadMiddleware';
+import { protect } from 'src/middlewares/authMiddleware';
+import { allowRoles } from 'src/middlewares/roleMiddleware';
 import { refresh } from './refresh';
 
 const router = Router();
 
-/**
- * ONLY super_admin & admin can register users
- */
 router.post(
   '/register',
   uploadDocumentToS3,
-  protect,
+  handleMulterError,
   allowRoles('super_admin', 'admin'),
   registerUser
 );
 
 router.post('/login', login);
 
+router.post('/logout', protect, logout);
+
+router.get('/supervisors', protect, allowRoles('admin'), getSupervisors);
+
+router.get('/cleaners', protect, allowRoles('admin'), getCleaners);
 router.post('/refresh', refresh);
 
-router.post('/logout', logout);
-
-// Get all supervisors (for cleaner assignment)
-router.get('/supervisors', protect, getSupervisors);
-
-// Get all cleaners
-router.get('/cleaners', protect, getCleaners);
-
-// Get cleaners by supervisor ID
-router.get('/supervisors/:supervisorId/cleaners', protect, getCleanersBySupervisor);
+router.get('/supervisor/:supervisorId', protect, allowRoles('admin'), getCleanersBySupervisor);
 
 export default router;
