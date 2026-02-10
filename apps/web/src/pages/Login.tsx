@@ -15,22 +15,14 @@ const Login = () => {
   const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
-    const { email, password } = loginInput;
-    if (!email || !password) {
-      alert('Please enter both email and password');
-      return;
-    }
-
     try {
-      await login(email, password);
-      
-      console.log('✅ Login successful via AuthContext');
-      alert('Login Successful');
+      const user = await login(loginInput.email, loginInput.password);
 
-      // Optional: preload admin dashboard
-      import('../components/admin/AdminDashboard');
-
-      navigate('/admin/dashboard');
+      if (user.role === 'accountant') {
+        navigate('/accountant/dashboard');
+      } else {
+        navigate('/admin/dashboard');
+      }
     } catch (error) {
       console.error('Login failed', error);
       alert('Login failed');

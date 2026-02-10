@@ -19,7 +19,7 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
       name: worker.rows[0].full_name,
       empId: worker.rows[0].id,
       jobsDone: Number(jobsDone.rows[0].count),
-      totalRevenue: wallet.rows[0]?.balance || 0, // ⭐ incentive earnings
+      totalRevenue: wallet.rows[0]?.balance || 0,
     });
   } catch {
     res.status(500).json({ message: 'Dashboard failed' });

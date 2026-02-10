@@ -161,7 +161,7 @@ const AddCleaners = () => {
         },
       });
 
-      console.log('✅ Cleaner created successfully!', response.data);
+      console.log('Cleaner created successfully!', response.data);
       setSuccess(true);
 
       // Reset form
@@ -186,7 +186,7 @@ const AddCleaners = () => {
         message?: string;
         response?: { data?: { message?: string }; status?: number };
       };
-      console.error('❌ ERROR OCCURRED ❌');
+      console.error(' ERROR OCCURRED ');
       console.error('Error object:', error);
       console.error('Error message:', err.message);
       console.error('Error response:', err.response);
@@ -209,7 +209,7 @@ const AddCleaners = () => {
 
       {success && (
         <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-          ✅ Cleaner created successfully!
+          Cleaner created successfully!
         </div>
       )}
 
