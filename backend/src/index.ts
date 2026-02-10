@@ -17,6 +17,8 @@ import workersRoutes from '../src/modules/Worker/workers_routes';
 import supervisorRoutes from '../src/modules/supervisor/supervisor_routes';
 import buildingsRoutes from './modules/buildings/buildings_routes';
 import userRoutes from './modules/users/user_Routes';
+import incentiveRoutes from './modules/incentives/incentives_routes';
+import analyticRoutes from './modules/analytics/analytic_routes';
 
 import s3Routes from './routes/s3';
 const app = express();
@@ -68,6 +70,9 @@ app.use('/api/users', userRoutes);
 
 app.use('/tasks', taskRoutes);
 app.use('/salary', salaryRoute);
+app.use('/api/incentives', incentiveRoutes);
+app.use('/analytics', analyticRoutes);
+
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
   console.log('Backend running on port 3033');

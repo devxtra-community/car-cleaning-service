@@ -16,13 +16,10 @@ const AdminDashboard = () => {
         <Stat title="SUPERVISOR LIVE STATUS" value="22" />
       </div>
 
-      {/* Content Grid */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Operational Dashboard */}
         <div className="bg-white rounded-xl p-5">
           <h2 className="font-semibold mb-4">Operational Dashboard</h2>
 
-          {/* Attendance Summary */}
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2">
               <span className="font-medium text-gray-600">Attendency Summary</span>
@@ -42,14 +39,12 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Status Cards */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <MiniStat value="23" label="ACTIVE" bg="bg-blue-50" />
             <MiniStat value="30" label="COMPLETED" bg="bg-green-50" />
             <MiniStat value="7" label="PENDING" bg="bg-orange-50" />
           </div>
 
-          {/* Building Performance */}
           <div>
             <p className="font-medium mb-4">Building-Wise Performance</p>
 
@@ -59,7 +54,6 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Performance Insights */}
         <div className="bg-white rounded-xl p-5">
           <div className="flex justify-between mb-4">
             <h2 className="font-semibold">Performance Insights</h2>
@@ -80,18 +74,13 @@ const AdminDashboard = () => {
       </div>
 
       <div className="p-6min-h-screen">
-        {/* Header */}
-
-        {/* Revenue Visibility */}
         <div className="bg-linear-to-r from-blue-500 to-blue-400 rounded-xl p-6 text-white mb-6">
           <p className="text-sm opacity-90">Revenue Visibility</p>
           <p className="text-2xl font-semibold mt-1">5987.37</p>
           <p className="text-xs mt-1 text-green-200">+13.25% vs Last Month</p>
         </div>
 
-        {/* Bottom Section */}
         <div className="grid grid-cols-3 gap-6">
-          {/* Chart */}
           <div className="col-span-2 bg-white rounded-xl p-5">
             <div className="flex justify-between items-center mb-4">
               <p className="font-medium">Today</p>
@@ -103,12 +92,10 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Chart Placeholder */}
             <div className="h-60 bg-red-50 rounded-lg flex items-center justify-center text-gray-400 text-sm">
               Chart Placeholder
             </div>
 
-            {/* Legend */}
             <div className="flex gap-6 mt-4 text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-orange-500 rounded-full" />
@@ -121,7 +108,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Customer Review Summary */}
           <div className="bg-white rounded-xl p-5">
             <h3 className="font-semibold mb-4">Customer Review Summary</h3>
 
@@ -190,8 +176,6 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
-/* Components */
 
 function Stat({ title, value }: { title: string; value: string }) {
   return (

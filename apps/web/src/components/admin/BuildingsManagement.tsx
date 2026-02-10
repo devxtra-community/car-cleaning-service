@@ -17,8 +17,8 @@ interface Building {
 }
 
 const BuildingsManagement = () => {
-  console.log('🏢 BuildingsManagement component rendering');
-  
+  console.log(' BuildingsManagement component rendering');
+
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,29 +26,37 @@ const BuildingsManagement = () => {
   const itemsPerPage = 5;
 
   useEffect(() => {
-    console.log('🏢 BuildingsManagement useEffect triggered');
+    console.log(' BuildingsManagement useEffect triggered');
     loadBuildings();
   }, []);
 
   const loadBuildings = async () => {
-    console.log('🏢 Loading buildings...');
+    console.log(' Loading buildings...');
     try {
       setError(null);
       const response = await api.get('/api/buildings');
-      console.log('🏢 Buildings loaded:', response.data);
+      console.log(' Buildings loaded:', response.data);
       setBuildings(response.data?.data || []);
     } catch (error: unknown) {
-      console.error('❌ Failed to load buildings:', error);
-      setError((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load buildings. Please check the console for details.');
+      console.error(' Failed to load buildings:', error);
+      setError(
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to load buildings. Please check the console for details.'
+      );
     } finally {
       setLoading(false);
-      console.log('🏢 Loading complete');
+      console.log(' Loading complete');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this building? This will also delete all associated floors.')) return;
-    
+    if (
+      !window.confirm(
+        'Are you sure you want to delete this building? This will also delete all associated floors.'
+      )
+    )
+      return;
+
     try {
       await api.delete(`/api/buildings/${id}`);
       loadBuildings();
@@ -60,9 +68,8 @@ const BuildingsManagement = () => {
 
   // Calculate stats
   const totalFloors = buildings.reduce((sum, b) => sum + (b.floors?.length || 0), 0);
-  const avgFloorsPerBuilding = buildings.length > 0 
-    ? Math.round(totalFloors / buildings.length) 
-    : 0;
+  const avgFloorsPerBuilding =
+    buildings.length > 0 ? Math.round(totalFloors / buildings.length) : 0;
 
   // Pagination
   const totalPages = Math.ceil(buildings.length / itemsPerPage);
@@ -113,7 +120,7 @@ const BuildingsManagement = () => {
           <div className="p-12 text-center">
             <div className="text-red-500 font-semibold mb-2">Error Loading Buildings</div>
             <div className="text-gray-600 text-sm mb-4">{error}</div>
-            <button 
+            <button
               onClick={loadBuildings}
               className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded text-sm"
             >
@@ -138,9 +145,7 @@ const BuildingsManagement = () => {
             <tbody>
               {currentBuildings.map((building) => (
                 <tr key={building.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 flex items-center gap-3">
-                    🏢 {building.building_name}
-                  </td>
+                  <td className="p-3 flex items-center gap-3">{building.building_name}</td>
                   <td className="text-left">{building.location || 'N/A'}</td>
                   <td className="text-center">
                     <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-600">
@@ -148,7 +153,7 @@ const BuildingsManagement = () => {
                     </span>
                   </td>
                   <td className="text-center">
-                    <Link 
+                    <Link
                       to={`/admin/buildings/floors?building=${building.id}`}
                       className="inline-block mr-2 text-lg cursor-pointer hover:scale-110 transition"
                       title="Manage Floors"
@@ -173,8 +178,8 @@ const BuildingsManagement = () => {
       {/* Pagination */}
       {buildings.length > itemsPerPage && (
         <div className="flex justify-between items-center mt-6 text-sm">
-          <button 
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
             className="border px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
@@ -189,8 +194,8 @@ const BuildingsManagement = () => {
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
                   className={`px-2 rounded cursor-pointer ${
-                    currentPage === pageNum 
-                      ? 'bg-purple-100 text-purple-600 font-semibold' 
+                    currentPage === pageNum
+                      ? 'bg-purple-100 text-purple-600 font-semibold'
                       : 'hover:bg-gray-100'
                   }`}
                 >
@@ -204,8 +209,8 @@ const BuildingsManagement = () => {
                 <button
                   onClick={() => setCurrentPage(totalPages)}
                   className={`px-2 rounded cursor-pointer ${
-                    currentPage === totalPages 
-                      ? 'bg-purple-100 text-purple-600 font-semibold' 
+                    currentPage === totalPages
+                      ? 'bg-purple-100 text-purple-600 font-semibold'
                       : 'hover:bg-gray-100'
                   }`}
                 >
@@ -215,8 +220,8 @@ const BuildingsManagement = () => {
             )}
           </div>
 
-          <button 
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
             className="border px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
