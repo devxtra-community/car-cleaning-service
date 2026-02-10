@@ -2,144 +2,95 @@ import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import { logger } from '../../config/logger';
 import { pool } from '../../database/connectDatabase';
-import { UserRole } from 'src/database/schema/usersSchema';
-
-type ClientType = 'web' | 'mobile';
-
-const SALT_ROUNDS = 12;
-
-interface CreateUserInput {
-  email: string;
-  password: string;
-  role: UserRole;
-  client_type: ClientType;
-  full_name: string;
-  document: string;
-  document_id: string;
-  age: number;
-  nationality: string;
-
-  // super_admin / admin / accountant
-  staff?: {
-    employee_id: string;
-    salary: number;
-  };
-
-  // supervisor
-  supervisor?: {
-    total_work_done?: number;
-    work_location_id?: string | null;
-    building_id?: string;
-  };
-
-  // cleaner
-  cleaner?: {
-    supervisor_id?: string | null;
-    total_work?: number;
-    incentives?: number;
-    work_location_id?: string | null;
-    floor_id?: string;
-  };
-}
-
-export const createUser = async (data: CreateUserInput) => {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
-    const email = data.email.toLowerCase().trim();
-
-    const exists = await client.query(`SELECT id FROM users WHERE email=$1`, [email]);
-
-    if (exists.rows.length) throw new Error('USER_ALREADY_EXISTS');
-
-    const hashed = await bcrypt.hash(data.password, SALT_ROUNDS);
-
-    // 1. USERS
-    const userRes = await client.query(
-      `
-      INSERT INTO users (
-        email,password,role,full_name,document,document_id,age,nationality
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      RETURNING *
-      `,
-      [
-        email,
-        hashed,
-        data.role,
-        data.full_name,
-        data.document,
-        data.document_id,
-        data.age,
-        data.nationality,
-      ]
-    );
-
-    const user = userRes.rows[0];
-
-    // 2. SUPERVISOR
-    if (data.role === 'supervisor') {
-      if (!data.supervisor?.building_id) throw new Error('BUILDING_REQUIRED');
-
-      await client.query(
-        `
-        INSERT INTO supervisors (user_id,building_id)
-        VALUES ($1,$2)
-        `,
-        [user.id, data.supervisor.building_id]
-      );
-    }
-
-    // 3. CLEANER
-    if (data.role === 'cleaner') {
-      if (!data.cleaner?.supervisor_id) throw new Error('SUPERVISOR_REQUIRED');
-
-      // get building from supervisor
-      const sup = await client.query(`SELECT building_id FROM supervisors WHERE id=$1`, [
-        data.cleaner.supervisor_id,
-      ]);
-
-      if (!sup.rows.length) throw new Error('SUPERVISOR_NOT_FOUND');
-
-      const buildingId = sup.rows[0].building_id;
-
-      await client.query(
-        `
-        INSERT INTO cleaners (
-          user_id,
-          supervisor_id,
-          building_id,
-          floor_id,
-          total_tasks,
-          total_earning,
-          incentive_target
-        )
-        VALUES ($1,$2,$3,$4,0,0,0)
-        `,
-        [user.id, data.cleaner.supervisor_id, buildingId, data.cleaner.floor_id ?? null]
-      );
-    }
-
-    await client.query('COMMIT');
-
-    return user;
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-};
+import { createUser, CreateUserInput } from './auth_service';
+import { uploadToS3 } from 'src/middlewares/uploadMiddleware';
 
 /**
- * Register a new user
+ * Register a new user (supervisor, cleaner, admin, super_admin, accountant)
  */
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const userData = req.body;
-    const user = await createUser(userData);
+    const files = req.files as {
+      [fieldname: string]: Express.Multer.File[];
+    };
+    // Extract files
+    const documentFile = files?.document?.[0];
+    const profilePhotoFile = files?.profile_image?.[0];
+
+    // Validate required document
+    if (!documentFile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Document file is required',
+      });
+    }
+
+    // Upload document to S3
+    const documentUrl = await uploadToS3(documentFile);
+
+    // Upload profile photo to S3 (if provided)
+    let profilePhotoUrl: string | undefined;
+    if (profilePhotoFile) {
+      profilePhotoUrl = await uploadToS3(profilePhotoFile);
+    }
+
+    // Build base user data
+    const base = {
+      email: req.body.email,
+      password: req.body.password,
+      full_name: req.body.full_name,
+      document: documentUrl, // S3 URL
+      document_id: req.body.document_id,
+      age: Number(req.body.age),
+      nationality: req.body.nationality,
+      client_type: req.body.client_type || 'web',
+      profile_image: profilePhotoUrl, // S3 URL (optional)
+      phone: req.body.phone,
+    };
+
+    let payload: CreateUserInput;
+
+    // Build role-specific payload
+    switch (req.body.role) {
+      case 'supervisor':
+        payload = {
+          ...base,
+          role: 'supervisor',
+          supervisor: {
+            building_id: req.body.building_id,
+          },
+        };
+        break;
+
+      case 'cleaner':
+        payload = {
+          ...base,
+          role: 'cleaner',
+          cleaner: {
+            supervisor_id: req.body.supervisor_id,
+            floor_id: req.body.floor_id || undefined,
+          },
+        };
+        break;
+
+      case 'admin':
+      case 'super_admin':
+      case 'accountant':
+        payload = {
+          ...base,
+          role: req.body.role,
+        };
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid user role',
+        });
+    }
+
+    // Create user
+    const user = await createUser(payload);
 
     return res.status(201).json({
       success: true,
@@ -147,39 +98,49 @@ export const registerUser = async (req: Request, res: Response) => {
       data: user,
     });
   } catch (error: unknown) {
-    logger.error('User registration failed', { err: error });
+    logger.error('Registration failed', { err: error });
 
-    if ((error as Error).message === 'USER_ALREADY_EXISTS') {
-      return res.status(409).json({
-        success: false,
-        message: 'User with this email already exists',
-      });
+    let statusCode = 500;
+    let message = 'Failed to register user';
+    let errorMessage: string | undefined;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+
+      if (error.message === 'USER_ALREADY_EXISTS') {
+        statusCode = 409;
+        message = 'User with this email already exists';
+      } else if (error.message === 'EMAIL_REQUIRED') {
+        statusCode = 400;
+        message = 'Email is required';
+      } else if (error.message === 'PASSWORD_REQUIRED') {
+        statusCode = 400;
+        message = 'Password is required';
+      } else if (error.message === 'FULL_NAME_REQUIRED') {
+        statusCode = 400;
+        message = 'Full name is required';
+      } else if (error.message === 'DOCUMENT_REQUIRED') {
+        statusCode = 400;
+        message = 'Document is required';
+      } else if (error.message === 'BUILDING_ID_REQUIRED_FOR_SUPERVISOR') {
+        statusCode = 400;
+        message = 'Building ID is required for supervisor';
+      } else if (error.message === 'SUPERVISOR_ID_REQUIRED_FOR_CLEANER') {
+        statusCode = 400;
+        message = 'Supervisor ID is required for cleaner';
+      } else if (error.message === 'BUILDING_NOT_FOUND') {
+        statusCode = 404;
+        message = 'Building not found';
+      } else if (error.message === 'SUPERVISOR_NOT_FOUND') {
+        statusCode = 404;
+        message = 'Supervisor not found';
+      }
     }
 
-    if ((error as Error).message === 'BUILDING_REQUIRED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Building is required for supervisor registration',
-      });
-    }
-
-    if ((error as Error).message === 'SUPERVISOR_REQUIRED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Supervisor is required for cleaner registration',
-      });
-    }
-
-    if ((error as Error).message === 'SUPERVISOR_NOT_FOUND') {
-      return res.status(404).json({
-        success: false,
-        message: 'Supervisor not found',
-      });
-    }
-
-    return res.status(500).json({
+    return res.status(statusCode).json({
       success: false,
-      message: 'Failed to register user',
+      message,
+      error: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
     });
   }
 };
@@ -202,10 +163,9 @@ export const login = async (req: Request, res: Response) => {
 
     await client.query('BEGIN');
 
-    const result = await client.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email.toLowerCase().trim()]
-    );
+    const result = await client.query('SELECT * FROM users WHERE email = $1', [
+      email.toLowerCase().trim(),
+    ]);
 
     if (!result.rows.length) {
       await client.query('ROLLBACK');
@@ -227,7 +187,8 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Import JWT utilities
-    const { generateAccessToken, generateRefreshToken, hashToken } = await import('../../config/jwt');
+    const { generateAccessToken, generateRefreshToken, hashToken } =
+      await import('../../config/jwt');
     const { v4: uuidv4 } = await import('uuid');
 
     // Generate tokens
@@ -254,7 +215,7 @@ export const login = async (req: Request, res: Response) => {
     );
 
     // Store refresh token in database
-    const expiresSeconds = client_type === 'web' ? 7 * 86400 : 90 * 86400; // 7 days for web, 90 days for mobile
+    const expiresSeconds = client_type === 'web' ? 7 * 86400 : 90 * 86400;
 
     await client.query(
       `
@@ -279,7 +240,7 @@ export const login = async (req: Request, res: Response) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/api/auth/refresh',
-        maxAge: 7 * 86400000, // 7 days in milliseconds
+        maxAge: 7 * 86400000,
       });
     }
 
@@ -290,7 +251,7 @@ export const login = async (req: Request, res: Response) => {
       success: true,
       message: 'Login successful',
       accessToken,
-      ...(client_type === 'mobile' && { refreshToken }), // Only send refreshToken in response for mobile
+      ...(client_type === 'mobile' && { refreshToken }),
       data: user,
     });
   } catch (error) {
@@ -310,7 +271,11 @@ export const login = async (req: Request, res: Response) => {
  */
 export const logout = async (req: Request, res: Response) => {
   try {
-    // Logout logic (e.g., clear tokens, session, etc.)
+    // Clear refresh token cookie
+    res.clearCookie('refreshToken', {
+      path: '/api/auth/refresh',
+    });
+
     return res.status(200).json({
       success: true,
       message: 'Logout successful',
@@ -340,6 +305,8 @@ export const getSupervisors = async (req: Request, res: Response) => {
         u.age,
         u.nationality,
         u.document,
+        u.profile_image,
+        u.phone,
         b.building_name,
         b.id as building_id
       FROM supervisors s
@@ -378,6 +345,8 @@ export const getCleaners = async (req: Request, res: Response) => {
         u.age,
         u.nationality,
         u.document,
+        u.profile_image,
+        u.phone,
         c.floor_id,
         c.total_tasks,
         c.total_earning,
@@ -432,6 +401,8 @@ export const getCleanersBySupervisor = async (req: Request, res: Response) => {
         u.age,
         u.nationality,
         u.document,
+        u.profile_image,
+        u.phone,
         c.floor_id,
         c.total_tasks,
         c.total_earning,

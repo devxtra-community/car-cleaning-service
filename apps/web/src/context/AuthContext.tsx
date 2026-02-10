@@ -20,7 +20,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>; // ✅ changed
   logout: () => Promise<void>;
 }
 
@@ -35,28 +35,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   /* ---------- SET SESSION ---------- */
-  const setSession = (accessToken: string | null) => {
+  const setSession = (accessToken: string | null): User | null => {
     if (!accessToken) {
       setUser(null);
       setAccessToken(null);
-      return;
+      return null;
     }
 
     const decoded = jwtDecode<AccessTokenPayload>(accessToken);
 
-    setUser({
+    const userData: User = {
       userId: decoded.userId,
       role: decoded.role,
-    });
+    };
 
+    setUser(userData);
     setAccessToken(accessToken);
+
+    return userData;
   };
 
   /* ---------- APP INIT (SILENT REFRESH) ---------- */
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Attempt to refresh token if user had a session
         if (localStorage.getItem('hasSession')) {
           const res = await api.post('/api/auth/refresh');
           setSession(res.data.accessToken);
@@ -71,8 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initAuth();
   }, []);
 
-  /* ---------- LOGIN ---------- */
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const res = await api.post('/api/auth/login', {
       email,
       password,
@@ -80,11 +81,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     localStorage.setItem('hasSession', 'true');
-    setSession(res.data.accessToken);
+
+    const userData = setSession(res.data.accessToken);
+
+    if (!userData) {
+      throw new Error('Login failed: No access token received');
+    }
+
+    return userData; // ✅ return user
   };
 
-  /* ---------- LOGOUT ---------- */
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     await api.post('/api/auth/logout');
     localStorage.removeItem('hasSession');
     setSession(null);
