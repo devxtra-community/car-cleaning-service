@@ -8,10 +8,26 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Alert,
+  Image,
 } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, X, Car, Phone, Hash, DollarSign, Clock } from 'lucide-react-native';
+import {
+  User,
+  X,
+  Car,
+  Phone,
+  Hash,
+  DollarSign,
+  Clock,
+  Camera,
+  ChevronDown,
+  MapPin,
+  ImageIcon,
+} from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import api from '@/src/api/api';
 
@@ -28,8 +44,10 @@ interface Worker {
   car_model?: string;
   car_type?: string;
   car_color?: string;
-  task_amount?: number;
+  task_amount?: string;
   task_started_at?: string;
+  car_image_url?: string;
+  car_location?: string;
 }
 
 export default function LiveWorkersScreen() {
@@ -39,9 +57,142 @@ export default function LiveWorkersScreen() {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Task Form States
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showTypePicker, setShowTypePicker] = useState(false);
+  const [carTypes, setCarTypes] = useState<{ id: string; type: string }[]>([]);
+  const [formData, setFormData] = useState({
+    owner_name: '',
+    owner_phone: '',
+    car_number: '',
+    car_model: '',
+    car_type: '',
+    car_color: '',
+    task_amount: '',
+    car_image_url: '',
+    car_location: '',
+  });
+
   useEffect(() => {
     loadWorkers();
+    fetchCarTypes();
   }, []);
+
+  const fetchCarTypes = async () => {
+    try {
+      const res = await api.get('/api/vehicle');
+      setCarTypes(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch car types', err);
+    }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need gallery permissions to upload a car photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      handleImageUpload(result.assets[0].uri);
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need camera permissions to take a car photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      handleImageUpload(result.assets[0].uri);
+    }
+  };
+
+  const handleImageUpload = async (uri: string) => {
+    try {
+      setUploadingImage(true);
+      const presignRes = await api.post('/s3/presign', {
+        fileType: 'image/jpeg',
+        folder: 'tasks',
+      });
+      const { uploadUrl, fileUrl } = presignRes.data;
+
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: blob,
+        headers: { 'Content-Type': 'image/jpeg' },
+      });
+
+      if (!uploadRes.ok) throw new Error('Failed to upload image');
+
+      setFormData({ ...formData, car_image_url: fileUrl });
+      Alert.alert('Success', 'Car photo uploaded successfully');
+    } catch (error) {
+      console.error('Image upload error', error);
+      Alert.alert('Error', 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const showImageOptions = () => {
+    Alert.alert('Car Photo', 'Choose an option', [
+      { text: 'Take Photo', onPress: takePhoto },
+      { text: 'Choose from Gallery', onPress: pickImage },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedWorker) return;
+
+    if (!formData.car_number || !formData.car_model || !formData.car_type) {
+      Alert.alert('Error', 'Please fill in car details');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (isUpdating) {
+        await api.patch(`/api/supervisor/tasks/${selectedWorker.current_task_id}`, formData);
+        Alert.alert('Success', 'Task updated successfully');
+      } else {
+        await api.post('/api/supervisor/tasks', {
+          ...formData,
+          worker_id: selectedWorker.id,
+        });
+        Alert.alert('Success', 'Task assigned successfully');
+      }
+      setModalVisible(false);
+      loadWorkers();
+    } catch (err) {
+      console.error('Submit error', err);
+      Alert.alert('Error', 'Failed to save task');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const loadWorkers = async () => {
     try {
@@ -74,6 +225,34 @@ export default function LiveWorkersScreen() {
 
   const handleWorkerPress = (worker: Worker) => {
     setSelectedWorker(worker);
+    const modifyExisting = worker.status === 'working';
+    setIsUpdating(modifyExisting);
+
+    if (modifyExisting) {
+      setFormData({
+        owner_name: worker.owner_name || '',
+        owner_phone: worker.owner_phone || '',
+        car_number: worker.car_number || '',
+        car_model: worker.car_model || '',
+        car_type: worker.car_type || '',
+        car_color: worker.car_color || '',
+        task_amount: worker.task_amount?.toString() || '',
+        car_image_url: worker.car_image_url || '',
+        car_location: worker.car_location || '',
+      });
+    } else {
+      setFormData({
+        owner_name: '',
+        owner_phone: '',
+        car_number: '',
+        car_model: '',
+        car_type: '',
+        car_color: '',
+        task_amount: '',
+        car_image_url: '',
+        car_location: '',
+      });
+    }
     setModalVisible(true);
   };
 
@@ -230,9 +409,154 @@ export default function LiveWorkersScreen() {
                   <Text style={styles.emptyTaskText}>No active task at the moment</Text>
                 </View>
               )}
+
+              {/* TASK MANAGEMENT FORM */}
+              <View style={styles.formSection}>
+                <Text style={styles.sectionHeading}>
+                  {isUpdating ? 'Update Task Details' : 'Assign New Task'}
+                </Text>
+
+                <Text style={styles.inputLabel}>Owner Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: John Doe"
+                  value={formData.owner_name}
+                  onChangeText={(text) => setFormData({ ...formData, owner_name: text })}
+                />
+
+                <Text style={styles.inputLabel}>Owner Phone</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 9876543210"
+                  keyboardType="phone-pad"
+                  value={formData.owner_phone}
+                  onChangeText={(text) => setFormData({ ...formData, owner_phone: text })}
+                />
+
+                <Text style={styles.inputLabel}>Car Number</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: KA 01 AB 1234"
+                  autoCapitalize="characters"
+                  value={formData.car_number}
+                  onChangeText={(text) => setFormData({ ...formData, car_number: text })}
+                />
+
+                <Text style={styles.inputLabel}>Car Model</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: Honda City"
+                  value={formData.car_model}
+                  onChangeText={(text) => setFormData({ ...formData, car_model: text })}
+                />
+
+                <Text style={styles.inputLabel}>Car Type</Text>
+                <Pressable style={styles.dropdownTrigger} onPress={() => setShowTypePicker(true)}>
+                  <Text style={[styles.dropdownValue, !formData.car_type && { color: '#9CA3AF' }]}>
+                    {formData.car_type || 'Select Car Type'}
+                  </Text>
+                  <ChevronDown size={20} color="#6B7280" />
+                </Pressable>
+
+                <Text style={styles.inputLabel}>Car Location (Optional)</Text>
+                <View style={styles.inputWithIcon}>
+                  <MapPin size={18} color="#9CA3AF" style={styles.fieldIcon} />
+                  <TextInput
+                    style={[styles.input, { marginBottom: 0, flex: 1, borderWidth: 0 }]}
+                    placeholder="Ex: Parking Level 2, Spot B12"
+                    value={formData.car_location}
+                    onChangeText={(text) => setFormData({ ...formData, car_location: text })}
+                  />
+                </View>
+
+                <Text style={styles.inputLabel}>Car Color</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: White"
+                  value={formData.car_color}
+                  onChangeText={(text) => setFormData({ ...formData, car_color: text })}
+                />
+
+                <Text style={styles.inputLabel}>Car Photo</Text>
+                <Pressable style={styles.photoUploadButton} onPress={showImageOptions}>
+                  {uploadingImage ? (
+                    <ActivityIndicator color="#3DA2CE" />
+                  ) : formData.car_image_url ? (
+                    <View style={styles.photoPreviewContainer}>
+                      <Image source={{ uri: formData.car_image_url }} style={styles.photoPreview} />
+                      <View style={styles.photoOverlay}>
+                        <Camera size={20} color="#FFF" />
+                        <Text style={styles.photoOverlayText}>Change Photo</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      <ImageIcon size={24} color="#3DA2CE" />
+                      <Text style={styles.photoUploadText}>Upload Car Photo</Text>
+                    </>
+                  )}
+                </Pressable>
+
+                <Text style={styles.inputLabel}>Task Amount (₹)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 500"
+                  keyboardType="numeric"
+                  value={formData.task_amount}
+                  onChangeText={(text) => setFormData({ ...formData, task_amount: text })}
+                />
+
+                <TouchableOpacity
+                  style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>
+                      {isUpdating ? 'Update Task' : 'Assign Task'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* CAR TYPE PICKER MODAL */}
+      <Modal
+        visible={showTypePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTypePicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowTypePicker(false)}>
+          <View style={styles.pickerContent}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Select Car Type</Text>
+              <Pressable onPress={() => setShowTypePicker(false)}>
+                <X size={20} color="#6B7280" />
+              </Pressable>
+            </View>
+            <ScrollView>
+              {carTypes.map((type) => (
+                <Pressable
+                  key={type.id}
+                  style={styles.pickerItem}
+                  onPress={() => {
+                    setFormData({ ...formData, car_type: type.type });
+                    setShowTypePicker(false);
+                  }}
+                >
+                  <Text style={styles.pickerItemText}>{type.type}</Text>
+                  {formData.car_type === type.type && <View style={styles.selectedDot} />}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -438,12 +762,162 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: 16,
+    marginBottom: 20,
   },
   sectionHeading: {
     fontSize: 15,
     fontWeight: '700',
     color: '#2C2C2C',
     marginBottom: 16,
+  },
+  formSection: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    marginTop: 10,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    marginBottom: 16,
+    color: '#1F2937',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  dropdownValue: {
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  fieldIcon: {
+    marginRight: 10,
+  },
+  photoUploadButton: {
+    height: 120,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  photoUploadText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#3DA2CE',
+    fontWeight: '600',
+  },
+  photoPreviewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  photoOverlayText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  submitButton: {
+    backgroundColor: '#3DA2CE',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+    shadowColor: '#3DA2CE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  // Picker Styles
+  pickerContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '50%',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerItemText: {
+    fontSize: 16,
+    color: '#374151',
+  },
+  selectedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3DA2CE',
   },
   detailRow: {
     flexDirection: 'row',
@@ -471,7 +945,7 @@ const styles = StyleSheet.create({
   },
   emptyTaskSection: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   emptyTaskText: {
     color: '#9CA3AF',

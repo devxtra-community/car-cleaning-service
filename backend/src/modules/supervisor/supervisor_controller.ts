@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { pool } from '../../database/connectDatabase';
 import { getSupervisorWorkersService, supervisorReportService } from './supervisor_services';
+import { createTaskService } from '../tasks/tasks_service';
 
 /* ================= WORKERS ================= */
 export const getSupervisorWorkers = async (req: AuthRequest, res: Response) => {
@@ -157,64 +158,69 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
       car_location,
     } = req.body;
 
+    console.log('Assign Task Request:', { worker_id, supervisorId, owner_name, car_number });
+
     // Validate required fields
     if (!worker_id || !owner_name || !owner_phone || !car_number || !car_model || !car_type) {
+      console.log('Missing fields in request');
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     // Verify worker belongs to this supervisor
     const workerCheck = await pool.query(
-      `SELECT c.user_id FROM cleaners c WHERE c.user_id = $1 AND c.supervisor_id = $2`,
+      `
+      SELECT c.id AS cleaner_id 
+      FROM cleaners c 
+      JOIN supervisors s ON c.supervisor_id = s.id
+      WHERE c.user_id = $1 AND s.user_id = $2
+      `,
       [worker_id, supervisorId]
     );
 
     if (!workerCheck.rows.length) {
-      return res.status(403).json({ success: false, message: 'Worker not assigned to you' });
+      console.log('Worker verification failed for worker_id:', worker_id);
+      return res
+        .status(403)
+        .json({ success: false, message: 'Worker not assigned to you or invalid worker ID' });
     }
 
-    // Create the task
-    const result = await pool.query(
-      `
-      INSERT INTO tasks (
-        owner_name,
-        owner_phone,
-        car_number,
-        car_model,
-        car_type,
-        car_color,
-        car_image_url,
-        car_location,
-        cleaner_id,
-        task_amount,
-        status
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
-      RETURNING *
-      `,
-      [
-        owner_name,
-        owner_phone,
-        car_number,
-        car_model,
-        car_type,
-        car_color || null,
-        car_image_url || null,
-        car_location || null,
-        worker_id,
-        task_amount ? parseFloat(task_amount) : 0,
-      ]
-    );
+    const realCleanerId = workerCheck.rows[0].cleaner_id;
+    console.log('Resolved realCleanerId:', realCleanerId);
+
+    // Create the task using shared service (same logic as worker self-assign)
+    const task = await createTaskService({
+      owner_name,
+      owner_phone,
+      car_number,
+      car_model,
+      car_type,
+      car_color,
+      car_image_url: car_image_url || null,
+      car_location: car_location || null,
+      cleaner_id: realCleanerId,
+      amount_charged: task_amount ? parseFloat(task_amount) : 0,
+    });
 
     return res.status(201).json({
       success: true,
       message: 'Task assigned successfully',
-      data: result.rows[0],
+      data: task,
     });
-  } catch (err) {
-    console.error('Assign task error', err);
+  } catch (err: unknown) {
+    const error = err as { message: string; stack?: string; code?: string; detail?: string };
+    console.error('='.repeat(80));
+    console.error('ASSIGN TASK ERROR - DETAILED DEBUG:');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error code:', error.code);
+    console.error('Error detail:', error.detail);
+    console.error('Full error object:', JSON.stringify(error, null, 2));
+    console.error('='.repeat(80));
     return res.status(500).json({
       success: false,
       message: 'Failed to assign task',
+      error: error.message,
+      detail: error.detail,
     });
   }
 };
@@ -238,7 +244,6 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       car_color,
       task_amount,
       car_image_url,
-      car_location,
     } = req.body;
 
     // Verify task belongs to a worker managed by this supervisor
@@ -246,8 +251,9 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       `
       SELECT t.id 
       FROM tasks t
-      JOIN cleaners c ON c.user_id = t.cleaner_id
-      WHERE t.id = $1 AND c.supervisor_id = $2
+      JOIN cleaners c ON c.id = t.cleaner_id
+      JOIN supervisors s ON c.supervisor_id = s.id
+      WHERE t.id = $1 AND s.user_id = $2
       `,
       [taskId, supervisorId]
     );
@@ -267,10 +273,9 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         car_model = COALESCE($4, car_model),
         car_type = COALESCE($5, car_type),
         car_color = COALESCE($6, car_color),
-        task_amount = COALESCE($7, task_amount),
-        car_image_url = COALESCE($8, car_image_url),
-        car_location = COALESCE($9, car_location)
-      WHERE id = $10
+        amount_charged = COALESCE($7, amount_charged),
+        car_image_url = COALESCE($8, car_image_url)
+      WHERE id = $9
       RETURNING *
       `,
       [
@@ -282,7 +287,6 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         car_color || null,
         task_amount ? parseFloat(task_amount) : null,
         car_image_url || null,
-        car_location || null,
         taskId,
       ]
     );

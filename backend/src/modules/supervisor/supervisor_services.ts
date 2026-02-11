@@ -51,7 +51,7 @@ export const supervisorReportService = async (supervisorId: string, period: stri
       COUNT(t.id)::int as total_tasks
     FROM tasks t
     JOIN cleaners c ON c.id = t.cleaner_id
-    JOIN users u ON u.id = t.cleaner_id
+    JOIN users u ON u.id = c.user_id
     JOIN supervisors s ON c.supervisor_id = s.id
     WHERE s.user_id=$1
       AND t.status='completed'

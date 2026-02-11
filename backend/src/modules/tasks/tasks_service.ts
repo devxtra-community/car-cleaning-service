@@ -9,7 +9,7 @@ export interface CreateTaskPayload {
   car_color: string;
   car_image_url?: string | null;
   car_image_key?: string | null;
-  worker_id: string;
+  cleaner_id: string;
 }
 
 export interface TaskRow {
@@ -22,7 +22,7 @@ export interface TaskRow {
   car_color: string;
   car_image_url?: string | null;
   car_image_key?: string | null;
-  worker_id: string;
+  cleaner_id: string;
   created_at?: string;
   completed_at?: string;
 }
@@ -34,10 +34,10 @@ interface TaskInput {
   car_model: string;
   car_type: string;
   car_color: string;
-  car_location?: string | null;
   car_image_url: string | null;
+  car_location?: string | null;
   cleaner_id: string;
-  task_amount: number;
+  amount_charged: number;
 }
 
 export const createTaskService = async (data: TaskInput) => {
@@ -50,12 +50,13 @@ export const createTaskService = async (data: TaskInput) => {
       car_model,
       car_type,
       car_color,
-      car_location,
       car_image_url,
+      car_location,
       cleaner_id,
-      task_amount
+      amount_charged,
+      status
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     RETURNING *
     `,
     [
@@ -65,10 +66,11 @@ export const createTaskService = async (data: TaskInput) => {
       data.car_model,
       data.car_type,
       data.car_color,
-      data.car_location || null,
       data.car_image_url,
+      data.car_location || null,
       data.cleaner_id,
-      data.task_amount,
+      data.amount_charged,
+      'pending',
     ]
   );
 

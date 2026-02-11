@@ -3,19 +3,22 @@ require('dotenv').config();
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
 });
 
-async function listColumns() {
+async function checkNullability() {
   try {
-    const columns = await pool.query(`
-      SELECT column_name, data_type 
+    const res = await pool.query(`
+      SELECT column_name, is_nullable 
       FROM information_schema.columns 
-      WHERE table_name = 'penalties'
+      WHERE table_name = 'tasks'
+      ORDER BY ordinal_position
     `);
-    console.log('Penalties columns:');
-    columns.rows.forEach((col) => {
-      console.log(`- ${col.column_name} (${col.data_type})`);
+    console.log('--- START ---');
+    res.rows.forEach((r) => {
+      console.log(`${r.column_name}: ${r.is_nullable}`);
     });
+    console.log('--- END ---');
   } catch (err) {
     console.error(err);
   } finally {
@@ -23,4 +26,4 @@ async function listColumns() {
   }
 }
 
-listColumns();
+checkNullability();
