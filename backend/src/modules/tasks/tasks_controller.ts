@@ -28,6 +28,13 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Missing fields' });
     }
 
+    // Resolve real cleaner_id
+    const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
+    if (!cleanerRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
+    }
+    const realCleanerId = cleanerRes.rows[0].id;
+
     const task = await createTaskService({
       owner_name,
       owner_phone,
@@ -36,8 +43,8 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_type,
       car_color,
       car_image_url: car_image_url ?? null,
-      cleaner_id: workerId,
-      task_amount: task_amount ?? 0,
+      cleaner_id: realCleanerId,
+      amount_charged: task_amount ?? 0,
     });
 
     return res.status(201).json({ success: true, data: task });
@@ -53,6 +60,13 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
 
+    // Resolve real cleaner_id
+    const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
+    if (!cleanerRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
+    }
+    const realCleanerId = cleanerRes.rows[0].id;
+
     const result = await pool.query(
       `
       SELECT *
@@ -61,7 +75,7 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
       ORDER BY created_at DESC
       LIMIT 1
       `,
-      [workerId]
+      [realCleanerId]
     );
 
     return res.json(result.rows);
@@ -82,15 +96,20 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
   try {
     await client.query('BEGIN');
 
+    // Resolve real cleaner_id
+    const cleanerRes = await client.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
+    if (!cleanerRes.rows.length) throw new Error('CLEANER_PROFILE_NOT_FOUND');
+    const realCleanerId = cleanerRes.rows[0].id;
+
     // Complete task
     const taskRes = await client.query(
       `
       UPDATE tasks
       SET status='completed'
       WHERE id=$1 AND cleaner_id=$2
-      RETURNING task_amount
+      RETURNING amount_charged AS task_amount
       `,
-      [taskId, workerId]
+      [taskId, realCleanerId]
     );
 
     if (!taskRes.rows.length) throw new Error('TASK_NOT_FOUND');
