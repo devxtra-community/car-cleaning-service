@@ -28,6 +28,16 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Missing fields' });
     }
 
+    // Get cleaner_id from cleaners table using workerId (user_id)
+    const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
+
+    if (!cleanerRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
+    }
+
+    const cleanerId = cleanerRes.rows[0].id;
+    console.log('CreateTask: Found CleanerId:', cleanerId);
+
     const task = await createTaskService({
       owner_name,
       owner_phone,
@@ -36,9 +46,11 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_type,
       car_color,
       car_image_url: car_image_url ?? null,
-      cleaner_id: workerId,
+      cleaner_id: cleanerId,
       task_amount: task_amount ?? 0,
     });
+
+    console.log('CreateTask: Task Inserted:', task);
 
     return res.status(201).json({ success: true, data: task });
   } catch (err) {
@@ -53,6 +65,16 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
 
+    // Get cleaner_id from cleaners table using workerId (user_id)
+    const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
+
+    if (!cleanerRes.rows.length) {
+      // If no cleaner profile, they can't have tasks
+      return res.json([]);
+    }
+
+    const cleanerId = cleanerRes.rows[0].id;
+
     const result = await pool.query(
       `
       SELECT *
@@ -61,7 +83,7 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
       ORDER BY created_at DESC
       LIMIT 1
       `,
-      [workerId]
+      [cleanerId]
     );
 
     return res.json(result.rows);
@@ -76,6 +98,7 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
 export const completeTaskController = async (req: AuthRequest, res: Response) => {
   const workerId = req.user?.userId;
   const taskId = req.params.id;
+  const { after_wash_image_url, payment_method, final_price } = req.body;
 
   if (!workerId) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -86,24 +109,41 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
   try {
     await client.query('BEGIN');
 
+    // Get cleaner_id from cleaners table using workerId (user_id)
+    const cleanerProfileRes = await client.query('SELECT id FROM cleaners WHERE user_id = $1', [
+      workerId,
+    ]);
+
+    if (!cleanerProfileRes.rows.length) {
+      throw new Error('CLEANER_NOT_FOUND');
+    }
+
+    const cleanerProfileId = cleanerProfileRes.rows[0].id;
+
     /* ================= COMPLETE TASK ================= */
+
+    console.log('Completing Task:', { taskId, workerId, body: req.body });
 
     const taskRes = await client.query(
       `
       UPDATE tasks
       SET status = 'completed',
-          completed_at = now()
+          completed_at = now(),
+          after_wash_image_url = COALESCE($3, after_wash_image_url),
+          payment_method = COALESCE($4, payment_method),
+          final_price = COALESCE($5, final_price)
       WHERE id = $1 AND cleaner_id = $2
-      RETURNING task_amount
+      RETURNING task_amount, final_price
       `,
-      [taskId, workerId]
+      [taskId, cleanerProfileId, after_wash_image_url, payment_method, final_price]
     );
 
     if (!taskRes.rows.length) {
       throw new Error('TASK_NOT_FOUND');
     }
 
-    const taskAmount = Number(taskRes.rows[0].task_amount || 0);
+    // Use final_price if available, otherwise use task_amount
+    const taskAmount = Number(taskRes.rows[0].final_price || taskRes.rows[0].task_amount || 0);
 
     /* ================= UPDATE CLEANER TASK COUNT ================= */
 

@@ -17,26 +17,24 @@ import workersRoutes from '../src/modules/Worker/workers_routes';
 import buildingsRoutes from './modules/buildings/buildings_routes';
 import incentiveRoutes from './modules/incentives/incentives_routes';
 import analyticRoutes from './modules/analytics/analytic_routes';
+import reviewRoutes from './modules/feedback/review_routes';
 
 import s3Routes from './routes/s3';
 const app = express();
 
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.url}`);
+  console.log('[DEBUG] Content-Type:', req.headers['content-type']);
+  console.log('[DEBUG] Body:', JSON.stringify(req.body, null, 2));
+  next();
+});
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:8081',
-      'http://10.10.2.230:8081',
-      'http://10.10.1.203:8081',
-      'http://10.10.3.21:8081',
-      'http://10.10.3.182.1:8081',
-      'http://10.10.2.19.1:8081',
-      'http://10.10.1.164:8081',
-    ],
+    origin: '*',
     credentials: true,
   })
 );
@@ -68,6 +66,7 @@ app.use('/tasks', taskRoutes);
 app.use('/salary', salaryRoute);
 app.use('/api/incentives', incentiveRoutes);
 app.use('/analytics', analyticRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
