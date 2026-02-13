@@ -1,6 +1,9 @@
+import '../global.css';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function RootLayout() {
   const [hydrated, setHydrated] = useState(false);
@@ -9,10 +12,10 @@ export default function RootLayout() {
     let mounted = true;
 
     (async () => {
-      await SecureStore.getItemAsync('access_token');
-
-      if (mounted) {
-        setHydrated(true);
+      try {
+        await SecureStore.getItemAsync('access_token');
+      } finally {
+        if (mounted) setHydrated(true);
       }
     })();
 
@@ -21,7 +24,18 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!hydrated) return null;
+  // ✅ Prevent blank screen
+  if (!hydrated) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </SafeAreaProvider>
+  );
 }

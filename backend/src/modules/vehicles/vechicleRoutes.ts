@@ -6,6 +6,7 @@ import {
   updateVehicle,
   deleteVehicle,
 } from './vehicles_controller';
+import { getVehiclePricingByType } from './pricing_controller';
 
 import { protect } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
@@ -16,6 +17,7 @@ const router = Router();
 
 router.post('/', protect, allowRoles('admin'), createVehicle);
 router.get('/', protect, getVehicles);
+router.get('/:type/pricing', protect, getVehiclePricingByType); // Get pricing by type
 router.get('/:id', protect, getVehicleById);
 router.put('/:id', protect, allowRoles('admin'), updateVehicle);
 router.delete('/:id', protect, allowRoles('admin'), deleteVehicle);

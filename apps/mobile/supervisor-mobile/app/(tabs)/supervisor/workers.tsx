@@ -2,7 +2,7 @@ import { View, Text, FlatList } from 'react-native';
 import { useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = 'http://10.10.3.182:3033';
+const BASE_URL = 'http://10.10.3.21:3033';
 
 interface LiveWorker {
   id: string;

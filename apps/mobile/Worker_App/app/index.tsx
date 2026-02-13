@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   Pressable,
   Dimensions,
   Alert,
@@ -24,7 +23,7 @@ const TopoPattern = () => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 500"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -84,7 +83,12 @@ const TopoPattern = () => (
 
 // Wave Curve Component
 const WaveCurve = () => (
-  <Svg height={81} width={width} viewBox={`0 0 ${width} 81`} style={styles.wave}>
+  <Svg
+    height={81}
+    width={width}
+    viewBox={`0 0 ${width} 81`}
+    className="absolute -bottom-px left-0 right-0"
+  >
     <Path
       d={`M 0 40 Q ${width * 0.25} 0, ${width * 0.5} 40 T ${width} 40 L ${width} 81 L 0 81 Z`}
       fill="#F5F7FA"
@@ -103,76 +107,39 @@ export default function LoginScreen() {
     try {
       setLoading(true);
 
-      console.log('🔐 Attempting login...');
-      console.log('📤 Request data:', { email, client_type: 'mobile' });
-
       const res = await api.post('/api/auth/login', {
         email,
         password,
         client_type: 'mobile',
       });
 
-      console.log('✅ Login response received');
-      console.log('📊 Full response data:', JSON.stringify(res.data, null, 2));
-
       const data = res.data;
 
       if (!data.success) {
-        console.error('❌ Login failed:', data.message);
         Alert.alert('Login failed', data.message);
         return;
       }
-
-      // DEBUG: Check what tokens we actually received
-      console.log('🔍 Checking tokens in response:');
-      console.log('  accessToken:', data.accessToken ? 'EXISTS' : '❌ MISSING');
-      console.log('  refreshToken:', data.refreshToken ? 'EXISTS' : '❌ MISSING');
-      console.log('  tokens.accessToken:', data.tokens?.accessToken ? 'EXISTS' : 'N/A');
-      console.log('  tokens.refreshToken:', data.tokens?.refreshToken ? 'EXISTS' : 'N/A');
 
       // Try different possible locations for the tokens
       const accessToken = data.accessToken || data.tokens?.accessToken || data.access_token;
       let refreshToken = data.refreshToken || data.tokens?.refreshToken || data.refresh_token;
 
       if (!accessToken) {
-        console.error('❌ No access token found in response!');
-        console.error('Full response:', JSON.stringify(data, null, 2));
         Alert.alert('Login Error', 'No access token received from server');
         return;
       }
 
       if (!refreshToken) {
-        console.warn('⚠️ No refresh token found in response!');
-        console.warn('This might cause issues when the access token expires.');
-        console.warn('Full response:', JSON.stringify(data, null, 2));
-
-        // For now, use the access token as refresh token (not ideal but prevents crashes)
         refreshToken = accessToken;
-        console.warn('⚠️ Using access token as refresh token temporarily');
       }
 
-      console.log('💾 Saving tokens to SecureStore...');
       await saveTokens(accessToken, refreshToken);
-      console.log('✅ Tokens saved successfully');
-
-      console.log('🔐 ACCESS TOKEN:', accessToken.substring(0, 50) + '...');
-      console.log('🔐 REFRESH TOKEN:', refreshToken.substring(0, 50) + '...');
-
-      console.log('✅ Login successful, navigating to Homepage...');
       router.replace('/Homepage');
     } catch (error: unknown) {
       const err = error as {
         message?: string;
         response?: { data?: { message?: string }; status?: number };
       };
-      console.error('❌ ==========================================');
-      console.error('❌ LOGIN ERROR');
-      console.error('❌ ==========================================');
-      console.log('FULL ERROR:', err);
-      console.log('RESPONSE:', err?.response);
-      console.log('DATA:', err?.response?.data);
-      console.log('STATUS:', err?.response?.status);
-
       Alert.alert('Login Error', err?.response?.data?.message || err?.message || 'Unknown error');
     } finally {
       setLoading(false);
@@ -180,10 +147,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-[#F5F7FA]">
       {/* HEADER WITH TOPOGRAPHIC PATTERN */}
-      <View style={styles.headerContainer}>
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.header}>
+      <View style={{ height: height * 0.4 }} className="relative">
+        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} className="flex-1 overflow-hidden">
           <TopoPattern />
         </LinearGradient>
         {/* WAVE CURVE */}
@@ -191,36 +158,36 @@ export default function LoginScreen() {
       </View>
 
       {/* CARD */}
-      <View style={styles.card}>
-        <Text style={styles.title}>Login in</Text>
-        <View style={styles.line} />
+      <View className="flex-1 bg-[#F5F7FA] px-8 pt-2">
+        <Text className="text-[32px] font-bold text-[#2C2C2C] mb-0.5">Login in</Text>
+        <View className="w-10 h-[3px] bg-[#3DA2CE] mb-5 rounded-sm" />
 
         {/* EMAIL */}
-        <Text style={styles.label}>Email</Text>
-        <View style={styles.inputRow}>
-          <Mail size={18} color="#A0A0A0" style={styles.icon} />
+        <Text className="text-sm text-[#4A4A4A] mb-2 font-medium">Email</Text>
+        <View className="flex-row items-center border-b border-b-[#3DA2CE] py-3 px-1">
+          <Mail size={18} color="#A0A0A0" className="mr-3" />
           <TextInput
             placeholder="Supervisor@email.com"
             placeholderTextColor="#B0B0B0"
             value={email}
             onChangeText={setEmail}
-            style={styles.input}
+            className="flex-1 text-[15px] text-[#2C2C2C] p-0"
             autoCapitalize="none"
             keyboardType="email-address"
           />
         </View>
 
         {/* PASSWORD */}
-        <Text style={[styles.label, { marginTop: 24 }]}>Password</Text>
-        <View style={styles.inputRow}>
-          <Lock size={18} color="#A0A0A0" style={styles.icon} />
+        <Text className="text-sm text-[#4A4A4A] mb-2 font-medium mt-6">Password</Text>
+        <View className="flex-row items-center border-b border-b-[#3DA2CE] py-3 px-1">
+          <Lock size={18} color="#A0A0A0" className="mr-3" />
           <TextInput
             placeholder="enter your password"
             placeholderTextColor="#B0B0B0"
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
-            style={styles.input}
+            className="flex-1 text-[15px] text-[#2C2C2C] p-0"
           />
           <Pressable onPress={() => setShowPassword(!showPassword)}>
             {showPassword ? (
@@ -232,147 +199,33 @@ export default function LoginScreen() {
         </View>
 
         {/* REMEMBER & FORGOT */}
-        <View style={styles.row}>
-          <View style={styles.rememberRow}>
+        <View className="flex-row justify-between items-center mt-5">
+          <View className="flex-row items-center gap-2">
             <Checkbox
               value={remember}
               onValueChange={setRemember}
               color={remember ? '#3DA2CE' : undefined}
             />
-            <Text style={styles.rememberText}>Remember Me</Text>
+            <Text className="text-[13px] text-[#4A4A4A]">Remember Me</Text>
           </View>
           <Pressable>
-            <Text style={styles.forgot}>Forgot Password?</Text>
+            <Text className="text-[13px] text-[#3DA2CE] font-medium">Forgot Password?</Text>
           </Pressable>
         </View>
 
         {/* LOGIN BUTTON */}
-        <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
+        <Pressable
+          className="bg-[#4FB3D9] h-[52px] rounded-xl justify-center items-center mt-8 shadow-md"
+          onPress={handleLogin}
+          disabled={loading}
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Login</Text>
+            <Text className="text-white font-semibold text-base tracking-wide">Login</Text>
           )}
         </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-
-  headerContainer: {
-    height: height * 0.4,
-    position: 'relative',
-  },
-
-  header: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-
-  wave: {
-    position: 'absolute',
-    bottom: -1,
-    left: 0,
-    right: 0,
-  },
-
-  card: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    paddingHorizontal: 32,
-    paddingTop: 8,
-  },
-
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#2C2C2C',
-    marginBottom: 2,
-  },
-
-  line: {
-    width: 40,
-    height: 3,
-    backgroundColor: '#3DA2CE',
-    marginBottom: 20,
-    borderRadius: 2,
-  },
-
-  label: {
-    fontSize: 14,
-    color: '#4A4A4A',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#3DA2CE',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-
-  icon: {
-    marginRight: 12,
-  },
-
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#2C2C2C',
-    padding: 0,
-  },
-
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  rememberText: {
-    fontSize: 13,
-    color: '#4A4A4A',
-  },
-
-  forgot: {
-    fontSize: 13,
-    color: '#3DA2CE',
-    fontWeight: '500',
-  },
-
-  button: {
-    backgroundColor: '#4FB3D9',
-    height: 52,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 32,
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-    letterSpacing: 0.5,
-  },
-});
