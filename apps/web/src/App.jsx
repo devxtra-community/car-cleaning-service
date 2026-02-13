@@ -15,16 +15,14 @@ const AccountantPortal = lazy(() => import('./components/accountant/AccountantPo
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 const Customers = lazy(() => import('./components/admin/Customers'));
 const Cleaners = lazy(() => import('./components/admin/Cleaners'));
-const AddCleaners = lazy(() => import('./components/admin/AddCleaners'));
 const VehicleManagement = lazy(() => import('./components/admin/Vehicle_Management'));
 const BuildingsManagement = lazy(() => import('./components/admin/BuildingsManagement'));
 const AddBuilding = lazy(() => import('./components/admin/AddBuilding'));
 
 const Supervisors = lazy(() => import('./components/admin/Supervisors'));
-const AddSupervisor = lazy(() => import('./components/admin/AddSupervisor'));
 const CleanerUnderSupervisorDetails = lazy(() => import('./components/admin/SupervisorDetails'));
 const AddVehicles = lazy(() => import('./components/admin/AddVehicles'));
-
+const RegisterUser = lazy(() => import('./components/admin/RegisterUser'));
 /* Accountant pages */
 const Accountant = lazy(() => import('./components/accountant/AccDashboard'));
 
@@ -36,6 +34,8 @@ const Reconciliation = lazy(() => import('./components/shared/Reconciliation'));
 const SalaryPerPerson = lazy(() => import('./components/shared/SalaryPerPerson'));
 const AddIncetiveTarget = lazy(() => import('./components/shared/AddIncentiveTarget'));
 const AnalyticsProgress = lazy(() => import('./components/shared/AnalyticsProgress'));
+const SalaryCycle = lazy(() => import('./components/shared/SalaryCycles'));
+// const SalaryListing = lazy(() => import('./components/shared/SalaryList'));
 
 function App() {
   return (
@@ -77,11 +77,10 @@ function App() {
             <Route path="buildings/add" element={<AddBuilding />} />
 
             <Route path="cleaners" element={<Cleaners />} />
-            <Route path="cleaners/addCleaners" element={<AddCleaners />} />
 
             <Route path="supervisors" element={<Supervisors />} />
-            <Route path="supervisors/addSupervisor" element={<AddSupervisor />} />
             <Route path="supervisor/:supervisorId" element={<CleanerUnderSupervisorDetails />} />
+            <Route path="register/:role" element={<RegisterUser />} />
 
             {/* Shared salary pages for admin also */}
             <Route path="addNewSalary" element={<AddNewSalary />} />
@@ -91,6 +90,7 @@ function App() {
             <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
             <Route path="addIncetiveTarget" element={<AddIncetiveTarget />} />
             <Route path="AnalyticsProgress" element={<AnalyticsProgress />} />
+            <Route path="salaryCycle" element={<SalaryCycle />} />
           </Route>
 
           {/* Catch all */}

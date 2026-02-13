@@ -5,19 +5,15 @@ import { pool } from '../../database/connectDatabase';
 import { createUser, CreateUserInput } from './auth_service';
 import { uploadToS3 } from 'src/middlewares/uploadMiddleware';
 
-/**
- * Register a new user (supervisor, cleaner, admin, super_admin, accountant)
- */
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const files = req.files as {
       [fieldname: string]: Express.Multer.File[];
     };
-    // Extract files
+
     const documentFile = files?.document?.[0];
     const profilePhotoFile = files?.profile_image?.[0];
 
-    // Validate required document
     if (!documentFile) {
       return res.status(400).json({
         success: false,
@@ -25,33 +21,41 @@ export const registerUser = async (req: Request, res: Response) => {
       });
     }
 
-    // Upload document to S3
+    // Upload files
     const documentUrl = await uploadToS3(documentFile);
 
-    // Upload profile photo to S3 (if provided)
     let profilePhotoUrl: string | undefined;
     if (profilePhotoFile) {
       profilePhotoUrl = await uploadToS3(profilePhotoFile);
     }
 
-    // Build base user data
+    // Normalize role
+    const role = req.body.role?.toLowerCase();
+
+    if (!role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role is required',
+      });
+    }
+
+    // Base payload - matching your table structure
     const base = {
-      email: req.body.email,
+      email: req.body.email?.trim(),
       password: req.body.password,
       full_name: req.body.full_name,
-      document: documentUrl, // S3 URL
+      document: documentUrl,
       document_id: req.body.document_id,
       age: Number(req.body.age),
       nationality: req.body.nationality,
-      client_type: req.body.client_type || 'web',
-      profile_image: profilePhotoUrl, // S3 URL (optional)
-      phone: req.body.phone,
+      profile_image: profilePhotoUrl,
+      phone: req.body.phone || null,
+      base_salary: req.body.base_salary ? Number(req.body.base_salary) : 0,
     };
 
     let payload: CreateUserInput;
 
-    // Build role-specific payload
-    switch (req.body.role) {
+    switch (role) {
       case 'supervisor':
         payload = {
           ...base,
@@ -78,23 +82,22 @@ export const registerUser = async (req: Request, res: Response) => {
       case 'accountant':
         payload = {
           ...base,
-          role: req.body.role,
+          role,
         };
         break;
 
       default:
         return res.status(400).json({
           success: false,
-          message: 'Invalid user role',
+          message: 'Invalid role provided',
         });
     }
 
-    // Create user
     const user = await createUser(payload);
 
     return res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: `${role} registered successfully`,
       data: user,
     });
   } catch (error: unknown) {
@@ -107,33 +110,30 @@ export const registerUser = async (req: Request, res: Response) => {
     if (error instanceof Error) {
       errorMessage = error.message;
 
-      if (error.message === 'USER_ALREADY_EXISTS') {
-        statusCode = 409;
-        message = 'User with this email already exists';
-      } else if (error.message === 'EMAIL_REQUIRED') {
-        statusCode = 400;
-        message = 'Email is required';
-      } else if (error.message === 'PASSWORD_REQUIRED') {
-        statusCode = 400;
-        message = 'Password is required';
-      } else if (error.message === 'FULL_NAME_REQUIRED') {
-        statusCode = 400;
-        message = 'Full name is required';
-      } else if (error.message === 'DOCUMENT_REQUIRED') {
-        statusCode = 400;
-        message = 'Document is required';
-      } else if (error.message === 'BUILDING_ID_REQUIRED_FOR_SUPERVISOR') {
-        statusCode = 400;
-        message = 'Building ID is required for supervisor';
-      } else if (error.message === 'SUPERVISOR_ID_REQUIRED_FOR_CLEANER') {
-        statusCode = 400;
-        message = 'Supervisor ID is required for cleaner';
-      } else if (error.message === 'BUILDING_NOT_FOUND') {
-        statusCode = 404;
-        message = 'Building not found';
-      } else if (error.message === 'SUPERVISOR_NOT_FOUND') {
-        statusCode = 404;
-        message = 'Supervisor not found';
+      const errorMap: Record<string, { code: number; msg: string }> = {
+        USER_ALREADY_EXISTS: { code: 409, msg: 'User already exists' },
+        EMAIL_REQUIRED: { code: 400, msg: 'Email is required' },
+        PASSWORD_REQUIRED: { code: 400, msg: 'Password is required' },
+        FULL_NAME_REQUIRED: { code: 400, msg: 'Full name is required' },
+        DOCUMENT_REQUIRED: { code: 400, msg: 'Document is required' },
+        DOCUMENT_ID_REQUIRED: { code: 400, msg: 'Document ID is required' },
+        AGE_REQUIRED: { code: 400, msg: 'Age is required' },
+        NATIONALITY_REQUIRED: { code: 400, msg: 'Nationality is required' },
+        BUILDING_ID_REQUIRED_FOR_SUPERVISOR: {
+          code: 400,
+          msg: 'Building ID required for supervisor',
+        },
+        SUPERVISOR_ID_REQUIRED_FOR_CLEANER: {
+          code: 400,
+          msg: 'Supervisor ID required for cleaner',
+        },
+        BUILDING_NOT_FOUND: { code: 404, msg: 'Building not found' },
+        SUPERVISOR_NOT_FOUND: { code: 404, msg: 'Supervisor not found' },
+      };
+
+      if (errorMap[error.message]) {
+        statusCode = errorMap[error.message].code;
+        message = errorMap[error.message].msg;
       }
     }
 
@@ -145,9 +145,141 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Login user
- */
+export const getCleaners = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        c.id AS cleaner_id,
+        c.user_id,
+        c.building_id,
+        c.floor_id,
+        c.supervisor_id,
+        c.total_tasks,
+        c.total_earning,
+        c.created_at,
+
+        u.full_name,
+        u.email,
+        u.phone,
+        u.age,
+        u.nationality,
+        u.document,
+        u.document_id,
+        u.profile_image,
+        u.base_salary,
+
+        b.building_name,
+
+        s_u.full_name AS supervisor_name
+
+      FROM cleaners c
+      JOIN users u ON c.user_id = u.id
+      LEFT JOIN buildings b ON c.building_id = b.id
+      LEFT JOIN supervisors s ON c.supervisor_id = s.id
+      LEFT JOIN users s_u ON s.user_id = s_u.id
+
+      WHERE u.role = 'cleaner'
+      ORDER BY u.full_name ASC
+      `
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    logger.error('Failed to fetch cleaners', { err: error });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch cleaners',
+    });
+  }
+};
+
+export const getAllSupervisors = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        s.id AS supervisor_id,
+        s.user_id,
+        s.building_id,
+        s.location_id,
+        s.created_at,
+
+        u.full_name,
+        u.email,
+        u.phone,
+        u.age,
+        u.nationality,
+        u.document,
+        u.document_id,
+        u.profile_image,
+        u.base_salary,
+
+        b.building_name
+
+      FROM supervisors s
+      JOIN users u ON s.user_id = u.id
+      LEFT JOIN buildings b ON s.building_id = b.id
+      WHERE u.role = 'supervisor'
+      ORDER BY u.full_name ASC
+      `
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error('Error fetching supervisors:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch supervisors',
+      error: process.env.NODE_ENV === 'development' ? error : undefined,
+    });
+  }
+};
+
+export const getSupervisorsByBuilding = async (req: Request, res: Response) => {
+  try {
+    const { buildingId } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT 
+        s.id,
+        s.user_id,
+        s.building_id,
+        s.full_name,
+        u.email,
+        u.phone
+      FROM supervisors s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.building_id = $1
+      AND u.role = 'supervisor'
+      ORDER BY s.full_name ASC
+      `,
+      [buildingId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error) {
+    console.error('Error fetching supervisors:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch supervisors',
+      error: process.env.NODE_ENV === 'development' ? error : undefined,
+    });
+  }
+};
 export const login = async (req: Request, res: Response) => {
   const client = await pool.connect();
 
@@ -265,120 +397,6 @@ export const login = async (req: Request, res: Response) => {
     client.release();
   }
 };
-
-/**
- * Logout user
- */
-export const logout = async (req: Request, res: Response) => {
-  try {
-    // Clear refresh token cookie
-    res.clearCookie('refreshToken', {
-      path: '/api/auth/refresh',
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Logout successful',
-    });
-  } catch (error) {
-    logger.error('Logout failed', { err: error });
-    return res.status(500).json({
-      success: false,
-      message: 'Logout failed',
-    });
-  }
-};
-
-/**
- * Get all supervisors
- */
-export const getSupervisors = async (req: Request, res: Response) => {
-  try {
-    const result = await pool.query(
-      `
-      SELECT 
-        s.id as supervisor_id,
-        u.id as user_id,
-        u.full_name,
-        u.email,
-        u.document_id,
-        u.age,
-        u.nationality,
-        u.document,
-        u.profile_image,
-        u.phone,
-        b.building_name,
-        b.id as building_id
-      FROM supervisors s
-      JOIN users u ON s.user_id = u.id
-      LEFT JOIN buildings b ON s.building_id = b.id
-      ORDER BY u.full_name ASC
-      `
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (error) {
-    logger.error('Failed to fetch supervisors', { err: error });
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch supervisors',
-    });
-  }
-};
-
-/**
- * Get all cleaners
- */
-export const getCleaners = async (req: Request, res: Response) => {
-  try {
-    const result = await pool.query(
-      `
-      SELECT 
-        c.id as cleaner_id,
-        u.id as user_id,
-        u.full_name,
-        u.email,
-        u.document_id,
-        u.age,
-        u.nationality,
-        u.document,
-        u.profile_image,
-        u.phone,
-        c.floor_id,
-        c.total_tasks,
-        c.total_earning,
-        b.building_name,
-        b.id as building_id,
-        s.id as supervisor_id,
-        s_u.full_name as supervisor_name
-      FROM cleaners c
-      JOIN users u ON c.user_id = u.id
-      LEFT JOIN buildings b ON c.building_id = b.id
-      LEFT JOIN supervisors s ON c.supervisor_id = s.id
-      LEFT JOIN users s_u ON s.user_id = s_u.id
-      ORDER BY u.full_name ASC
-      `
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (error) {
-    logger.error('Failed to fetch cleaners', { err: error });
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch cleaners',
-    });
-  }
-};
-
-/**
- * Get all cleaners assigned to a specific supervisor
- */
 export const getCleanersBySupervisor = async (req: Request, res: Response) => {
   try {
     const { supervisorId } = req.params;
@@ -430,6 +448,25 @@ export const getCleanersBySupervisor = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch cleaners',
+    });
+  }
+};
+export const logout = async (req: Request, res: Response) => {
+  try {
+    // Clear refresh token cookie
+    res.clearCookie('refreshToken', {
+      path: '/api/auth/refresh',
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logout successful',
+    });
+  } catch (error) {
+    logger.error('Logout failed', { err: error });
+    return res.status(500).json({
+      success: false,
+      message: 'Logout failed',
     });
   }
 };

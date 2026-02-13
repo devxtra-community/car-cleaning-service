@@ -4,6 +4,48 @@ interface LoginPayload {
   email: string;
   password: string;
 }
+export interface IncentiveTarget {
+  id: string;
+  target_tasks: number;
+  reason: string;
+  incentive_amount: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyWorkRecord {
+  id: string;
+  cleaner_id: string;
+  date: string;
+  tasks_completed: number;
+  target_tasks: number;
+  base_incentive: number;
+  bonus_incentive: number;
+  total_incentive: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface MonthlyIncentiveSummary {
+  cleaner_id: string;
+  full_name?: string;
+  month: string;
+  total_days_worked: number;
+  total_tasks_completed: number;
+  total_incentive_earned: number;
+  average_tasks_per_day: number;
+}
+
+export const registerUser = async (formData: FormData) => {
+  const response = await api.post('/api/auth/register', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return response.data;
+};
 
 export const login = async ({ email, password }: LoginPayload) => {
   const response = await api.post('/api/auth/login', {
@@ -37,39 +79,6 @@ export const createBuilding = (data: {
 }) => {
   return api.post('/api/buildings', data);
 };
-
-export interface IncentiveTarget {
-  id: string;
-  target_tasks: number;
-  reason: string;
-  incentive_amount: number;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DailyWorkRecord {
-  id: string;
-  cleaner_id: string;
-  date: string;
-  tasks_completed: number;
-  target_tasks: number;
-  base_incentive: number;
-  bonus_incentive: number;
-  total_incentive: number;
-  notes?: string;
-  created_at: string;
-}
-
-export interface MonthlyIncentiveSummary {
-  cleaner_id: string;
-  full_name?: string;
-  month: string;
-  total_days_worked: number;
-  total_tasks_completed: number;
-  total_incentive_earned: number;
-  average_tasks_per_day: number;
-}
 
 // Incentive Targets
 export const createIncentiveTarget = async (data: {

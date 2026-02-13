@@ -55,7 +55,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return userData;
   };
 
-  /* ---------- APP INIT (SILENT REFRESH) ---------- */
   useEffect(() => {
     const initAuth = async () => {
       try {

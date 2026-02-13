@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import appLogo from '../../assets/appLogo.png';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -15,6 +14,8 @@ import {
   CheckBadgeIcon,
   DocumentChartBarIcon,
   BanknotesIcon,
+  GiftIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 const AdminPortal = () => {
@@ -44,7 +45,7 @@ const AdminPortal = () => {
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r flex flex-col">
         {/* Logo */}
         <div className="px-6 py-4 font-semibold text-lg border-b flex">
-          <img width={30} height={20} src={appLogo} alt="appLogo" /> <p>Car Cleaning</p>
+          <img width={30} height={20} src="/appLogo.png" alt="appLogo" /> <p>Car Cleaning</p>
         </div>
 
         {/* Menu */}
@@ -61,6 +62,18 @@ const AdminPortal = () => {
               </div>
             )}
           </NavLink>
+          <NavLink to="/admin/supervisors">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
+                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
+                }`}
+              >
+                <UserIcon className="w-5 h-5" />
+                Supervisor
+              </div>
+            )}
+          </NavLink>
 
           <NavLink to="/admin/cleaners">
             {({ isActive }) => (
@@ -74,6 +87,18 @@ const AdminPortal = () => {
               </div>
             )}
           </NavLink>
+          <NavLink to="/admin/buildings">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
+                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
+                }`}
+              >
+                <BuildingOffice2Icon className="w-5 h-5" />
+                Buildings
+              </div>
+            )}
+          </NavLink>
 
           <NavLink to="/admin/vechicles">
             {({ isActive }) => (
@@ -84,44 +109,6 @@ const AdminPortal = () => {
               >
                 <TruckIcon className="w-5 h-5" />
                 Vehicle Management
-              </div>
-            )}
-          </NavLink>
-
-          <NavLink to="/admin/supervisors">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
-                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
-                }`}
-              >
-                <UserIcon className="w-5 h-5" />
-                Supervisor
-              </div>
-            )}
-          </NavLink>
-          <NavLink to="/admin/analyticsProgress">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
-                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
-                }`}
-              >
-                <UserIcon className="w-5 h-5" />
-                Salary analysis
-              </div>
-            )}
-          </NavLink>
-
-          <NavLink to="/admin/buildings">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
-                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
-                }`}
-              >
-                <BuildingOffice2Icon className="w-5 h-5" />
-                Buildings
               </div>
             )}
           </NavLink>
@@ -144,8 +131,20 @@ const AdminPortal = () => {
                   isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
                 }`}
               >
-                <CurrencyRupeeIcon className="w-5 h-5" />
+                <GiftIcon className="w-5 h-5" />
                 Add Incentive Targets
+              </div>
+            )}
+          </NavLink>
+          <NavLink to="/admin/analyticsProgress">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
+                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
+                }`}
+              >
+                <ChartBarIcon className="w-5 h-5" />
+                Salary analysis
               </div>
             )}
           </NavLink>
@@ -158,6 +157,30 @@ const AdminPortal = () => {
               >
                 <CheckBadgeIcon className="w-5 h-5" />
                 Salary Finalization
+              </div>
+            )}
+          </NavLink>
+          <NavLink to="/admin/salaryCycle">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
+                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
+                }`}
+              >
+                <TruckIcon className="w-5 h-5" />
+                cycle
+              </div>
+            )}
+          </NavLink>
+          <NavLink to="/admin/salaries/:cycleId">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 px-3 py-2 rounded  my-1 ${
+                  isActive ? 'bg-gray-100 font-medium' : 'hover:bg-gray-100'
+                }`}
+              >
+                <TruckIcon className="w-5 h-5" />
+                cycle
               </div>
             )}
           </NavLink>

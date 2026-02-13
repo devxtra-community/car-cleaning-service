@@ -77,7 +77,7 @@ api.interceptors.response.use(
         isRefreshing = false;
         setAccessToken(null);
         // Correct path to /Login (capital L as per App.jsx)
-        window.location.href = '/Login';
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
