@@ -77,59 +77,92 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
   const workerId = req.user?.userId;
   const taskId = req.params.id;
 
+  if (!workerId) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Complete task
+    /* ================= COMPLETE TASK ================= */
+
     const taskRes = await client.query(
       `
       UPDATE tasks
-      SET status='completed'
-      WHERE id=$1 AND cleaner_id=$2
+      SET status = 'completed',
+          completed_at = now()
+      WHERE id = $1 AND cleaner_id = $2
       RETURNING task_amount
       `,
       [taskId, workerId]
     );
 
-    if (!taskRes.rows.length) throw new Error('TASK_NOT_FOUND');
+    if (!taskRes.rows.length) {
+      throw new Error('TASK_NOT_FOUND');
+    }
 
-    const taskAmount = taskRes.rows[0].task_amount;
+    const taskAmount = Number(taskRes.rows[0].task_amount || 0);
 
-    // Update cleaner totals
-    await client.query(
+    /* ================= UPDATE CLEANER TASK COUNT ================= */
+
+    const cleanerRes = await client.query(
       `
       UPDATE cleaners
       SET total_tasks = total_tasks + 1,
           total_earning = total_earning + $1
-      WHERE user_id=$2
+      WHERE user_id = $2
+      RETURNING id, total_tasks
       `,
       [taskAmount, workerId]
     );
 
-    // Incentive check
-    const incentive = await client.query(
+    if (!cleanerRes.rows.length) {
+      throw new Error('CLEANER_NOT_FOUND');
+    }
+
+    const cleanerId = cleanerRes.rows[0].id;
+    const totalTasks = cleanerRes.rows[0].total_tasks;
+
+    /* ================= INCENTIVE RULE CHECK ================= */
+
+    // Get all active incentive rules
+    const rulesRes = await client.query(
       `
-      SELECT c.id, c.total_tasks, i.target_tasks, i.incentive_amount
-      FROM cleaners c
-      JOIN incentives i ON c.incentive_target=i.target_tasks
-      WHERE c.user_id=$1
-      `,
-      [workerId]
+      SELECT id, target_tasks, incentive_amount, reason
+      FROM incentives
+      WHERE active = true
+      ORDER BY target_tasks ASC
+      `
     );
 
-    if (incentive.rows.length) {
-      const row = incentive.rows[0];
+    for (const rule of rulesRes.rows) {
+      const target = rule.target_tasks;
 
-      if (row.total_tasks >= row.target_tasks) {
+      if (totalTasks % target === 0) {
+        const milestoneCount = totalTasks / target;
+
         await client.query(
           `
-          UPDATE cleaners
-          SET total_earning = total_earning + $1
-          WHERE id=$2
-          `,
-          [row.incentive_amount, row.id]
+      INSERT INTO cleaner_incentives (
+        cleaner_id,
+        incentive_rule_id,
+        milestone_count,
+        amount,
+        reason
+      )
+      VALUES ($1,$2,$3,$4,$5)
+      ON CONFLICT (cleaner_id, incentive_rule_id, milestone_count)
+      DO NOTHING
+    `,
+          [
+            cleanerId,
+            rule.id,
+            milestoneCount,
+            rule.incentive_amount,
+            rule.reason || `Completed ${target * milestoneCount} tasks`,
+          ]
         );
       }
     }

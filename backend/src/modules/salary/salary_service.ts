@@ -1,86 +1,141 @@
 // src/services/salary_service.ts
 import { pool } from '../../database/connectDatabase';
-import { getActiveIncentive } from '../incentives/incentives_service';
 
-interface CreateSalaryInput {
-  user_id: string;
-  month: string;
-  base_salary: number;
-  total_tasks?: number;
-  penalty_amount?: number;
-  monthly_review?: string;
-  payment_method?: string;
-  bank_account?: string;
-}
-
-export const createSalary = async (data: CreateSalaryInput) => {
+export const generateSalaryForUser = async (userId: string, cycleId: string) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // 1️⃣ Validate user
-    const userRes = await client.query(`SELECT id FROM users WHERE id = $1`, [data.user_id]);
+    // 1️⃣ Get cycle
+    const cycleRes = await client.query(
+      `SELECT start_date, end_date, is_locked
+       FROM salary_cycles
+       WHERE id = $1`,
+      [cycleId]
+    );
 
-    if (userRes.rowCount === 0) {
-      throw new Error('USER_NOT_FOUND');
+    if (!cycleRes.rowCount) throw new Error('CYCLE_NOT_FOUND');
+
+    const cycle = cycleRes.rows[0];
+
+    if (cycle.is_locked) throw new Error('SALARY_CYCLE_LOCKED');
+
+    const { start_date, end_date } = cycle;
+
+    // 2️⃣ Get user
+    const userRes = await client.query(`SELECT id, role, base_salary FROM users WHERE id = $1`, [
+      userId,
+    ]);
+
+    if (!userRes.rowCount) throw new Error('USER_NOT_FOUND');
+
+    const user = userRes.rows[0];
+
+    // ❌ Skip SuperAdmin
+    if (user.role === 'superAdmin') {
+      await client.query('ROLLBACK');
+      return null;
     }
 
-    const totalTasks = data.total_tasks ?? 0;
-    const penalty = data.penalty_amount ?? 0;
+    let totalTasks = 0;
+    let totalIncentives = 0;
+    let totalPenalties = 0;
 
-    // 2️⃣ Fetch active incentive
-    let incentiveAmount = 0;
-    let incentiveApplied = false;
+    // 3️⃣ If cleaner → dynamic calculation
+    if (user.role === 'cleaner') {
+      // Get cleaner_id
+      const cleanerRes = await client.query(`SELECT id FROM cleaners WHERE user_id = $1`, [userId]);
 
-    if (totalTasks > 0) {
-      const incentive = await getActiveIncentive();
+      if (!cleanerRes.rowCount) throw new Error('CLEANER_NOT_FOUND');
 
-      if (incentive && totalTasks >= incentive.target_tasks) {
-        incentiveAmount = Number(incentive.incentive_amount);
-        incentiveApplied = true;
-      }
+      const cleanerId = cleanerRes.rows[0].id;
+
+      // Tasks
+      const taskRes = await client.query(
+        `
+        SELECT COUNT(*) AS total_tasks
+        FROM tasks
+        WHERE cleaner_id = $1
+        AND completed_at BETWEEN $2 AND $3
+        `,
+        [cleanerId, start_date, end_date]
+      );
+
+      totalTasks = Number(taskRes.rows[0].total_tasks);
+
+      // Incentives
+      const incentiveRes = await client.query(
+        `
+        SELECT COALESCE(SUM(amount),0) AS total
+        FROM cleaner_incentives
+        WHERE cleaner_id = $1
+        AND created_at BETWEEN $2 AND $3
+        `,
+        [cleanerId, start_date, end_date]
+      );
+
+      totalIncentives = Number(incentiveRes.rows[0].total);
+
+      // Penalties
+      const penaltyRes = await client.query(
+        `
+        SELECT COALESCE(SUM(amount),0) AS total
+        FROM penalties
+        WHERE cleaner_id = $1
+        AND created_at BETWEEN $2 AND $3
+        `,
+        [cleanerId, start_date, end_date]
+      );
+
+      totalPenalties = Number(penaltyRes.rows[0].total);
     }
 
-    // 3️⃣ Calculate final salary
-    const finalSalary = data.base_salary + incentiveAmount - penalty;
+    // 4️⃣ Calculate salary
+    const baseSalary = Number(user.base_salary);
+    const grossSalary = baseSalary + totalIncentives - totalPenalties;
+    const netSalary = grossSalary;
 
-    // 4️⃣ Insert salary
-    const res = await client.query(
+    // 5️⃣ Insert / Update salary
+    const salaryRes = await client.query(
       `
       INSERT INTO salaries (
         user_id,
-        month,
+        salary_cycle_id,
         base_salary,
         total_tasks,
-        incentive_amount,
-        penalty_amount,
-        final_salary,
-        incentive_applied,
-        monthly_review,
-        payment_method,
-        bank_account
+        total_incentives,
+        total_penalties,
+        gross_salary,
+        net_salary,
+        status
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending')
+      ON CONFLICT (user_id, salary_cycle_id)
+      DO UPDATE SET
+        base_salary = EXCLUDED.base_salary,
+        total_tasks = EXCLUDED.total_tasks,
+        total_incentives = EXCLUDED.total_incentives,
+        total_penalties = EXCLUDED.total_penalties,
+        gross_salary = EXCLUDED.gross_salary,
+        net_salary = EXCLUDED.net_salary
       RETURNING *
       `,
       [
-        data.user_id,
-        data.month,
-        data.base_salary,
+        userId,
+        cycleId,
+        baseSalary,
         totalTasks,
-        incentiveAmount,
-        penalty,
-        finalSalary,
-        incentiveApplied,
-        data.monthly_review,
-        data.payment_method,
-        data.bank_account,
+        totalIncentives,
+        totalPenalties,
+        grossSalary,
+        netSalary,
       ]
     );
 
     await client.query('COMMIT');
-    return res.rows[0];
+
+    return salaryRes.rows[0];
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -89,231 +144,172 @@ export const createSalary = async (data: CreateSalaryInput) => {
   }
 };
 
-export const getAllSalaries = async () => {
+export const generateSalaryForAllUsers = async (cycleId: string) => {
+  const usersRes = await pool.query(`SELECT id FROM users WHERE role != 'superAdmin'`);
+
+  const users = usersRes.rows;
+
+  const results = [];
+
+  for (const user of users) {
+    const salary = await generateSalaryForUser(user.id, cycleId);
+    if (salary) results.push(salary);
+  }
+
+  return results;
+};
+export const getAllSalaryCycles = async () => {
   const result = await pool.query(`
-    SELECT
-      s.id,
-      s.user_id,
-      u.full_name,
-      u.role,
-      s.month,
-      s.base_salary,
-      s.total_tasks,
-      s.incentive_amount,
-      s.penalty_amount,
-      s.final_salary,
-      s.status,
-      s.monthly_review,
-      s.payment_method,
-      s.bank_account,
-      s.created_at
-    FROM salaries s
-    JOIN users u ON u.id = s.user_id
-    ORDER BY s.month DESC, u.full_name ASC
+    SELECT id, month, year, start_date, end_date, is_locked
+    FROM salary_cycles
+    ORDER BY year DESC, month DESC
   `);
 
   return result.rows;
 };
-
-export const getSalariesByUser = async (userId: string) => {
-  const result = await pool.query(
-    `
-    SELECT
-      id,
-      month,
-      base_salary,
-      incentive_amount,
-      penalty_amount,
-      final_salary,
-      status,
-      created_at
-    FROM salaries
-    WHERE user_id = $1
-    ORDER BY month DESC
-    `,
-    [userId]
-  );
-
-  return result.rows;
-};
-
-/**
- * GET user details with monthly incentive summary
- */
-export const getUserSalaryDetails = async (userId: string, month: string) => {
-  const client = await pool.connect();
-
-  try {
-    // Get user info
-    const userResult = await client.query(
-      `
-  SELECT 
-    id, 
-    full_name, 
-    email, 
-    role, 
-    base_salary
-  FROM users 
-  WHERE id = $1
-  `,
-      [userId]
-    );
-
-    if (userResult.rows.length === 0) {
-      throw new Error('USER_NOT_FOUND');
-    }
-
-    const user = userResult.rows[0];
-    let monthlyIncentives = [];
-    const penalties: never[] = [];
-
-    // For cleaners, get daily work records for the month
-    if (user.role === 'cleaner' && month) {
-      const [year, monthNum] = month.split('-');
-
-      const incentivesResult = await client.query(
-        `
-        SELECT 
-          date,
-          tasks_completed,
-          target_tasks,
-          base_incentive,
-          bonus_incentive,
-          total_incentive,
-          notes
-        FROM daily_work_records
-        WHERE cleaner_id = $1
-          AND EXTRACT(YEAR FROM date) = $2
-          AND EXTRACT(MONTH FROM date) = $3
-        ORDER BY date DESC
-        `,
-        [userId, parseInt(year), parseInt(monthNum)]
-      );
-
-      monthlyIncentives = incentivesResult.rows;
-    }
-
-    return {
-      user,
-      monthlyIncentives,
-      penalties,
-    };
-  } finally {
-    client.release();
-  }
-};
-
-/**
- * UPDATE salary (only when draft)
- */
-export const updateSalary = async (
-  salaryId: string,
-  data: {
-    base_salary?: number;
-    penalty_amount?: number;
-    monthly_review?: string;
-    payment_method?: string;
-    bank_account?: string;
-  }
-) => {
+export const lockSalaryCycle = async (cycleId: string) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    const check = await client.query(
-      `SELECT status, user_id, salary_month, incentive_amount FROM salaries WHERE id = $1`,
-      [salaryId]
+    // 1️⃣ Check cycle exists
+    const cycleRes = await client.query(`SELECT id, is_locked FROM salary_cycles WHERE id = $1`, [
+      cycleId,
+    ]);
+
+    if (!cycleRes.rowCount) {
+      throw new Error('CYCLE_NOT_FOUND');
+    }
+
+    if (cycleRes.rows[0].is_locked) {
+      throw new Error('SALARY_ALREADY_LOCKED');
+    }
+
+    // 2️⃣ Ensure salaries exist
+    const salaryRes = await client.query(
+      `SELECT COUNT(*) FROM salaries WHERE salary_cycle_id = $1`,
+      [cycleId]
     );
 
-    if (check.rows.length === 0) {
-      throw new Error('SALARY_NOT_FOUND');
+    if (Number(salaryRes.rows[0].count) === 0) {
+      throw new Error('NO_SALARIES_GENERATED');
     }
 
-    if (check.rows[0]?.status !== 'draft') {
-      throw new Error('SALARY_LOCKED');
-    }
+    // 3️⃣ Lock salary cycle
+    await client.query(
+      `
+      UPDATE salary_cycles
+      SET is_locked = true,
+          locked_at = now()
+      WHERE id = $1
+      `,
+      [cycleId]
+    );
 
-    const currentSalary = check.rows[0];
-
-    // Recalculate final salary
-    const baseSalary = data.base_salary ?? currentSalary.base_salary;
-    const penaltyAmount = data.penalty_amount ?? currentSalary.penalty_amount;
-    const incentiveAmount = currentSalary.incentive_amount;
-
-    const finalSalary = baseSalary + incentiveAmount - penaltyAmount;
-
-    const result = await client.query(
+    // 4️⃣ Update salary status
+    await client.query(
       `
       UPDATE salaries
-      SET
-        base_salary = $2,
-        penalty_amount = $3,
-        final_salary = $4,
-        monthly_review = COALESCE($5, monthly_review),
-        payment_method = COALESCE($6, payment_method),
-        bank_account = COALESCE($7, bank_account)
-      WHERE id = $1
-      RETURNING *
+      SET status = 'locked',
+          finalized_at = now()
+      WHERE salary_cycle_id = $1
       `,
-      [
-        salaryId,
-        baseSalary,
-        penaltyAmount,
-        finalSalary,
-        data.monthly_review,
-        data.payment_method,
-        data.bank_account,
-      ]
+      [cycleId]
     );
 
     await client.query('COMMIT');
-    return result.rows[0];
-  } catch (error) {
+
+    return { message: 'Salary cycle locked successfully' };
+  } catch (err) {
     await client.query('ROLLBACK');
-    throw error;
+    throw err;
   } finally {
     client.release();
   }
 };
 
-/**
- * FINALIZE salary (lock it)
- */
-export const finalizeSalary = async (salaryId: string) => {
-  const result = await pool.query(
-    `
-    UPDATE salaries
-    SET status = 'finalized',
-        finalized_at = NOW()
-    WHERE id = $1
-      AND status = 'draft'
-    RETURNING *
-    `,
-    [salaryId]
-  );
+export const markSalaryAsPaid = async (salaryId: string, paymentMethod?: string) => {
+  const client = await pool.connect();
 
-  return result.rows[0];
+  try {
+    await client.query('BEGIN');
+
+    const salaryRes = await client.query(`SELECT id, status FROM salaries WHERE id = $1`, [
+      salaryId,
+    ]);
+
+    if (!salaryRes.rowCount) {
+      throw new Error('SALARY_NOT_FOUND');
+    }
+
+    if (salaryRes.rows[0].status !== 'locked') {
+      throw new Error('SALARY_MUST_BE_LOCKED_BEFORE_PAYMENT');
+    }
+
+    const updateRes = await client.query(
+      `
+      UPDATE salaries
+      SET status = 'paid',
+          paid_at = now(),
+          payment_method = $2
+      WHERE id = $1
+      RETURNING *
+      `,
+      [salaryId, paymentMethod || null]
+    );
+
+    await client.query('COMMIT');
+
+    return updateRes.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
-/**
- * Get users by role for salary management
- */
-export const getUsersByRole = async (role: string) => {
-  const result = await pool.query(
-    `
-    SELECT 
-      id, 
-      full_name, 
-      email, 
-      role, 
-      base_salary
-    FROM users 
-    WHERE role = $1
-    ORDER BY full_name ASC
-    `,
-    [role]
+export const previewSalaryForCleaner = async (cleanerId: string, cycleId: string) => {
+  const cycleRes = await pool.query(
+    `SELECT start_date, end_date FROM salary_cycles WHERE id = $1`,
+    [cycleId]
   );
 
-  return result.rows;
+  if (!cycleRes.rowCount) throw new Error('CYCLE_NOT_FOUND');
+
+  const { start_date, end_date } = cycleRes.rows[0];
+
+  const baseRes = await pool.query(`SELECT base_salary FROM cleaners WHERE id = $1`, [cleanerId]);
+
+  const incentiveRes = await pool.query(
+    `
+    SELECT COALESCE(SUM(amount),0) AS total
+    FROM cleaner_incentives
+    WHERE cleaner_id = $1
+    AND created_at BETWEEN $2 AND $3
+    `,
+    [cleanerId, start_date, end_date]
+  );
+
+  const penaltyRes = await pool.query(
+    `
+    SELECT COALESCE(SUM(amount),0) AS total
+    FROM penalties
+    WHERE cleaner_id = $1
+    AND created_at BETWEEN $2 AND $3
+    `,
+    [cleanerId, start_date, end_date]
+  );
+
+  const base = Number(baseRes.rows[0].base_salary);
+  const incentive = Number(incentiveRes.rows[0].total);
+  const penalty = Number(penaltyRes.rows[0].total);
+
+  return {
+    base_salary: base,
+    total_incentives: incentive,
+    total_penalties: penalty,
+    net_salary: base + incentive - penalty,
+  };
 };

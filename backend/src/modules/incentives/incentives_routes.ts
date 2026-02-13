@@ -6,11 +6,6 @@ import {
   getAllIncentivesController,
   updateIncentiveController,
   deleteIncentiveController,
-  recordDailyWorkController,
-  getDailyWorkRecordsController,
-  getMonthlyIncentiveSummaryController,
-  getAllCleanersMonthlyIncentivesController,
-  deleteDailyWorkRecordController,
 } from './incentives_controller';
 
 const router = Router();
@@ -34,25 +29,25 @@ router.delete('/targets/:id', deleteIncentiveController);
 
 /* ================= DAILY WORK RECORDS ================= */
 
-// Record daily work for a cleaner
-router.post('/daily-work', recordDailyWorkController);
+// // Record daily work for a cleaner
+// router.post('/daily-work', recordDailyWorkController);
 
-// Get daily work records for a cleaner
-// Query params: ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD or ?month=YYYY-MM
-router.get('/daily-work/:cleanerId', getDailyWorkRecordsController);
+// // Get daily work records for a cleaner
+// // Query params: ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD or ?month=YYYY-MM
+// router.get('/daily-work/:cleanerId', getDailyWorkRecordsController);
 
-// Delete daily work record
-// Query params: ?cleanerId=xxx
-router.delete('/daily-work/:id', deleteDailyWorkRecordController);
+// // Delete daily work record
+// // Query params: ?cleanerId=xxx
+// router.delete('/daily-work/:id', deleteDailyWorkRecordController);
 
-/* ================= MONTHLY SUMMARIES ================= */
+// /* ================= MONTHLY SUMMARIES ================= */
 
-// Get monthly incentive summary for a specific cleaner
-// Query params: ?month=YYYY-MM
-router.get('/monthly-summary/:cleanerId', getMonthlyIncentiveSummaryController);
+// // Get monthly incentive summary for a specific cleaner
+// // Query params: ?month=YYYY-MM
+// router.get('/monthly-summary/:cleanerId', getMonthlyIncentiveSummaryController);
 
-// Get all cleaners' monthly incentive summaries
-// Query params: ?month=YYYY-MM
-router.get('/monthly-summary', getAllCleanersMonthlyIncentivesController);
+// // Get all cleaners' monthly incentive summaries
+// // Query params: ?month=YYYY-MM
+// router.get('/monthly-summary', getAllCleanersMonthlyIncentivesController);
 
 export default router;

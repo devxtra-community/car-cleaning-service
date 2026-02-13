@@ -64,7 +64,7 @@ const Cleaners = () => {
               <span className="absolute left-2 top-2 text-gray-400">🔍</span>
             </div>
 
-            <Link to="/admin/cleaners/addCleaners">
+            <Link to="/admin/register/cleaner">
               <button className="bg-blue-500 text-white px-4 py-1.5 rounded text-sm">
                 + Add Cleaner
               </button>
@@ -122,10 +122,7 @@ const Cleaners = () => {
                       </td>
                       <td className="text-center">{cleaner.email}</td>
                       <td className="text-center">{cleaner.supervisor_name || 'N/A'}</td>
-                      <td className="text-center">
-                        {cleaner.building_name || 'N/A'}{' '}
-                        {cleaner.floor_id ? `(Floor ${cleaner.floor_id})` : ''}
-                      </td>
+                      <td className="text-center">{cleaner.building_name || 'N/A'} </td>
                       <td className="text-center">{cleaner.total_tasks}</td>
                       <td className="text-center text-green-600">₹{cleaner.total_earning}</td>
                       <td className="text-center">
