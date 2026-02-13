@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import profileImg from '../../assets/profileImg.png';
 import { Link } from 'react-router-dom';
-import { getAllSupervisors } from '../../services/allAPI';
 import { useAuth } from '../../context/AuthContext';
+import { getAllSupervisors } from '../../services/allapi';
 
 type Supervisor = {
   supervisor_id: string;
   full_name: string;
   email?: string;
   location?: string;
+  profile_image: string;
 };
 
 const Supervisors = () => {
@@ -49,7 +49,7 @@ const Supervisors = () => {
             className="border rounded-md px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          <Link to="/admin/supervisors/addSupervisor">
+          <Link to="/admin/register/supervisor">
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
               + Add Supervisor
             </button>
@@ -85,7 +85,7 @@ const Supervisors = () => {
                         className="flex items-center gap-3"
                       >
                         <img
-                          src={profileImg}
+                          src={sup.profile_image}
                           alt={sup.full_name}
                           className="w-10 h-10 rounded-full object-cover"
                         />
