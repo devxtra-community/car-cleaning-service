@@ -15,6 +15,7 @@ import { useFocusEffect } from 'expo-router';
 import { ChevronLeft, ChevronRight, Calendar, TrendingUp, Award } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../src/api/api';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ interface AnalyticsData {
 }
 
 export default function Analytics() {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,12 +99,12 @@ export default function Analytics() {
   const target = period?.next_target || 10;
   const progressPerc = period?.progress || 0;
   const pieData = [
-    { value: jobsDone, color: '#1B86C6' },
-    { value: Math.max(target - jobsDone, 0), color: '#F1F5F9' },
+    { value: jobsDone, color: colors.primary },
+    { value: Math.max(target - jobsDone, 0), color: colors.border },
   ];
 
   return (
-    <View className="flex-1 bg-[#F5F7FA]">
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -114,20 +116,36 @@ export default function Analytics() {
               await loadAnalytics();
               setRefreshing(false);
             }}
-            tintColor="#1B86C6"
+            tintColor={colors.primary}
           />
         }
       >
         <View
-          className="bg-white rounded-b-[40px] shadow-sm pb-6 px-6"
-          style={{ paddingTop: insets.top + 10 }}
+          className="rounded-b-[40px] shadow-sm pb-6 px-6"
+          style={{
+            paddingTop: insets.top + 10,
+            backgroundColor: colors.cardBackground,
+            borderBottomColor: colors.border,
+            borderBottomWidth: 1,
+          }}
         >
-          <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">
+          <Text
+            className="text-[12px] font-bold uppercase tracking-widest mb-1"
+            style={{ color: colors.textSecondary }}
+          >
             Performance Insight
           </Text>
-          <Text className="text-gray-900 text-3xl font-black tracking-tighter mb-6">Analytics</Text>
+          <Text
+            className="text-4xl font-black tracking-tighter mb-6"
+            style={{ color: colors.text }}
+          >
+            Analytics
+          </Text>
 
-          <View className="flex-row bg-gray-100 p-1 rounded-2xl mb-4">
+          <View
+            className="flex-row p-1 rounded-2xl mb-4"
+            style={{ backgroundColor: colors.background }}
+          >
             {['day', 'week', 'month'].map((r) => (
               <Pressable
                 key={r}
@@ -136,8 +154,8 @@ export default function Analytics() {
                 style={
                   range === r
                     ? {
-                        backgroundColor: 'white',
-                        shadowColor: '#000',
+                        backgroundColor: colors.cardBackground,
+                        shadowColor: colors.shadow,
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: 0.05,
                         shadowRadius: 2,
@@ -147,8 +165,8 @@ export default function Analytics() {
                 }
               >
                 <Text
-                  className="text-[10px] font-black uppercase tracking-tighter"
-                  style={{ color: range === r ? '#1B86C6' : '#9ca3af' }}
+                  className="text-[12px] font-black uppercase tracking-tighter"
+                  style={{ color: range === r ? colors.primary : colors.textTertiary }}
                 >
                   {r}
                 </Text>
@@ -156,34 +174,51 @@ export default function Analytics() {
             ))}
           </View>
 
-          <View className="flex-row items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded-2xl">
+          <View
+            className="flex-row items-center justify-between border p-2 rounded-2xl"
+            style={{ backgroundColor: colors.background, borderColor: colors.border }}
+          >
             <Pressable
               onPress={() => shiftDate('prev')}
-              className="w-10 h-10 items-center justify-center bg-white rounded-xl shadow-sm"
+              className="w-10 h-10 items-center justify-center rounded-xl shadow-sm"
+              style={{ backgroundColor: colors.cardBackground }}
             >
-              <ChevronLeft size={20} color="#1B86C6" />
+              <ChevronLeft size={20} color={colors.primary} />
             </Pressable>
             <Pressable
               onPress={() => setShowDatePicker(true)}
               className="flex-row items-center gap-2"
             >
-              <Calendar size={14} color="#1B86C6" />
-              <Text className="font-bold text-gray-700 text-xs">{formatDateLabel()}</Text>
+              <Calendar size={16} color={colors.primary} />
+              <Text className="font-bold text-sm" style={{ color: colors.text }}>
+                {formatDateLabel()}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => shiftDate('next')}
-              className="w-10 h-10 items-center justify-center bg-white rounded-xl shadow-sm"
+              className="w-10 h-10 items-center justify-center rounded-xl shadow-sm"
+              style={{ backgroundColor: colors.cardBackground }}
             >
-              <ChevronRight size={20} color="#1B86C6" />
+              <ChevronRight size={20} color={colors.primary} />
             </Pressable>
           </View>
         </View>
 
         <View className="p-6">
-          <View className="bg-white rounded-[32px] p-8 items-center shadow-xl shadow-blue-500/5 mb-6">
+          <View
+            className="rounded-[32px] p-8 items-center shadow-xl mb-6"
+            style={{
+              backgroundColor: colors.cardBackground,
+              shadowColor: colors.primary,
+              shadowOpacity: 0.05,
+            }}
+          >
             <View className="absolute top-6 left-6 flex-row items-center gap-2">
-              <View className="w-2 h-2 rounded-full bg-[#1B86C6]" />
-              <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }} />
+              <Text
+                className="text-[11px] font-bold uppercase tracking-widest"
+                style={{ color: colors.textSecondary }}
+              >
                 Progress
               </Text>
             </View>
@@ -192,28 +227,44 @@ export default function Analytics() {
               donut
               radius={width * 0.22}
               innerRadius={width * 0.17}
-              backgroundColor="white"
+              backgroundColor={colors.cardBackground}
               centerLabelComponent={() => (
                 <View className="items-center">
-                  <Text className="text-3xl font-black text-gray-900">
+                  <Text className="text-4xl font-black" style={{ color: colors.text }}>
                     {Math.round(progressPerc)}%
                   </Text>
-                  <Text className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                  <Text
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: colors.textSecondary }}
+                  >
                     Complete
                   </Text>
                 </View>
               )}
             />
-            <View className="flex-row gap-8 mt-8 border-t border-gray-50 pt-6 w-full justify-center">
+            <View
+              className="flex-row gap-8 mt-8 border-t pt-6 w-full justify-center"
+              style={{ borderTopColor: colors.border }}
+            >
               <View className="items-center">
-                <Text className="text-xl font-black text-gray-900">{jobsDone}</Text>
-                <Text className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                <Text className="text-2xl font-black" style={{ color: colors.text }}>
+                  {jobsDone}
+                </Text>
+                <Text
+                  className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: colors.textSecondary }}
+                >
                   Completed
                 </Text>
               </View>
               <View className="items-center">
-                <Text className="text-xl font-black text-gray-900">{target}</Text>
-                <Text className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                <Text className="text-2xl font-black" style={{ color: colors.text }}>
+                  {target}
+                </Text>
+                <Text
+                  className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: colors.textSecondary }}
+                >
                   Target
                 </Text>
               </View>
@@ -221,17 +272,18 @@ export default function Analytics() {
           </View>
 
           <LinearGradient
-            colors={['#1B86C6', '#0ea5e9']}
-            className="rounded-[32px] p-6 mb-6 shadow-xl shadow-blue-500/20"
+            colors={[colors.primary, colors.primaryDark]}
+            className="rounded-[32px] p-6 mb-6 shadow-xl"
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
+            style={{ shadowColor: colors.primary, shadowOpacity: 0.2 }}
           >
             <View className="flex-row justify-between mb-8">
               <View>
-                <Text className="text-white/60 text-[9px] font-bold uppercase tracking-widest">
+                <Text className="text-white/60 text-[11px] font-bold uppercase tracking-widest">
                   Potential Bonus
                 </Text>
-                <Text className="text-white text-3xl font-black">
+                <Text className="text-white text-4xl font-black">
                   ₹{period?.incentive_amount || 0}
                 </Text>
               </View>
@@ -243,7 +295,7 @@ export default function Analytics() {
               <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
                 <TrendingUp size={16} color="white" />
               </View>
-              <Text className="text-white text-[11px] font-bold leading-4 flex-1">
+              <Text className="text-white text-[13px] font-bold leading-5 flex-1">
                 {jobsDone >= target
                   ? 'Goal achieved! Reward confirmed.'
                   : `Wash ${target - jobsDone} more to unlock bonus.`}
@@ -252,33 +304,60 @@ export default function Analytics() {
           </LinearGradient>
 
           <View className="flex-row gap-4 mb-32">
-            <View className="flex-1 bg-white p-6 rounded-[28px] shadow-sm">
-              <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1">
+            <View
+              className="flex-1 p-6 rounded-[28px] shadow-sm"
+              style={{ backgroundColor: colors.cardBackground }}
+            >
+              <Text
+                className="text-[10px] font-bold uppercase tracking-widest mb-1"
+                style={{ color: colors.textSecondary }}
+              >
                 Today's Revenue
               </Text>
-              <Text className="text-xl font-black text-gray-900">₹{period?.revenue || 0}</Text>
+              <Text className="text-2xl font-black" style={{ color: colors.text }}>
+                ₹{period?.revenue || 0}
+              </Text>
             </View>
-            <View className="flex-1 bg-white p-6 rounded-[28px] shadow-sm">
-              <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1">
+            <View
+              className="flex-1 p-6 rounded-[28px] shadow-sm"
+              style={{ backgroundColor: colors.cardBackground }}
+            >
+              <Text
+                className="text-[10px] font-bold uppercase tracking-widest mb-1"
+                style={{ color: colors.textSecondary }}
+              >
                 Total Revenue
               </Text>
-              <Text className="text-black text-xl font-black">₹{data?.totalRevenue || 0}</Text>
+              <Text className="text-2xl font-black" style={{ color: colors.text }}>
+                ₹{data?.totalRevenue || 0}
+              </Text>
             </View>
           </View>
         </View>
 
         {/* INCENTIVE ACHIEVEMENTS BOX */}
         <View className="px-6 mb-32">
-          <View className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
+          <View
+            className="rounded-[32px] p-6 shadow-sm border"
+            style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
+          >
             <View className="flex-row items-center justify-between mb-6">
               <View>
-                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">
+                <Text
+                  className="text-[11px] font-bold uppercase tracking-widest mb-1"
+                  style={{ color: colors.textSecondary }}
+                >
                   Rewards Summary
                 </Text>
-                <Text className="text-gray-900 text-xl font-black">Incentive Achievements</Text>
+                <Text className="text-2xl font-black" style={{ color: colors.text }}>
+                  Incentive Achievements
+                </Text>
               </View>
-              <View className="w-10 h-10 bg-green-50 rounded-2xl items-center justify-center">
-                <Award size={20} color="#10b981" />
+              <View
+                className="w-10 h-10 rounded-2xl items-center justify-center"
+                style={{ backgroundColor: colors.successLight }}
+              >
+                <Award size={20} color={colors.success} />
               </View>
             </View>
 
@@ -287,19 +366,29 @@ export default function Analytics() {
                 {
                   label: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
                   value: data?.incentives?.day || 0,
-                  color: '#1B86C6',
+                  color: colors.primary,
                 },
-                { label: 'Weekly Total', value: data?.incentives?.week || 0, color: '#10b981' },
+                {
+                  label: 'Weekly Total',
+                  value: data?.incentives?.week || 0,
+                  color: colors.success,
+                },
                 { label: 'Monthly Total', value: data?.incentives?.month || 0, color: '#8b5cf6' },
               ].map((item, idx) => (
                 <View
                   key={idx}
-                  className="flex-1 bg-gray-50 rounded-2xl p-4 border border-gray-100/50"
+                  className="flex-1 rounded-2xl p-4 border"
+                  style={{ backgroundColor: colors.background, borderColor: colors.border }}
                 >
-                  <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mb-2">
+                  <Text
+                    className="text-[10px] font-bold uppercase tracking-wider mb-2"
+                    style={{ color: colors.textSecondary }}
+                  >
                     {item.label}
                   </Text>
-                  <Text className="text-gray-900 text-base font-black">₹{item.value}</Text>
+                  <Text className="text-lg font-black" style={{ color: colors.text }}>
+                    ₹{item.value}
+                  </Text>
                   <View
                     className="h-1 w-6 rounded-full mt-2"
                     style={{ backgroundColor: item.color }}
@@ -315,7 +404,7 @@ export default function Analytics() {
             value={date}
             mode="date"
             display="default"
-            onChange={(e: any, d?: Date) => {
+            onChange={(e, d) => {
               setShowDatePicker(false);
               if (d) setDate(d);
             }}

@@ -5,12 +5,14 @@ import { ArrowLeft, CheckCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import api from '../../src/api/api';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /* ================= COMPONENT ================= */
 
 export default function PaymentSummary() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = useTheme();
   const params = useLocalSearchParams();
 
   const jobId = params.jobId as string;
@@ -60,72 +62,118 @@ export default function PaymentSummary() {
   /* ================= UI ================= */
 
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
-      <View className="p-5">
-        <Pressable onPress={() => !loading && router.back()}>
-          <ArrowLeft color="black" />
+    <View className="flex-1" style={{ backgroundColor: colors.background, paddingTop: insets.top }}>
+      <View className="p-6">
+        <Pressable
+          onPress={() => !loading && router.back()}
+          className="w-12 h-12 rounded-xl items-center justify-center shadow-sm"
+          style={{ backgroundColor: colors.cardBackground }}
+        >
+          <ArrowLeft color={colors.text} size={24} />
         </Pressable>
       </View>
 
-      <ScrollView className="px-5">
-        <Text className="text-2xl font-bold mb-2">Payment Summary</Text>
-        <Text className="text-gray-600 mb-6">Review details and complete the job</Text>
+      <ScrollView className="px-6">
+        <Text className="text-3xl font-black mb-2 tracking-tight" style={{ color: colors.text }}>
+          Payment Summary
+        </Text>
+        <Text className="text-base font-medium mb-8" style={{ color: colors.textSecondary }}>
+          Review details and complete the job
+        </Text>
 
         {/* PAYMENT DETAILS CARD */}
-        <View className="bg-white border border-gray-200 rounded-3xl p-5 mb-5 shadow-sm">
-          <View className="flex-row justify-between items-center mb-4 pb-4 border-b border-gray-100">
-            <Text className="text-gray-500">Payment Method</Text>
-            <Text className="font-semibold text-base">{paymentMethod}</Text>
+        <View
+          className="rounded-[32px] p-6 mb-6 shadow-sm border"
+          style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
+        >
+          <View
+            className="flex-row justify-between items-center mb-5 pb-5 border-b"
+            style={{ borderBottomColor: colors.borderLight }}
+          >
+            <Text
+              className="font-bold text-[12px] uppercase tracking-wide"
+              style={{ color: colors.textTertiary }}
+            >
+              Payment Method
+            </Text>
+            <Text className="font-black text-lg" style={{ color: colors.text }}>
+              {paymentMethod}
+            </Text>
           </View>
 
           <View className="flex-row justify-between items-center">
-            <Text className="text-gray-500">Amount Charged</Text>
-            <Text className="text-3xl font-bold text-[#1B86C6]">₹{finalPrice.toFixed(2)}</Text>
+            <Text
+              className="font-bold text-[12px] uppercase tracking-wide"
+              style={{ color: colors.textTertiary }}
+            >
+              Amount Charged
+            </Text>
+            <Text className="text-4xl font-black" style={{ color: colors.primary }}>
+              ₹{finalPrice.toFixed(2)}
+            </Text>
           </View>
         </View>
 
         {/* QR CODE SECTION */}
-        <View className="bg-gradient-to-b from-[#1B86C6]/10 to-white border border-[#1B86C6]/20 rounded-3xl p-6 items-center mb-5">
-          <Text className="font-bold text-lg mb-2">Customer Review</Text>
-          <Text className="text-gray-600 text-center mb-4 text-sm">
+        <View
+          className="rounded-[32px] p-8 items-center mb-6 border"
+          style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}
+        >
+          <Text className="font-black text-xl mb-2" style={{ color: colors.primaryDark }}>
+            Customer Review
+          </Text>
+          <Text className="text-center mb-6 text-sm font-bold" style={{ color: colors.primary }}>
             Ask customer to scan this QR code to rate your service
           </Text>
 
-          <View className="bg-white p-5 rounded-2xl shadow-md">
-            <QRCode value={qrData} size={200} color="#1B86C6" backgroundColor="white" />
+          <View className="p-6 rounded-[24px] shadow-sm" style={{ backgroundColor: 'white' }}>
+            <QRCode value={qrData} size={200} color={colors.primary} backgroundColor="white" />
           </View>
 
-          <Text className="text-xs text-gray-400 mt-3 text-center">
+          <Text
+            className="text-[10px] font-bold mt-4 text-center uppercase tracking-widest"
+            style={{ color: colors.primary }}
+          >
             Scan to review worker performance
           </Text>
         </View>
 
         {/* SUCCESS INDICATOR */}
         {completed && (
-          <View className="bg-green-50 border border-green-200 rounded-2xl p-4 flex-row items-center mb-5">
-            <CheckCircle size={24} color="#10b981" />
-            <Text className="text-green-700 font-semibold ml-3">Job completed successfully!</Text>
+          <View
+            className="border rounded-2xl p-4 flex-row items-center mb-6"
+            style={{ backgroundColor: colors.successLight, borderColor: colors.success }}
+          >
+            <CheckCircle size={24} color={colors.success} />
+            <Text className="font-bold ml-3" style={{ color: colors.success }}>
+              Job completed successfully!
+            </Text>
           </View>
         )}
 
         {/* COMPLETE JOB BUTTON */}
         <Pressable
-          className={`h-[55px] rounded-xl justify-center items-center mb-8 ${
-            loading || completed ? 'bg-[#bbb]' : 'bg-[#1B86C6]'
-          }`}
+          className="h-[64px] rounded-[24px] justify-center items-center mb-8 shadow-md"
+          style={{
+            backgroundColor: loading || completed ? colors.border : colors.primary,
+            opacity: loading || completed ? 0.7 : 1,
+          }}
           disabled={loading || completed}
           onPress={handleCompleteJob}
         >
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white text-base font-semibold">
+            <Text className="text-white text-lg font-black uppercase tracking-widest">
               {completed ? 'Job Completed ✓' : 'Complete Job'}
             </Text>
           )}
         </Pressable>
 
-        <Text className="text-xs text-gray-400 text-center mb-6">
+        <Text
+          className="text-[10px] text-center mb-8 px-4 font-medium"
+          style={{ color: colors.textTertiary }}
+        >
           By completing this job, you confirm that the service has been provided and payment has
           been collected using the selected method.
         </Text>

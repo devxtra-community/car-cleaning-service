@@ -20,13 +20,13 @@ import analyticRoutes from './modules/analytics/analytic_routes';
 import reviewRoutes from './modules/feedback/review_routes';
 
 import s3Routes from './routes/s3';
+import penaltiesRoutes from './modules/penalties/penalties_routes';
+
 const app = express();
 
 app.use(express.json());
 app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.url}`);
-  console.log('[DEBUG] Content-Type:', req.headers['content-type']);
-  console.log('[DEBUG] Body:', JSON.stringify(req.body, null, 2));
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -55,7 +55,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api', attendanceRoutes);
+app.use('/attendance', attendanceRoutes);
 app.use('/s3', s3Routes);
 app.use('/workers', workersRoutes);
 
@@ -65,12 +65,16 @@ app.use('/api/buildings', buildingsRoutes);
 app.use('/tasks', taskRoutes);
 app.use('/salary', salaryRoute);
 app.use('/api/incentives', incentiveRoutes);
+// Register penalties correctly in the flow
+app.use('/penalties', penaltiesRoutes);
+console.log('Penalties route registered at /penalties (NORMAL FLOW)');
+
 app.use('/analytics', analyticRoutes);
 app.use('/api/reviews', reviewRoutes);
 
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('Backend running on port 3033');
+  console.log('Backend running on port 3033 - LATEST UPDATE');
 });
 
 app.get('/test', (req, res) => {
