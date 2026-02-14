@@ -10,30 +10,34 @@ interface BuildingData {
   building_name: string;
   location?: string;
   floors?: FloorData[];
+  latitude: number;
+  longitude: number;
+  radius?: number;
 }
 
-// Create building with floors in a transaction
 export const createBuilding = async (data: BuildingData) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Insert building (ID is auto-generated)
     const buildingQuery = `
-      INSERT INTO buildings (building_name, location)
-      VALUES ($1, $2)
-      RETURNING *;
-    `;
+  INSERT INTO buildings 
+  (building_name, location, latitude, longitude, radius)
+  VALUES ($1, $2, $3, $4, $5)
+  RETURNING *;
+`;
 
     const buildingResult = await client.query(buildingQuery, [
       data.building_name,
-      data.location || null,
+      data.location, // Human readable address
+      data.latitude,
+      data.longitude,
+      data.radius || 100,
     ]);
 
     const building = buildingResult.rows[0];
 
-    // Insert floors if provided
     const floors: Array<Record<string, unknown>> = [];
 
     if (data.floors?.length) {

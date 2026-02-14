@@ -120,7 +120,7 @@ export const updateIncentiveTarget = async (
       target_tasks = COALESCE($2, target_tasks),
       reason = COALESCE($3, reason),
       incentive_amount = COALESCE($4, incentive_amount),
-      updated_at = NOW(),
+      updated_at = NOW()
     WHERE id = $1
     RETURNING 
       id,

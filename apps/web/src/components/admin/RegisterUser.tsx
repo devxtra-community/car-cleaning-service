@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { registerUser, getAllSupervisors } from '../../services/allapi';
 import { api } from '../../services/commonAPI';
+import { getAllSupervisors, registerUser } from '../../services/allAPI';
 
 interface Building {
   id: string;
@@ -258,267 +258,459 @@ const RegisterUser = () => {
 
   // ================= UI =================
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800 capitalize">Create {form.role}</h2>
-
-      <form onSubmit={handleSubmit}>
-        {/* Personal Info */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Full Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="full_name"
-            value={form.full_name}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Password <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-          <input
-            type="tel"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Age <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            name="age"
-            value={form.age}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nationality <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="nationality"
-            value={form.nationality}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Document ID <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="document_id"
-            value={form.document_id}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Base Salary <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            name="base_salary"
-            value={form.base_salary}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-          />
-        </div>
-
-        {/* Profile Photo with Preview */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Profile Photo (Optional)
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {profilePhotoPreview && (
-            <div className="mt-3">
-              <p className="text-sm text-gray-600 mb-2">Preview:</p>
-              <img
-                src={profilePhotoPreview}
-                alt="Profile preview"
-                className="w-32 h-32 object-cover rounded-full border-2 border-gray-300"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Document */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Document File <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={handleDocumentChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {document && <p className="text-sm text-gray-600 mt-2">Selected: {document.name}</p>}
-        </div>
-
-        {/* Role Specific */}
-        {form.role === 'supervisor' && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Building <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="building_id"
-              value={form.building_id}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            >
-              <option value="">Select Building</option>
-              {buildings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.building_name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {form.role === 'cleaner' && (
-          <>
-            {/* Supervisor Selection */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Supervisor <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="supervisor_id"
-                value={form.supervisor_id}
-                onChange={handleSupervisorChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50 py-8 px-4">
+      <div className=" mx-auto">
+        {/* Header Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <option value="">Select Supervisor</option>
-                {supervisors.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.full_name}
-                  </option>
-                ))}
-              </select>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
             </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 capitalize">
+                Create New {form.role}
+              </h1>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Fill in the details to register a new team member
+              </p>
+            </div>
+          </div>
+        </div>
 
-            {/* Building Display (Auto-filled, Read-only) */}
-            {form.supervisor_id && form.building_id && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Building</label>
+        {/* Main Form Card */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8"
+        >
+          {/* Personal Information Section */}
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                1
+              </span>
+              Personal Information
+            </h2>
+            <p className="text-sm text-slate-500 mb-6">Basic details about the team member</p>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Profile Photo</label>
+              <div className="flex items-start gap-6">
+                {profilePhotoPreview ? (
+                  <div className="relative">
+                    <img
+                      src={profilePhotoPreview}
+                      alt="Profile preview"
+                      className="w-24 h-24 object-cover rounded-xl border-2 border-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfilePhoto(null);
+                        setProfilePhotoPreview('');
+                      }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
+                    <svg
+                      className="w-8 h-8 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer cursor-pointer"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">
+                    Recommended: Square image, at least 400x400px
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 mt-2 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
-                  value={
-                    buildings.find((b) => b.id === form.building_id)?.building_name || 'Loading...'
-                  }
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Automatically assigned based on supervisor's building
-                </p>
-              </div>
-            )}
-
-            {/* Floor Selection (Only show if supervisor is selected) */}
-            {form.supervisor_id && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Floor <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="floor_id"
-                  value={form.floor_id}
+                  name="full_name"
+                  value={form.full_name}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  disabled={floors.length === 0}
-                >
-                  <option value="">
-                    {floors.length === 0 ? 'No floors available' : 'Select Floor'}
-                  </option>
-                  {floors.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      Floor {f.floor_number}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Enter full name"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
 
-                {floors.length === 0 && form.supervisor_id && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    No floors found for this building. Please add floors first.
-                  </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="email@example.com"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="Create a secure password"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange}
+                  placeholder="+971 50 123 4567"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Age <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="age"
+                  value={form.age}
+                  onChange={handleChange}
+                  required
+                  placeholder="25"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Nationality <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="nationality"
+                  value={form.nationality}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g., Indian, Filipino"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Document & Financial Section */}
+          <div className="mb-8 pt-8 border-t border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                2
+              </span>
+              Documents & Financial
+            </h2>
+            <p className="text-sm text-slate-500 mb-6">Verification and compensation details</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Document ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="document_id"
+                  value={form.document_id}
+                  onChange={handleChange}
+                  required
+                  placeholder="Passport or Emirates ID"
+                  className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Base Salary (AED) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                    AED
+                  </span>
+                  <input
+                    type="number"
+                    name="base_salary"
+                    value={form.base_salary}
+                    onChange={handleChange}
+                    required
+                    placeholder="3000"
+                    className="w-full border border-slate-300 rounded-lg pl-14 pr-4 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  />
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Document File <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleDocumentChange}
+                  required
+                  className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 file:cursor-pointer cursor-pointer"
+                />
+                {document && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg p-3">
+                    <svg
+                      className="w-5 h-5 text-emerald-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span className="font-medium">{document.name}</span>
+                  </div>
                 )}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-3 px-6 rounded-lg text-white font-semibold transition-colors ${
-            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-        >
-          {loading ? 'Creating...' : `Create ${form.role}`}
-        </button>
-      </form>
+          {/* Role Specific Assignments */}
+          <div className="mb-8 pt-8 border-t border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                3
+              </span>
+              Assignment Details
+            </h2>
+            <p className="text-sm text-slate-500 mb-6">Work location and reporting structure</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {form.role === 'supervisor' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Assigned Building <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="building_id"
+                    value={form.building_id}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-slate-900 bg-white"
+                  >
+                    <option value="">Select a building</option>
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.building_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {form.role === 'cleaner' && (
+                <>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Reporting Supervisor <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="supervisor_id"
+                      value={form.supervisor_id}
+                      onChange={handleSupervisorChange}
+                      required
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-slate-900 bg-white"
+                    >
+                      <option value="">Select a supervisor</option>
+                      {supervisors.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {form.supervisor_id && form.building_id && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Assigned Building
+                      </label>
+                      <div className="w-full px-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        {buildings.find((b) => b.id === form.building_id)?.building_name ||
+                          'Loading...'}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Auto-assigned based on supervisor's building
+                      </p>
+                    </div>
+                  )}
+
+                  {form.supervisor_id && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Assigned Floor <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="floor_id"
+                        value={form.floor_id}
+                        onChange={handleChange}
+                        required
+                        disabled={floors.length === 0}
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-slate-900 bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                      >
+                        <option value="">
+                          {floors.length === 0 ? 'No floors available' : 'Select a floor'}
+                        </option>
+                        {floors.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            Floor {f.floor_number}
+                          </option>
+                        ))}
+                      </select>
+
+                      {floors.length === 0 && form.supervisor_id && (
+                        <p className="text-xs text-amber-600 mt-2 flex items-center gap-1 bg-amber-50 px-3 py-2 rounded-lg">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                          No floors found. Please add floors to the building first.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-6 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="flex-1 px-6 py-3 rounded-lg text-slate-700 font-medium border border-slate-300 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`flex-1 px-6 py-3 rounded-lg text-white font-semibold transition flex items-center justify-center gap-2 ${
+                loading
+                  ? 'bg-slate-400 cursor-not-allowed'
+                  : 'bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30'
+              }`}
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Create {form.role}
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

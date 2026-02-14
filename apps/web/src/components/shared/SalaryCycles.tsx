@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../services/commonAPI';
 import Toast from './Toast';
+import { useNavigate } from 'react-router-dom';
 
 /* =========================
    Types
@@ -24,7 +25,7 @@ const SalaryCycles: React.FC = () => {
     message: string;
     type: 'success' | 'error';
   } | null>(null);
-
+  const navigate = useNavigate();
   /* =========================
      Fetch cycles
      ========================= */
@@ -32,6 +33,8 @@ const SalaryCycles: React.FC = () => {
     setLoading(true);
     try {
       const res = await api.get('/salary/salary-cycles');
+      console.log(res);
+
       setCycles(res.data.data || []);
     } catch (_err) {
       console.error('Failed to fetch salary cycles', _err);
@@ -44,16 +47,21 @@ const SalaryCycles: React.FC = () => {
   useEffect(() => {
     fetchCycles();
   }, [fetchCycles]);
-
-  /* =========================
-     Generate Salary
-     ========================= */
   const handleGenerate = async (cycleId: string) => {
     try {
       await api.post(`/salary/generate/${cycleId}`);
-      setToast({ message: 'Salary generated successfully', type: 'success' });
+
+      setToast({
+        message: 'Salary generated successfully',
+        type: 'success',
+      });
+
+      navigate(`/admin/salaries/${cycleId}`);
     } catch {
-      setToast({ message: 'Failed to generate salary', type: 'error' });
+      setToast({
+        message: 'Failed to generate salary',
+        type: 'error',
+      });
     }
   };
 

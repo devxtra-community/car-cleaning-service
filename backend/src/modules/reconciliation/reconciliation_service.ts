@@ -16,7 +16,7 @@ export const getBuildingReconciliation = async (cycleId: string) => {
       b.id,
       b.name AS building_name,
 
-      COALESCE(SUM(t.task_amount),0) AS expected_collection,
+      COALESCE(SUM(t.amount_charged),0) AS expected_collection,
 
       (
         SELECT COALESCE(SUM(c.amount),0)
@@ -66,7 +66,7 @@ export const getCompanyReconciliationSummary = async (cycleId: string) => {
   // Total Expected
   const expectedRes = await pool.query(
     `
-    SELECT COALESCE(SUM(task_amount),0) AS total_expected
+    SELECT COALESCE(SUM(amount_charged),0) AS total_expected
     FROM tasks
     WHERE completed_at BETWEEN $1 AND $2
     `,

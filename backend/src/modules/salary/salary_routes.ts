@@ -4,9 +4,11 @@ import {
   generateSalaryForAllController,
   lockSalaryController,
   getSalaryCyclesController,
+  getSalarySummaryController,
 } from './salary_controller';
 
 const router = express.Router();
+router.get('/summary/:mode', getSalarySummaryController);
 
 router.get('/salary-cycles', getSalaryCyclesController);
 // Generate salary for all cleaners in cycle

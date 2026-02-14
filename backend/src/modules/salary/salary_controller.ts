@@ -5,10 +5,12 @@ import {
   generateSalaryForAllUsers,
   generateSalaryForUser,
   getAllSalaryCycles,
+  getSalarySummary,
 } from './salary_service';
 
 /* ================= GENERATE SALARY FOR ONE CLEANER ================= */
 
+type SalarySummaryMode = 'daily' | 'weekly' | 'monthly';
 export const generateSalaryForCleanerController = async (req: Request, res: Response) => {
   try {
     const { cycleId, cleanerId } = req.params;
@@ -35,11 +37,11 @@ export const generateSalaryForCleanerController = async (req: Request, res: Resp
       data: result,
     });
   } catch (err: unknown) {
-    console.error('GENERATE CLEANER SALARY ERROR:', err);
+    console.error('GENERATE ERROR FULL:', err);
 
     return res.status(500).json({
       success: false,
-      message: err instanceof Error ? err.message : 'Failed to generate salary',
+      message: err instanceof Error ? err.message : 'Something went wrong',
     });
   }
 };
@@ -126,6 +128,40 @@ export const markSalaryPaidController = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       message: 'Salary marked as paid',
+      data: result,
+    });
+  } catch (err: unknown) {
+    return res.status(500).json({
+      success: false,
+      message: err instanceof Error ? err.message : 'Something went wrong',
+    });
+  }
+};
+
+export const getSalarySummaryController = async (req: Request, res: Response) => {
+  try {
+    const { mode } = req.params;
+
+    if (!mode || Array.isArray(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid mode',
+      });
+    }
+
+    const allowedModes: SalarySummaryMode[] = ['daily', 'weekly', 'monthly'];
+
+    if (!allowedModes.includes(mode as SalarySummaryMode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mode must be daily, weekly, or monthly',
+      });
+    }
+
+    const result = await getSalarySummary(mode as SalarySummaryMode);
+
+    return res.json({
+      success: true,
       data: result,
     });
   } catch (err: unknown) {

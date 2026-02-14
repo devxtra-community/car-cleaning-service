@@ -21,7 +21,7 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_type,
       car_color,
       car_image_url,
-      task_amount,
+      amount_charged,
     } = req.body;
 
     if (!owner_name || !owner_phone || !car_number || !car_model || !car_type || !car_color) {
@@ -37,7 +37,7 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_color,
       car_image_url: car_image_url ?? null,
       cleaner_id: workerId,
-      task_amount: task_amount ?? 0,
+      amount_charged: amount_charged ?? 0,
     });
 
     return res.status(201).json({ success: true, data: task });
@@ -94,7 +94,7 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
       SET status = 'completed',
           completed_at = now()
       WHERE id = $1 AND cleaner_id = $2
-      RETURNING task_amount
+      RETURNING amount_charged
       `,
       [taskId, workerId]
     );
@@ -103,7 +103,7 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
       throw new Error('TASK_NOT_FOUND');
     }
 
-    const taskAmount = Number(taskRes.rows[0].task_amount || 0);
+    const taskAmount = Number(taskRes.rows[0].amount_charged || 0);
 
     /* ================= UPDATE CLEANER TASK COUNT ================= */
 

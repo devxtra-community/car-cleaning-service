@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
 /* Public */
-const Login = lazy(() => import('./pages/Login'));
+const Login = lazy(() => import('./pages/login'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
 /* Portals */
@@ -35,8 +35,8 @@ const SalaryPerPerson = lazy(() => import('./components/shared/SalaryPerPerson')
 const AddIncetiveTarget = lazy(() => import('./components/shared/AddIncentiveTarget'));
 const AnalyticsProgress = lazy(() => import('./components/shared/AnalyticsProgress'));
 const SalaryCycle = lazy(() => import('./components/shared/SalaryCycles'));
-// const SalaryListing = lazy(() => import('./components/shared/SalaryList'));
-
+const SalaryList = lazy(() => import('./components/shared/SalaryList'));
+const SalarySummary = lazy(() => import('./components/shared/SalarySummary'));
 function App() {
   return (
     <AuthProvider>
@@ -90,11 +90,14 @@ function App() {
             <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
             <Route path="addIncetiveTarget" element={<AddIncetiveTarget />} />
             <Route path="AnalyticsProgress" element={<AnalyticsProgress />} />
-            <Route path="salaryCycle" element={<SalaryCycle />} />
+            <Route path="salary-cycles" element={<SalaryCycle />} />
+            <Route path="salaries/:cycleId" element={<SalaryList />} />
+            <Route path="reconciliation/:cycleId" element={<Reconciliation />} />
+            <Route path="salary-summary" element={<SalarySummary />} />
           </Route>
 
           {/* Catch all */}
-          {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
     </AuthProvider>

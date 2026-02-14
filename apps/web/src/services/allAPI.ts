@@ -71,6 +71,9 @@ export const getCleanersBySupervisor = async (supervisorId: string) => {
 export const createBuilding = (data: {
   building_name: string;
   location: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
   floors: {
     floor_number: number;
     floor_name: string;

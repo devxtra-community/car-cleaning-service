@@ -54,11 +54,12 @@ export const generateSalaryForUser = async (userId: string, cycleId: string) => 
       // Tasks
       const taskRes = await client.query(
         `
-        SELECT COUNT(*) AS total_tasks
-        FROM tasks
-        WHERE cleaner_id = $1
-        AND completed_at BETWEEN $2 AND $3
-        `,
+  SELECT COUNT(*) AS total_tasks
+  FROM tasks
+  WHERE cleaner_id = $1
+  AND status = 'completed'
+  AND created_at BETWEEN $2 AND $3
+  `,
         [cleanerId, start_date, end_date]
       );
 
@@ -96,33 +97,33 @@ export const generateSalaryForUser = async (userId: string, cycleId: string) => 
     const grossSalary = baseSalary + totalIncentives - totalPenalties;
     const netSalary = grossSalary;
 
-    // 5️⃣ Insert / Update salary
     const salaryRes = await client.query(
       `
-      INSERT INTO salaries (
-        user_id,
-        salary_cycle_id,
-        base_salary,
-        total_tasks,
-        total_incentives,
-        total_penalties,
-        gross_salary,
-        net_salary,
-        status
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending')
-      ON CONFLICT (user_id, salary_cycle_id)
-      DO UPDATE SET
-        base_salary = EXCLUDED.base_salary,
-        total_tasks = EXCLUDED.total_tasks,
-        total_incentives = EXCLUDED.total_incentives,
-        total_penalties = EXCLUDED.total_penalties,
-        gross_salary = EXCLUDED.gross_salary,
-        net_salary = EXCLUDED.net_salary
-      RETURNING *
-      `,
+  INSERT INTO salaries (
+    cleaner_id,
+    salary_cycle_id,
+    base_salary,
+    total_tasks,
+    total_incentives,
+    total_penalties,
+    gross_salary,
+    net_salary,
+    status
+  )
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending')
+  ON CONFLICT (cleaner_id, salary_cycle_id)
+  DO UPDATE SET
+    base_salary = EXCLUDED.base_salary,
+    total_tasks = EXCLUDED.total_tasks,
+    total_incentives = EXCLUDED.total_incentives,
+    total_penalties = EXCLUDED.total_penalties,
+    gross_salary = EXCLUDED.gross_salary,
+    net_salary = EXCLUDED.net_salary,
+    status = 'pending'
+  RETURNING *
+  `,
       [
-        userId,
+        userId, // this goes into cleaner_id column (FK → users.id)
         cycleId,
         baseSalary,
         totalTasks,
@@ -312,4 +313,37 @@ export const previewSalaryForCleaner = async (cleanerId: string, cycleId: string
     total_penalties: penalty,
     net_salary: base + incentive - penalty,
   };
+};
+export const getSalarySummary = async (mode: 'daily' | 'weekly' | 'monthly') => {
+  let dateCondition = '';
+
+  if (mode === 'daily') {
+    dateCondition = 'DATE(t.created_at) = CURRENT_DATE';
+  } else if (mode === 'weekly') {
+    dateCondition = "DATE_TRUNC('week', t.created_at) = DATE_TRUNC('week', CURRENT_DATE)";
+  } else {
+    dateCondition = "DATE_TRUNC('month', t.created_at) = DATE_TRUNC('month', CURRENT_DATE)";
+  }
+
+  const result = await pool.query(`
+    SELECT 
+      u.id AS cleaner_id,
+      u.full_name,
+      COUNT(t.id) AS total_tasks,
+      COALESCE(SUM(ci.amount),0) AS total_incentives,
+      COALESCE(SUM(p.amount),0) AS total_penalties,
+      COALESCE(SUM(t.amount_charged),0) AS total_collections
+    FROM users u
+    LEFT JOIN cleaners c ON c.user_id = u.id
+    LEFT JOIN tasks t ON t.cleaner_id = c.id
+      AND ${dateCondition}
+    LEFT JOIN cleaner_incentives ci ON ci.cleaner_id = c.id
+      AND ${dateCondition.replace('t.created_at', 'ci.created_at')}
+    LEFT JOIN penalties p ON p.cleaner_id = c.id
+      AND ${dateCondition.replace('t.created_at', 'p.created_at')}
+    WHERE u.role = 'cleaner'
+    GROUP BY u.id, u.full_name
+  `);
+
+  return result.rows;
 };
