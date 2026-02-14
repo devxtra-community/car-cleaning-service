@@ -22,10 +22,30 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_color,
       car_image_url,
       task_amount,
+      latitude,
+      longitude,
     } = req.body;
 
     if (!owner_name || !owner_phone || !car_number || !car_model || !car_type || !car_color) {
       return res.status(400).json({ success: false, message: 'Missing fields' });
+    }
+
+    // Validate GPS coordinates if provided
+    if (latitude !== undefined || longitude !== undefined) {
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          message: 'Both latitude and longitude are required for GPS verification',
+        });
+      }
+
+      // Validate coordinate ranges
+      if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid GPS coordinates',
+        });
+      }
     }
 
     // Get cleaner_id from cleaners table using workerId (user_id)
@@ -48,13 +68,24 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_image_url: car_image_url ?? null,
       cleaner_id: cleanerId,
       task_amount: task_amount ?? 0,
+      latitude: latitude ? parseFloat(latitude) : undefined,
+      longitude: longitude ? parseFloat(longitude) : undefined,
     });
 
     console.log('CreateTask: Task Inserted:', task);
 
     return res.status(201).json({ success: true, data: task });
-  } catch (err) {
+  } catch (err: any) {
     console.log('CREATE TASK ERROR:', err);
+
+    // Handle GPS-related errors
+    if (err.message.includes('within') || err.message.includes('building')) {
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
     return res.status(500).json({ success: false, message: 'Failed to create task' });
   }
 };
@@ -77,10 +108,15 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
 
     const result = await pool.query(
       `
-      SELECT *
-      FROM tasks
-      WHERE cleaner_id=$1 AND status!='completed'
-      ORDER BY created_at DESC
+      SELECT 
+        t.*,
+        v.wash_time,
+        v.type as vehicle_type,
+        v.category as vehicle_category
+      FROM tasks t
+      LEFT JOIN vehicles v ON t.car_type = v.type
+      WHERE t.cleaner_id=$1 AND t.status!='completed'
+      ORDER BY t.created_at DESC
       LIMIT 1
       `,
       [cleanerId]

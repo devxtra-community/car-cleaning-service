@@ -18,6 +18,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Camera, ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import api from '../../src/api/api';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /* ================= TYPES ================= */
 
@@ -32,8 +33,9 @@ const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer'];
 /* ================= COMPONENT ================= */
 
 export default function AfterWash() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const jobId = params.jobId as string;
   const carType = params.carType as string;
@@ -91,11 +93,13 @@ export default function AfterWash() {
   if (!jobId || !carType) {
     return (
       <View
-        className="flex-1 bg-white justify-center items-center"
-        style={{ paddingTop: insets.top }}
+        className="flex-1 justify-center items-center"
+        style={{ paddingTop: insets.top, backgroundColor: colors.background }}
       >
-        <ActivityIndicator size="large" color="#1B86C6" />
-        <Text className="mt-4 text-gray-500">Loading details...</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text className="mt-4 font-bold" style={{ color: colors.textSecondary }}>
+          Loading details...
+        </Text>
       </View>
     );
   }
@@ -196,110 +200,162 @@ export default function AfterWash() {
   /* ================= UI ================= */
 
   return (
-    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
+    <View className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
         <View className="p-5">
           <Pressable onPress={() => router.back()}>
-            <ArrowLeft color="black" />
+            <ArrowLeft color={colors.text} size={24} />
           </Pressable>
         </View>
 
-        <ScrollView className="px-5 bg-white">
-          <Text className="text-2xl font-bold mb-2">Job Completion</Text>
-          <Text className="text-gray-600 mb-6">
+        <ScrollView className="px-5" style={{ backgroundColor: colors.background }}>
+          <Text className="text-3xl font-black mb-2 tracking-tight" style={{ color: colors.text }}>
+            Job Completion
+          </Text>
+          <Text className="font-bold text-sm mb-8" style={{ color: colors.textSecondary }}>
             Take after-wash photo and complete payment details
           </Text>
 
           {/* AFTER WASH PHOTO */}
-          <Text className="font-semibold mb-2">After Wash Photo</Text>
+          <Text
+            className="font-bold text-[11px] uppercase tracking-widest mb-2"
+            style={{ color: colors.textSecondary }}
+          >
+            After Wash Photo
+          </Text>
           <Pressable
-            className="h-[200px] border border-dashed border-[#bbb] rounded-2xl justify-center items-center mb-5"
+            className="h-[220px] border-2 border-dashed rounded-2xl justify-center items-center mb-8"
+            style={{ borderColor: colors.border, backgroundColor: colors.cardBackground }}
             onPress={openCamera}
           >
             {image ? (
               <Image source={{ uri: image.uri }} className="w-full h-full rounded-2xl" />
             ) : (
               <>
-                <Camera size={40} color="#bbb" />
-                <Text className="text-[#bbb] mt-2">Take After Wash Photo</Text>
+                <Camera size={48} color={colors.primary} />
+                <Text
+                  className="mt-3 font-bold text-xs uppercase tracking-widest"
+                  style={{ color: colors.textTertiary }}
+                >
+                  Take After Wash Photo
+                </Text>
               </>
             )}
           </Pressable>
 
           {/* PAYMENT METHOD */}
-          <Text className="font-semibold mb-2">Payment Method</Text>
-          <View className="bg-[#f2f2f2] rounded-xl mb-5">
+          <Text
+            className="font-bold text-[11px] uppercase tracking-widest mb-2"
+            style={{ color: colors.textSecondary }}
+          >
+            Payment Method
+          </Text>
+          <View
+            className="rounded-xl mb-8 border"
+            style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
+          >
             <Picker
               selectedValue={paymentMethod}
               onValueChange={setPaymentMethod}
-              style={{ height: 50 }}
+              style={{ height: 50, color: colors.text }}
+              dropdownIconColor={colors.text}
             >
-              <Picker.Item label="Select Payment Method" value="" />
+              <Picker.Item label="Select Payment Method" value="" color={colors.textTertiary} />
               {PAYMENT_METHODS.map((method) => (
-                <Picker.Item key={method} label={method} value={method} />
+                <Picker.Item key={method} label={method} value={method} color={colors.text} />
               ))}
             </Picker>
           </View>
 
           {/* PRICE SELECTION */}
-          <Text className="font-semibold mb-2">Service Price</Text>
+          <Text
+            className="font-bold text-[11px] uppercase tracking-widest mb-2"
+            style={{ color: colors.textSecondary }}
+          >
+            Service Price
+          </Text>
           {loadingPricing ? (
-            <ActivityIndicator size="large" color="#1B86C6" />
+            <ActivityIndicator size="large" color={colors.primary} />
           ) : pricing ? (
-            <View className="mb-6">
+            <View className="mb-8">
               {/* PRICE INPUT */}
-              <View className="flex-row items-center bg-[#f6f8fb] rounded-xl px-4 py-3 mb-3 border border-gray-200">
-                <Text className="text-gray-500 text-lg mr-2">₹</Text>
+              <View
+                className="flex-row items-center rounded-xl px-4 py-4 mb-3 border"
+                style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
+              >
+                <Text className="text-xl font-bold mr-2" style={{ color: colors.textSecondary }}>
+                  ₹
+                </Text>
                 <TextInput
-                  className="flex-1 text-lg font-semibold text-[#1B86C6]"
+                  className="flex-1 text-xl font-black"
+                  style={{ color: colors.primary }}
                   value={finalPrice}
                   onChangeText={setFinalPrice}
                   keyboardType="numeric"
                   placeholder="Enter amount"
+                  placeholderTextColor={colors.textTertiary}
                 />
               </View>
 
               {/* RANGE INFO */}
-              <Text className="text-xs text-gray-500 mb-3 ml-1">
+              <Text
+                className="text-[10px] font-bold uppercase tracking-wide mb-4 ml-1"
+                style={{ color: colors.textTertiary }}
+              >
                 Allowed Range: ₹{pricing.base_price} - ₹{pricing.premium_price}
               </Text>
 
               {/* QUICK SELECT CHIPS */}
-              <View className="flex-row gap-2">
+              <View className="flex-row gap-3">
                 <Pressable
-                  className="bg-[#1B86C6]/10 px-4 py-2 rounded-full border border-[#1B86C6]/20"
+                  className="px-5 py-3 rounded-full border"
+                  style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}
                   onPress={() => setFinalPrice(pricing.base_price.toString())}
                 >
-                  <Text className="text-[#1B86C6] font-medium text-xs">
+                  <Text
+                    className="font-bold text-[11px] uppercase tracking-wide"
+                    style={{ color: colors.primary }}
+                  >
                     Base: ₹{pricing.base_price}
                   </Text>
                 </Pressable>
                 <Pressable
-                  className="bg-[#1B86C6]/10 px-4 py-2 rounded-full border border-[#1B86C6]/20"
+                  className="px-5 py-3 rounded-full border"
+                  style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}
                   onPress={() => setFinalPrice(pricing.premium_price.toString())}
                 >
-                  <Text className="text-[#1B86C6] font-medium text-xs">
+                  <Text
+                    className="font-bold text-[11px] uppercase tracking-wide"
+                    style={{ color: colors.primary }}
+                  >
                     Premium: ₹{pricing.premium_price}
                   </Text>
                 </Pressable>
               </View>
             </View>
           ) : (
-            <Text className="text-red-500 mb-5">Failed to load pricing</Text>
+            <Text className="mb-5 font-bold" style={{ color: colors.danger }}>
+              Failed to load pricing
+            </Text>
           )}
 
           {/* CONTINUE BUTTON */}
           <Pressable
-            className={`h-[55px] rounded-xl justify-center items-center mb-8 ${
-              loading || !canSubmit ? 'bg-[#bbb]' : 'bg-[#1B86C6]'
+            className={`py-5 rounded-xl justify-center items-center mb-10 shadow-lg ${
+              loading || !canSubmit ? 'opacity-50' : ''
             }`}
+            style={{
+              backgroundColor: loading || !canSubmit ? colors.border : colors.primary,
+              shadowColor: colors.primary,
+              shadowOpacity: 0.3,
+            }}
             disabled={loading || !canSubmit}
             onPress={handleContinue}
           >
-            <Text className="text-white text-base font-semibold">
+            <Text className="text-white text-[12px] font-black uppercase tracking-widest">
               {loading ? 'Uploading...' : 'Continue to Summary'}
             </Text>
           </Pressable>
