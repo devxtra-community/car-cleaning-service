@@ -36,7 +36,7 @@ interface TaskInput {
   car_color: string;
   car_image_url: string | null;
   cleaner_id: string;
-  task_amount: number;
+  amount_charged: number;
 }
 
 export const createTaskService = async (data: TaskInput) => {
@@ -51,7 +51,7 @@ export const createTaskService = async (data: TaskInput) => {
       car_color,
       car_image_url,
       cleaner_id,
-      task_amount
+      amount_charged
     )
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
     RETURNING *
@@ -65,7 +65,7 @@ export const createTaskService = async (data: TaskInput) => {
       data.car_color,
       data.car_image_url,
       data.cleaner_id,
-      data.task_amount,
+      data.amount_charged,
     ]
   );
 

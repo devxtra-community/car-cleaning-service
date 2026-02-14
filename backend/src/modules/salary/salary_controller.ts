@@ -1,164 +1,173 @@
 import { Request, Response } from 'express';
 import {
-  createSalary,
-  getAllSalaries,
-  getSalaryByUser,
-  updateSalary,
-  finalizeSalary,
+  lockSalaryCycle,
+  markSalaryAsPaid,
+  generateSalaryForAllUsers,
+  generateSalaryForUser,
+  getAllSalaryCycles,
+  getSalarySummary,
 } from './salary_service';
-import { logger } from '../../config/logger';
-import { AuthRequest } from '../../middlewares/authMiddleware';
 
-/**
- * Small helper to safely extract string params
- */
-const getString = (value: string | string[] | undefined): string => {
-  if (!value) {
-    throw new Error('PARAM_MISSING');
-  }
-  return Array.isArray(value) ? value[0] : value;
-};
+/* ================= GENERATE SALARY FOR ONE CLEANER ================= */
 
-/**
- * CREATE salary
- */
-export const createSalaryController = async (req: Request, res: Response) => {
+type SalarySummaryMode = 'daily' | 'weekly' | 'monthly';
+export const generateSalaryForCleanerController = async (req: Request, res: Response) => {
   try {
-    const { user_id, salary_month, base_salary, total_work, incentive_amount, penalty_amount } =
-      req.body;
+    const { cycleId, cleanerId } = req.params;
 
-    if (!user_id || !salary_month || !base_salary) {
+    if (!cycleId || Array.isArray(cycleId)) {
+      return res.status(400).json({ success: false, message: 'Invalid cycleId' });
+    }
+
+    if (!cleanerId || Array.isArray(cleanerId)) {
+      return res.status(400).json({ success: false, message: 'Invalid cleanerId' });
+    }
+    if (!cycleId || !cleanerId) {
       return res.status(400).json({
         success: false,
-        message: 'user_id, salary_month and base_salary are required',
+        message: 'Missing cycleId or cleanerId',
       });
     }
 
-    const salary = await createSalary({
-      user_id,
-      salary_month,
-      base_salary,
-      total_work,
-      incentive_amount,
-      penalty_amount,
-      generated_by: null, // no accountant yet
-    });
+    const result = await generateSalaryForUser(cleanerId, cycleId);
 
-    return res.status(201).json({
+    return res.json({
       success: true,
-      data: salary,
+      message: 'Salary generated successfully for cleaner',
+      data: result,
     });
-  } catch (err) {
-    logger.error('Create salary failed', { err });
+  } catch (err: unknown) {
+    console.error('GENERATE ERROR FULL:', err);
+
     return res.status(500).json({
       success: false,
-      message: 'Failed to create salary',
+      message: err instanceof Error ? err.message : 'Something went wrong',
     });
   }
 };
+/* ================= GENERATE SALARY FOR ALL CLEANERS ================= */
 
-/**
- * GET all salaries
- */
-export const getAllSalariesController = async (_req: Request, res: Response) => {
+export const generateSalaryForAllController = async (
+  req: Request<{ cycleId: string }>,
+  res: Response
+) => {
   try {
-    const salaries = await getAllSalaries();
+    const { cycleId } = req.params;
 
-    return res.status(200).json({
+    const result = await generateSalaryForAllUsers(cycleId);
+
+    return res.json({
       success: true,
-      data: salaries,
+      message: 'Salary generated successfully',
+      data: result,
     });
-  } catch (err) {
-    logger.error('Fetch salaries failed', { err });
+  } catch (err: unknown) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to fetch salaries',
+      message: err instanceof Error ? err.message : 'Something went wrong',
     });
   }
 };
-
-/**
- * GET my salary (cleaner)
- */
-export const getMySalaryController = async (req: AuthRequest, res: Response) => {
+export const getSalaryCyclesController = async (req: Request, res: Response) => {
   try {
-    const userId = getString(req.user?.userId);
+    const cycles = await getAllSalaryCycles();
 
-    const salaries = await getSalaryByUser(userId);
-
-    return res.status(200).json({
+    return res.json({
       success: true,
-      data: salaries,
+      data: cycles,
     });
-  } catch (err) {
-    logger.error('Fetch my salary failed', { err });
+  } catch (err: unknown) {
+    console.error('FETCH SALARY CYCLES ERROR:', err);
+
     return res.status(500).json({
       success: false,
-      message: 'Failed to fetch salary',
+      message: 'Failed to fetch salary cycles',
     });
   }
 };
+/* ================= LOCK SALARY CYCLE ================= */
 
-/**
- * UPDATE salary (draft only)
- */
-export const updateSalaryController = async (req: Request, res: Response) => {
+export const lockSalaryController = async (req: Request, res: Response) => {
   try {
-    const salaryId = getString(req.params.id);
+    const { cycleId } = req.params;
 
-    const { base_salary, incentive_amount, penalty_amount } = req.body;
-
-    const salary = await updateSalary(salaryId, {
-      base_salary,
-      incentive_amount,
-      penalty_amount,
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: salary,
-    });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'SALARY_LOCKED') {
+    if (!cycleId || Array.isArray(cycleId)) {
       return res.status(400).json({
         success: false,
-        message: 'Salary already finalized',
+        message: 'Invalid cycleId',
       });
     }
 
-    logger.error('Update salary failed', { err });
+    const result = await lockSalaryCycle(cycleId);
+
+    return res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (err: unknown) {
+    console.error('LOCK SALARY ERROR:', err);
+
     return res.status(500).json({
       success: false,
-      message: 'Failed to update salary',
+      message: err instanceof Error ? err.message : 'Failed to lock salary cycle',
     });
   }
 };
 
-/**
- * FINALIZE salary
- */
-export const finalizeSalaryController = async (req: Request, res: Response) => {
+export const markSalaryPaidController = async (req: Request, res: Response) => {
   try {
-    const salaryId = getString(req.params.id);
+    const { salaryId } = req.params;
+    const { payment_method } = req.body;
 
-    const salary = await finalizeSalary(salaryId);
+    if (!salaryId || Array.isArray(salaryId)) {
+      return res.status(400).json({ success: false, message: 'Invalid salaryId' });
+    }
 
-    if (!salary) {
+    const result = await markSalaryAsPaid(salaryId, payment_method);
+
+    return res.json({
+      success: true,
+      message: 'Salary marked as paid',
+      data: result,
+    });
+  } catch (err: unknown) {
+    return res.status(500).json({
+      success: false,
+      message: err instanceof Error ? err.message : 'Something went wrong',
+    });
+  }
+};
+
+export const getSalarySummaryController = async (req: Request, res: Response) => {
+  try {
+    const { mode } = req.params;
+
+    if (!mode || Array.isArray(mode)) {
       return res.status(400).json({
         success: false,
-        message: 'Salary already finalized or not found',
+        message: 'Invalid mode',
       });
     }
 
-    return res.status(200).json({
+    const allowedModes: SalarySummaryMode[] = ['daily', 'weekly', 'monthly'];
+
+    if (!allowedModes.includes(mode as SalarySummaryMode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mode must be daily, weekly, or monthly',
+      });
+    }
+
+    const result = await getSalarySummary(mode as SalarySummaryMode);
+
+    return res.json({
       success: true,
-      data: salary,
+      data: result,
     });
-  } catch (err) {
-    logger.error('Finalize salary failed', { err });
+  } catch (err: unknown) {
     return res.status(500).json({
       success: false,
-      message: 'Failed to finalize salary',
+      message: err instanceof Error ? err.message : 'Something went wrong',
     });
   }
 };

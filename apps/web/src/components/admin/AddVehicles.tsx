@@ -32,17 +32,12 @@ const AddVehicles = () => {
     status: 'Active',
   });
 
-  /* ================= API ================= */
-
   const createVehicle = (data: Partial<Vehicle>) => api.post('/api/vehicle', data);
   const getVehicles = () => api.get('/api/vehicle');
   const getVehicleById = (id: string) => api.get(`/api/vehicle/${id}`);
   const updateVehicle = (id: string, data: Partial<Vehicle>) => api.put(`/api/vehicle/${id}`, data);
   const deleteVehicle = (id: string) => api.delete(`/api/vehicle/${id}`);
 
-  /* ===================================== */
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const loadVehicles = React.useCallback(async () => {
     try {
       const res = await getVehicles();
@@ -52,7 +47,6 @@ const AddVehicles = () => {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const loadVehicleForEdit = React.useCallback(async (id: string) => {
     try {
       const res = await getVehicleById(id);
@@ -73,13 +67,16 @@ const AddVehicles = () => {
   }, []);
 
   useEffect(() => {
-    loadVehicles();
-    
-    // Load vehicle for editing if edit parameter is present
-    if (editId) {
-      loadVehicleForEdit(editId);
-    }
-  }, [loadVehicles, editId, loadVehicleForEdit]);
+    const init = async () => {
+      await loadVehicles();
+
+      if (editId) {
+        await loadVehicleForEdit(editId);
+      }
+    };
+
+    init();
+  }, [editId, loadVehicles, loadVehicleForEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -87,9 +84,15 @@ const AddVehicles = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
-    if (!form.type || !form.category || !form.size || !form.base_price || !form.premium_price || !form.wash_time) {
+
+    if (
+      !form.type ||
+      !form.category ||
+      !form.size ||
+      !form.base_price ||
+      !form.premium_price ||
+      !form.wash_time
+    ) {
       alert('Please fill in all required fields');
       return;
     }
@@ -113,15 +116,25 @@ const AddVehicles = () => {
         alert('Vehicle added successfully!');
       }
 
-      setForm({ type: '', category: '', size: '', base_price: '', premium_price: '', wash_time: '', status: 'Active' });
+      setForm({
+        type: '',
+        category: '',
+        size: '',
+        base_price: '',
+        premium_price: '',
+        wash_time: '',
+        status: 'Active',
+      });
       setEditingId(null);
       loadVehicles();
-      
-      // Navigate back to vehicle management page
+
       navigate('/admin/vechicles');
     } catch (error: unknown) {
       console.error('Failed to save vehicle:', error);
-      alert((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to save vehicle. Please check the console for details.');
+      alert(
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to save vehicle. Please check the console for details.'
+      );
     }
   };
 
@@ -141,7 +154,15 @@ const AddVehicles = () => {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setForm({ type: '', category: '', size: '', base_price: '', premium_price: '', wash_time: '', status: 'Active' });
+    setForm({
+      type: '',
+      category: '',
+      size: '',
+      base_price: '',
+      premium_price: '',
+      wash_time: '',
+      status: 'Active',
+    });
     navigate('/admin/vechicles/addVehicles');
   };
 
@@ -158,7 +179,6 @@ const AddVehicles = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Vehicle Management</h1>
@@ -168,9 +188,7 @@ const AddVehicles = () => {
           Total Vehicles: <span className="font-semibold text-gray-900">{vehicles.length}</span>
         </div>
       </div>
-
-      {/* FORM */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-8">
+      <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             {editingId ? (
@@ -245,7 +263,9 @@ const AddVehicles = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Base Price ($) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Base Price ($) *
+              </label>
               <input
                 name="base_price"
                 type="number"
@@ -258,7 +278,9 @@ const AddVehicles = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Premium Price ($) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Premium Price ($) *
+              </label>
               <input
                 name="premium_price"
                 type="number"
@@ -271,7 +293,9 @@ const AddVehicles = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Wash Time (minutes) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Wash Time (minutes) *
+              </label>
               <input
                 name="wash_time"
                 type="number"
@@ -317,7 +341,6 @@ const AddVehicles = () => {
         </form>
       </div>
 
-      {/* LIST */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">All Vehicles</h2>
 
@@ -351,25 +374,21 @@ const AddVehicles = () => {
                 className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
               >
                 <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4">
-                  <h3 className="text-white font-semibold text-lg">
-                    {v.type}
-                  </h3>
-                  <p className="text-blue-100 text-sm">{v.category} - {v.size}</p>
+                  <h3 className="text-white font-semibold text-lg">{v.type}</h3>
+                  <p className="text-blue-100 text-sm">
+                    {v.category} - {v.size}
+                  </p>
                 </div>
 
                 <div className="p-6">
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Base Price</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        ${v.base_price}
-                      </p>
+                      <p className="text-xl font-bold text-gray-900">${v.base_price}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Premium</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        ${v.premium_price}
-                      </p>
+                      <p className="text-xl font-bold text-gray-900">${v.premium_price}</p>
                     </div>
                   </div>
 
@@ -379,11 +398,13 @@ const AddVehicles = () => {
                   </div>
 
                   <div className="mb-6">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      v.status === 'Active' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        v.status === 'Active'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
                       {v.status}
                     </span>
                   </div>

@@ -1,16 +1,21 @@
 import React, { useEffect } from 'react';
-import appLogo from '../../assets/appLogo.png';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 import {
   HomeIcon,
-  UserPlusIcon,
-  CurrencyRupeeIcon,
-  DocumentTextIcon,
-  ClockIcon,
   ClipboardDocumentCheckIcon,
   ArrowRightOnRectangleIcon,
+  BuildingOffice2Icon,
+  TruckIcon,
+  SparklesIcon,
+  UserIcon,
+  CurrencyRupeeIcon,
+  CheckBadgeIcon,
+  DocumentChartBarIcon,
+  BanknotesIcon,
+  GiftIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 const AdminPortal = () => {
@@ -20,13 +25,13 @@ const AdminPortal = () => {
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       console.log('AdminPortal: Not authenticated, redirecting to login');
-      navigate('/Login');
+      navigate('/login');
     }
   }, [isAuthenticated, loading, navigate]);
 
   const handleLogout = async () => {
     await logout();
-    navigate('/Login');
+    navigate('/login');
   };
 
   // Show nothing while loading to prevent flicker
@@ -35,92 +40,267 @@ const AdminPortal = () => {
   }
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r flex flex-col">
-        {/* Logo */}
-        <div className="px-6 py-4 font-semibold text-lg border-b flex">
-          <img width={30} height={20} src={appLogo} alt="appLogo" /> <p>Car Cleaning</p>
+      <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-sm flex flex-col">
+        {/* Logo - Fixed at top */}
+        <div className="px-6 py-5 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <img width={32} height={32} src="/appLogo.png" alt="appLogo" className="rounded" />
+            <p className="font-semibold text-gray-900">Car Cleaning</p>
+          </div>
         </div>
-        {/* Menu */}
-        <nav className="flex-1 px-3 py-4 space-y-1 text-sm">
-          <Link to="/admin/dashboard">
-            <div className="flex items-center gap-3 px-3 py-2 rounded bg-gray-100 font-medium">
-              <HomeIcon className="w-5 h-5" />
-              Dashboard
-            </div>
-          </Link>
-          <Link to="/admin/cleaners">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <UserPlusIcon className="w-5 h-5" />
-              Cleaner
-            </div>
-          </Link>
 
-          <Link to="/admin/vechicles">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <CurrencyRupeeIcon className="w-5 h-5" />
-              Vehicle Management
-            </div>
-          </Link>
+        {/* Scrollable Navigation Menu */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          <NavLink to="/admin/dashboard">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <HomeIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Dashboard</span>
+              </div>
+            )}
+          </NavLink>
 
-          <Link to="/admin/supervisors">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <DocumentTextIcon className="w-5 h-5" />
-              Supervisor
-            </div>
-          </Link>
+          <NavLink to="/admin/supervisors">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <UserIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Supervisors</span>
+              </div>
+            )}
+          </NavLink>
 
-          <Link to="/admin/buildings">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <DocumentTextIcon className="w-5 h-5" />
-              Buildings
-            </div>
-          </Link>
+          <NavLink to="/admin/cleaners">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <SparklesIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Cleaners</span>
+              </div>
+            )}
+          </NavLink>
 
-          <Link to="/admin/floors">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <DocumentTextIcon className="w-5 h-5" />
-              Floors
-            </div>
-          </Link>
+          <NavLink to="/admin/buildings">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <BuildingOffice2Icon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Buildings</span>
+              </div>
+            )}
+          </NavLink>
 
-          <Link to="/admin/register-user">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <ClockIcon className="w-5 h-5" />
-              Customers
-            </div>
-          </Link>
+          <NavLink to="/admin/vechicles">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <TruckIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Vehicle Management</span>
+              </div>
+            )}
+          </NavLink>
 
-          <Link to="/admin/reconciliation">
-            <div className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100">
-              <ClipboardDocumentCheckIcon className="w-5 h-5" />
-              Revenue
-            </div>
-          </Link>
+          {/* Salary Section Divider */}
+          <div className="pt-4 pb-2 px-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Salary Management
+            </p>
+          </div>
+
+          <NavLink to="/admin/addNewSalary">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <CurrencyRupeeIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Add New Salary</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/addIncetiveTarget">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <GiftIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Incentive Targets</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/analyticsProgress">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ChartBarIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Salary Analysis</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/salaryFinalization">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <CheckBadgeIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Salary Finalization</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/salary-cycles">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Salary Cycles</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/salary-summary">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <BanknotesIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Salary Summary</span>
+              </div>
+            )}
+          </NavLink>
+
+          {/* Reports Section Divider */}
+          <div className="pt-4 pb-2 px-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Reports</p>
+          </div>
+
+          <NavLink to="/admin/monthlyReport">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Monthly Report</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/reconciliation">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Reconciliation</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/revenueReport">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <BanknotesIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Revenue Report</span>
+              </div>
+            )}
+          </NavLink>
+
+          {/* Add some bottom padding for scroll */}
+          <div className="h-4"></div>
         </nav>
 
-        {/* Profile */}
-        <div className="border-t p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 text-gray-400 bg-[url('./assets/profileAdmin.png')] rounded-full bg-cover"></div>
-            <div>
-              <p className="text-sm font-medium">Athulya R Chandra</p>
-              <p className="text-xs text-gray-500">admin</p>
+        {/* Profile - Fixed at bottom */}
+        <div className="border-t border-gray-200 p-4 bg-white">
+          <div className="flex items-center gap-3 my-1 mb-3">
+            <div className="w-10 h-10 bg-[url('./assets/profileAdmin.png')] rounded-full bg-cover border-2 border-gray-200"></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">Athulya R Chandra</p>
+              <p className="text-xs text-gray-500">Admin</p>
             </div>
           </div>
-          <div
+
+          <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 rounded bg-gray-100 font-medium cursor-pointer hover:bg-gray-200 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150"
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            Log out
-          </div>
+            <span className="text-sm">Log out</span>
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 ml-64">
+      <main className="flex-1 p-6 ml-64 bg-gray-50">
         <Outlet />
       </main>
     </div>

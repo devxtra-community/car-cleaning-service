@@ -14,8 +14,8 @@ interface Vehicle {
 }
 
 const Vehicle_Management = () => {
-  console.log('🚗 Vehicle_Management component rendering');
-  
+  console.log(' Vehicle_Management component rendering');
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,29 +23,32 @@ const Vehicle_Management = () => {
   const itemsPerPage = 5;
 
   useEffect(() => {
-    console.log('🚗 Vehicle_Management useEffect triggered');
+    console.log(' Vehicle_Management useEffect triggered');
     loadVehicles();
   }, []);
 
   const loadVehicles = async () => {
-    console.log('🚗 Loading vehicles...');
+    console.log('Loading vehicles...');
     try {
       setError(null);
       const response = await api.get('/api/vehicle');
-      console.log('🚗 Vehicles loaded:', response.data);
+      console.log(' Vehicles loaded:', response.data);
       setVehicles(response.data || []);
     } catch (error: unknown) {
-      console.error('❌ Failed to load vehicles:', error);
-      setError((error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load vehicles. Please check the console for details.');
+      console.error(' Failed to load vehicles:', error);
+      setError(
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to load vehicles. Please check the console for details.'
+      );
     } finally {
       setLoading(false);
-      console.log('🚗 Loading complete');
+      console.log(' Loading complete');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
-    
+
     try {
       await api.delete(`/api/vehicle/${id}`);
       loadVehicles();
@@ -55,35 +58,25 @@ const Vehicle_Management = () => {
     }
   };
 
-  // Helper functions
-  const getVehicleIcon = (type: string) => {
-    const icons: { [key: string]: string } = {
-      'sedan': '🚗',
-      'suv': '🚙',
-      'truck': '🚚',
-      'hatchback': '🚗',
-      'van': '🚐',
-    };
-    return icons[type.toLowerCase()] || '🚗';
-  };
-
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: string } = {
-      'standard': 'bg-blue-100 text-blue-600',
-      'large': 'bg-green-100 text-green-600',
-      'commercial': 'bg-orange-100 text-orange-600',
-      'compact': 'bg-purple-100 text-purple-600',
+      standard: 'bg-blue-100 text-blue-600',
+      large: 'bg-green-100 text-green-600',
+      commercial: 'bg-orange-100 text-orange-600',
+      compact: 'bg-purple-100 text-purple-600',
     };
     return colors[category.toLowerCase()] || 'bg-gray-100 text-gray-600';
   };
 
   // Calculate stats
-  const avgBasePrice = vehicles.length > 0 
-    ? Math.round(vehicles.reduce((sum, v) => sum + v.base_price, 0) / vehicles.length)
-    : 0;
-  const avgPremiumPrice = vehicles.length > 0
-    ? Math.round(vehicles.reduce((sum, v) => sum + v.premium_price, 0) / vehicles.length)
-    : 0;
+  const avgBasePrice =
+    vehicles.length > 0
+      ? Math.round(vehicles.reduce((sum, v) => sum + v.base_price, 0) / vehicles.length)
+      : 0;
+  const avgPremiumPrice =
+    vehicles.length > 0
+      ? Math.round(vehicles.reduce((sum, v) => sum + v.premium_price, 0) / vehicles.length)
+      : 0;
 
   // Pagination
   const totalPages = Math.ceil(vehicles.length / itemsPerPage);
@@ -100,7 +93,7 @@ const Vehicle_Management = () => {
       </div>
 
       {/* Top Stats Banner */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-400 rounded-xl p-6 text-white mb-6">
+      <div className="bg-linear-to-r from-blue-500 to-blue-400 rounded-xl p-6 text-white mb-6">
         <div className="grid grid-cols-3 text-center">
           <div>
             <p className="text-sm opacity-90">VEHICLE TYPES</p>
@@ -134,7 +127,7 @@ const Vehicle_Management = () => {
           <div className="p-12 text-center">
             <div className="text-red-500 font-semibold mb-2">Error Loading Vehicles</div>
             <div className="text-gray-600 text-sm mb-4">{error}</div>
-            <button 
+            <button
               onClick={loadVehicles}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
             >
@@ -163,11 +156,11 @@ const Vehicle_Management = () => {
             <tbody>
               {currentVehicles.map((vehicle) => (
                 <tr key={vehicle.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3 flex items-center gap-3">
-                    {getVehicleIcon(vehicle.type)} {vehicle.type}
-                  </td>
+                  <td className="p-3 flex items-center gap-3">{vehicle.type}</td>
                   <td className="text-center">
-                    <span className={`px-2 py-1 rounded text-xs ${getCategoryColor(vehicle.category)}`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${getCategoryColor(vehicle.category)}`}
+                    >
                       {vehicle.category}
                     </span>
                   </td>
@@ -176,16 +169,18 @@ const Vehicle_Management = () => {
                   <td className="text-center">${vehicle.premium_price}</td>
                   <td className="text-center">{vehicle.wash_time} min</td>
                   <td className="text-center">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      vehicle.status === 'Active' 
-                        ? 'bg-green-100 text-green-600' 
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        vehicle.status === 'Active'
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
                       {vehicle.status}
                     </span>
                   </td>
                   <td className="text-center">
-                    <Link 
+                    <Link
                       to={`/admin/vechicles/addVehicles?edit=${vehicle.id}`}
                       className="inline-block mr-2 text-lg cursor-pointer hover:scale-110 transition"
                       title="Edit"
@@ -210,8 +205,8 @@ const Vehicle_Management = () => {
       {/* Pagination */}
       {vehicles.length > itemsPerPage && (
         <div className="flex justify-between items-center mt-6 text-sm">
-          <button 
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
             className="border px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
@@ -226,8 +221,8 @@ const Vehicle_Management = () => {
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
                   className={`px-2 rounded cursor-pointer ${
-                    currentPage === pageNum 
-                      ? 'bg-blue-100 text-blue-600 font-semibold' 
+                    currentPage === pageNum
+                      ? 'bg-blue-100 text-blue-600 font-semibold'
                       : 'hover:bg-gray-100'
                   }`}
                 >
@@ -241,8 +236,8 @@ const Vehicle_Management = () => {
                 <button
                   onClick={() => setCurrentPage(totalPages)}
                   className={`px-2 rounded cursor-pointer ${
-                    currentPage === totalPages 
-                      ? 'bg-blue-100 text-blue-600 font-semibold' 
+                    currentPage === totalPages
+                      ? 'bg-blue-100 text-blue-600 font-semibold'
                       : 'hover:bg-gray-100'
                   }`}
                 >
@@ -252,8 +247,8 @@ const Vehicle_Management = () => {
             )}
           </div>
 
-          <button 
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
             className="border px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >

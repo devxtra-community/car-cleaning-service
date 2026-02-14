@@ -1,40 +1,21 @@
-import { Router } from 'express';
+import express from 'express';
 import {
-  createSalaryController,
-  getAllSalariesController,
-  getMySalaryController,
-  updateSalaryController,
-  finalizeSalaryController,
+  generateSalaryForCleanerController,
+  generateSalaryForAllController,
+  lockSalaryController,
+  getSalaryCyclesController,
+  getSalarySummaryController,
 } from './salary_controller';
 
-const router = Router();
+const router = express.Router();
+router.get('/summary/:mode', getSalarySummaryController);
 
-/**
- * CREATE salary
- * (admin / system – no accountant yet)
- */
-router.post('/', createSalaryController);
+router.get('/salary-cycles', getSalaryCyclesController);
+// Generate salary for all cleaners in cycle
+router.post('/generate/:cycleId', generateSalaryForAllController);
 
-/**
- * GET all salaries
- * (admin / accountant view)
- */
-router.get('/', getAllSalariesController);
+// Generate salary for one cleaner
+router.post('/generate/:cycleId/:cleanerId', generateSalaryForCleanerController);
 
-/**
- * GET logged-in user's salary
- * (cleaner view)
- */
-router.get('/me', getMySalaryController);
-
-/**
- * UPDATE salary (draft only)
- */
-router.put('/:id', updateSalaryController);
-
-/**
- * FINALIZE salary
- */
-router.patch('/:id/finalize', finalizeSalaryController);
-
+router.post('/lock/:cycleId', lockSalaryController);
 export default router;

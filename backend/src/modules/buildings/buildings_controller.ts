@@ -1,15 +1,21 @@
 import { Request, Response } from 'express';
 import * as buildingService from './buildings_service';
 
-// Create building with floors
 export const createBuilding = async (req: Request, res: Response) => {
   try {
-    const { building_name, location, floors } = req.body;
+    const { building_name, latitude, longitude, radius, floors } = req.body;
 
     if (!building_name) {
       return res.status(400).json({
         success: false,
         message: 'Building name is required',
+      });
+    }
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: 'Building GPS location is required',
       });
     }
 
@@ -22,7 +28,9 @@ export const createBuilding = async (req: Request, res: Response) => {
 
     const building = await buildingService.createBuilding({
       building_name,
-      location,
+      latitude,
+      longitude,
+      radius,
       floors,
     });
 
