@@ -3,7 +3,53 @@ import { AuthRequest } from '../../middlewares/authMiddleware';
 import { pool } from '../../database/connectDatabase';
 import { getSupervisorWorkersService, supervisorReportService } from './supervisor_services';
 import { createTaskService } from '../tasks/tasks_service';
+import { sendNotificationToUser } from '../notifications/notification_service';
+import { logger } from '../../config/logger';
 
+import { registerPushToken } from '../notifications/notification_service';
+
+// Add this new function
+export const registerPushTokenController = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const { pushToken } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized',
+      });
+    }
+
+    if (!pushToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Push token is required',
+      });
+    }
+
+    const success = await registerPushToken(userId.toString(), pushToken);
+
+    if (success) {
+      logger.info(`Push token registered for user ${userId}`);
+      return res.json({
+        success: true,
+        message: 'Push token registered successfully',
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to register push token',
+      });
+    }
+  } catch (error) {
+    logger.error('Register push token error', { err: error });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to register push token',
+    });
+  }
+};
 /* ================= WORKERS ================= */
 export const getSupervisorWorkers = async (req: AuthRequest, res: Response) => {
   try {
@@ -200,6 +246,19 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
       cleaner_id: realCleanerId,
       amount_charged: task_amount ? parseFloat(task_amount) : 0,
     });
+
+    // Send push notification
+    try {
+      await sendNotificationToUser(worker_id, 'New Task Assigned', `${car_model} - ${car_number}`, {
+        taskId: task.id,
+        carNumber: car_number,
+        carModel: car_model,
+        type: 'task_assigned',
+      });
+      console.log(`Push notification sent to worker`);
+    } catch (notifError) {
+      console.error('Push notification failed:', notifError);
+    }
 
     return res.status(201).json({
       success: true,

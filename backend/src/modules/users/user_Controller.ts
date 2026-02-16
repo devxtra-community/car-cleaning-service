@@ -87,3 +87,25 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, message: 'Failed to fetch user details' });
   }
 };
+
+export const updatePushToken = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const { token } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Token is required' });
+    }
+
+    await pool.query('UPDATE users SET push_token = $1 WHERE id = $2', [token, userId]);
+
+    return res.json({ success: true, message: 'Push token updated' });
+  } catch (err) {
+    console.error('updatePushToken error', err);
+    return res.status(500).json({ success: false, message: 'Failed to update push token' });
+  }
+};

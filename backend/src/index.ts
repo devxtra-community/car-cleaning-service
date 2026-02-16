@@ -19,6 +19,7 @@ import buildingsRoutes from './modules/buildings/buildings_routes';
 import userRoutes from './modules/users/user_Routes';
 import incentiveRoutes from './modules/incentives/incentives_routes';
 import analyticRoutes from './modules/analytics/analytic_routes';
+import notificationRoutes from './modules/notifications/notification_routes';
 
 import s3Routes from './routes/s3';
 const app = express();
@@ -29,16 +30,37 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:8081',
-      'http://10.10.2.230:8081',
-      'http://10.10.1.203:8081',
-      'http://10.10.3.21:8081',
-      'http://10.10.3.182.1:8081',
-      'http://10.10.2.19.1:8081',
-      'http://10.10.1.164:8081',
-    ],
+    origin: (origin, callback) => {
+      // Allow mobile apps, Postman, or requests without origin
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:8081',
+        'http://10.10.2.230:8081',
+        'http://10.10.1.203:8081',
+        'http://10.10.3.21:8081',
+        'http://10.10.3.182.1:8081',
+        'http://10.10.2.19.1:8081',
+        'http://10.10.1.164:8081',
+      ];
+
+      // Allow Expo dev client (exp://...)
+      if (origin.startsWith('exp://')) {
+        return callback(null, true);
+      }
+
+      // Allow EAS dev builds (sometimes send file://)
+      if (origin.startsWith('file://')) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked origin: ${origin}`));
+    },
     credentials: true,
   })
 );
@@ -63,7 +85,7 @@ app.use('/api', attendanceRoutes);
 app.use('/s3', s3Routes);
 app.use('/workers', workersRoutes);
 app.use('/api/supervisor', supervisorRoutes);
-
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/vehicle', vechicleRoutes);
 app.use('/api/buildings', buildingsRoutes);
 app.use('/api/users', userRoutes);
