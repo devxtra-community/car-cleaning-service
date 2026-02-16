@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { createTaskService } from './tasks_service';
 import { pool } from '../../database/connectDatabase';
+import { sendNotificationToUser } from '../notifications/notification_service';
 
 /* ================= CREATE TASK ================= */
 
@@ -37,7 +38,7 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       car_color,
       car_image_url: car_image_url ?? null,
       cleaner_id: workerId,
-      task_amount: task_amount ?? 0,
+      amount_charged: task_amount ?? 0,
     });
 
     return res.status(201).json({ success: true, data: task });
@@ -168,6 +169,29 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
     }
 
     await client.query('COMMIT');
+
+    // Notify Supervisor
+    try {
+      const supervisorRes = await pool.query(
+        `SELECT s.user_id 
+         FROM supervisors s 
+         JOIN cleaners c ON c.supervisor_id = s.id 
+         WHERE c.user_id = $1`,
+        [workerId]
+      );
+
+      if (supervisorRes.rows.length > 0) {
+        const supervisorUserId = supervisorRes.rows[0].user_id;
+        //  FIXED: Pass JSON string instead of object
+        await sendNotificationToUser(
+          supervisorUserId,
+          'Task Completed',
+          JSON.stringify({ taskId, workerId })
+        );
+      }
+    } catch (notifError) {
+      console.error('Failed to send completion notification', notifError);
+    }
 
     return res.json({ success: true });
   } catch (err) {

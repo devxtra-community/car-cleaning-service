@@ -103,8 +103,8 @@ export default function LoginScreen() {
     try {
       setLoading(true);
 
-      console.log('🔐 Attempting login...');
-      console.log('📤 Request data:', { email, client_type: 'mobile' });
+      console.log(' Attempting login...');
+      console.log(' Request data:', { email, client_type: 'mobile' });
 
       const res = await api.post('/api/auth/login', {
         email,

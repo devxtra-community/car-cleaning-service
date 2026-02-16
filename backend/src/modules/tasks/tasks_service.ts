@@ -51,12 +51,11 @@ export const createTaskService = async (data: TaskInput) => {
       car_type,
       car_color,
       car_image_url,
-      car_location,
       cleaner_id,
       amount_charged,
       status
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     RETURNING *
     `,
     [
@@ -67,7 +66,6 @@ export const createTaskService = async (data: TaskInput) => {
       data.car_type,
       data.car_color,
       data.car_image_url,
-      data.car_location || null,
       data.cleaner_id,
       data.amount_charged,
       'pending',
