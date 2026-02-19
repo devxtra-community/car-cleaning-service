@@ -15,6 +15,8 @@ interface Cleaner {
   total_earning: number;
   building_name?: string;
   supervisor_name?: string;
+  average_rating?: number;
+  total_reviews?: number;
 }
 
 const Cleaners = () => {
@@ -86,6 +88,7 @@ const Cleaners = () => {
                   <th>Supervisor</th>
                   <th>Building / Floor</th>
                   <th>Tasks</th>
+                  <th>Rating</th>
                   <th>Earning</th>
                   <th>Action</th>
                 </tr>
@@ -94,19 +97,19 @@ const Cleaners = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="p-10 text-center text-gray-400">
+                    <td colSpan={9} className="p-10 text-center text-gray-400">
                       Loading cleaners...
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={8} className="p-10 text-center text-red-400">
+                    <td colSpan={9} className="p-10 text-center text-red-400">
                       {error}
                     </td>
                   </tr>
                 ) : cleaners.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-10 text-center text-gray-400">
+                    <td colSpan={9} className="p-10 text-center text-gray-400">
                       No cleaners found.
                     </td>
                   </tr>
@@ -124,6 +127,17 @@ const Cleaners = () => {
                       <td className="text-center">{cleaner.supervisor_name || 'N/A'}</td>
                       <td className="text-center">{cleaner.building_name || 'N/A'} </td>
                       <td className="text-center">{cleaner.total_tasks}</td>
+                      <td className="text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          <span className="text-yellow-500">★</span>
+                          {cleaner.average_rating
+                            ? Number(cleaner.average_rating).toFixed(1)
+                            : '0.0'}
+                          <span className="text-xs text-gray-400">
+                            ({cleaner.total_reviews || 0})
+                          </span>
+                        </span>
+                      </td>
                       <td className="text-center text-green-600">₹{cleaner.total_earning}</td>
                       <td className="text-center">
                         <button className="text-blue-600 hover:text-blue-800 font-medium text-xs">

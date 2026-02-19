@@ -14,9 +14,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
-import { Picker } from '@react-native-picker/picker';
+import { Picker } from '@react-native-picker/picker'; // Keep native picker for now, or replace if desired
 import { Camera, ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -34,7 +35,6 @@ const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer'];
 
 export default function AfterWash() {
   const router = useRouter();
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const jobId = params.jobId as string;
@@ -46,8 +46,6 @@ export default function AfterWash() {
   const [finalPrice, setFinalPrice] = useState<string>(''); // Keep as string for input handling
   const [loading, setLoading] = useState(false);
   const [loadingPricing, setLoadingPricing] = useState(true);
-
-  /* ================= PARAMS & VALIDATION ================= */
 
   /* ================= LOAD PRICING ================= */
 
@@ -93,13 +91,11 @@ export default function AfterWash() {
   if (!jobId || !carType) {
     return (
       <View
-        className="flex-1 justify-center items-center"
-        style={{ paddingTop: insets.top, backgroundColor: colors.background }}
+        className="flex-1 justify-center items-center bg-[#E0F2FE]"
+        style={{ paddingTop: insets.top }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text className="mt-4 font-bold" style={{ color: colors.textSecondary }}>
-          Loading details...
-        </Text>
+        <ActivityIndicator size="large" color="#0EA5E9" />
+        <Text className="mt-4 font-heading text-clay-secondary">Loading details...</Text>
       </View>
     );
   }
@@ -200,164 +196,155 @@ export default function AfterWash() {
   /* ================= UI ================= */
 
   return (
-    <View className="flex-1" style={{ paddingTop: insets.top, backgroundColor: colors.background }}>
+    <View className="flex-1 bg-[#E0F2FE]">
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        className="absolute w-full h-full"
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
-        <View className="p-5">
-          <Pressable onPress={() => router.back()}>
-            <ArrowLeft color={colors.text} size={24} />
-          </Pressable>
+        <View
+          className="pb-6 rounded-b-[40px] shadow-sm bg-white/80 z-10"
+          style={{ paddingTop: insets.top + 10 }}
+        >
+          <View className="flex-row items-center justify-between px-6">
+            <Pressable
+              onPress={() => router.back()}
+              className="w-10 h-10 rounded-xl items-center justify-center bg-white shadow-sm border border-gray-100"
+            >
+              <ArrowLeft size={24} color="#1E293B" />
+            </Pressable>
+            <Text className="text-xl font-heading tracking-tight text-clay-text">
+              Job Completion
+            </Text>
+            <View className="w-10" />
+          </View>
         </View>
 
-        <ScrollView className="px-5" style={{ backgroundColor: colors.background }}>
-          <Text className="text-3xl font-black mb-2 tracking-tight" style={{ color: colors.text }}>
-            Job Completion
-          </Text>
-          <Text className="font-bold text-sm mb-8" style={{ color: colors.textSecondary }}>
+        <ScrollView
+          className="flex-1 px-6"
+          contentContainerStyle={{ paddingTop: 24, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text className="font-heading text-sm mb-6 text-clay-secondary">
             Take after-wash photo and complete payment details
           </Text>
 
           {/* AFTER WASH PHOTO */}
-          <Text
-            className="font-bold text-[11px] uppercase tracking-widest mb-2"
-            style={{ color: colors.textSecondary }}
-          >
-            After Wash Photo
-          </Text>
-          <Pressable
-            className="h-[220px] border-2 border-dashed rounded-2xl justify-center items-center mb-8"
-            style={{ borderColor: colors.border, backgroundColor: colors.cardBackground }}
-            onPress={openCamera}
-          >
-            {image ? (
-              <Image source={{ uri: image.uri }} className="w-full h-full rounded-2xl" />
-            ) : (
-              <>
-                <Camera size={48} color={colors.primary} />
-                <Text
-                  className="mt-3 font-bold text-xs uppercase tracking-widest"
-                  style={{ color: colors.textTertiary }}
-                >
-                  Take After Wash Photo
-                </Text>
-              </>
-            )}
-          </Pressable>
+          <View className="mb-8">
+            <Text className="font-label text-[10px] uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
+              After Wash Photo
+            </Text>
+            <Pressable
+              className="h-[220px] clay-card border-none bg-white overflow-hidden justify-center items-center"
+              onPress={openCamera}
+            >
+              {image ? (
+                <Image source={{ uri: image.uri }} className="w-full h-full rounded-2xl" />
+              ) : (
+                <View className="items-center">
+                  <View className="w-16 h-16 rounded-full bg-[#E0F2FE] items-center justify-center mb-4 shadow-sm border border-[#0EA5E9]/20">
+                    <Camera size={32} color="#0EA5E9" />
+                  </View>
+                  <Text className="font-heading text-xs uppercase tracking-widest text-clay-secondary">
+                    Take Photo
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
 
           {/* PAYMENT METHOD */}
-          <Text
-            className="font-bold text-[11px] uppercase tracking-widest mb-2"
-            style={{ color: colors.textSecondary }}
-          >
-            Payment Method
-          </Text>
-          <View
-            className="rounded-xl mb-8 border"
-            style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
-          >
-            <Picker
-              selectedValue={paymentMethod}
-              onValueChange={setPaymentMethod}
-              style={{ height: 50, color: colors.text }}
-              dropdownIconColor={colors.text}
-            >
-              <Picker.Item label="Select Payment Method" value="" color={colors.textTertiary} />
-              {PAYMENT_METHODS.map((method) => (
-                <Picker.Item key={method} label={method} value={method} color={colors.text} />
-              ))}
-            </Picker>
+          <View className="mb-8">
+            <Text className="font-label text-[10px] uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
+              Payment Method
+            </Text>
+            <View className="clay-card px-2 bg-white border border-gray-100">
+              <Picker
+                selectedValue={paymentMethod}
+                onValueChange={setPaymentMethod}
+                style={{ height: 50 }}
+                dropdownIconColor="#1E293B"
+              >
+                <Picker.Item label="Select Payment Method" value="" color="#94A3B8" />
+                {PAYMENT_METHODS.map((method) => (
+                  <Picker.Item key={method} label={method} value={method} color="#1E293B" />
+                ))}
+              </Picker>
+            </View>
           </View>
 
           {/* PRICE SELECTION */}
-          <Text
-            className="font-bold text-[11px] uppercase tracking-widest mb-2"
-            style={{ color: colors.textSecondary }}
-          >
-            Service Price
-          </Text>
-          {loadingPricing ? (
-            <ActivityIndicator size="large" color={colors.primary} />
-          ) : pricing ? (
-            <View className="mb-8">
-              {/* PRICE INPUT */}
-              <View
-                className="flex-row items-center rounded-xl px-4 py-4 mb-3 border"
-                style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
-              >
-                <Text className="text-xl font-bold mr-2" style={{ color: colors.textSecondary }}>
-                  ₹
-                </Text>
-                <TextInput
-                  className="flex-1 text-xl font-black"
-                  style={{ color: colors.primary }}
-                  value={finalPrice}
-                  onChangeText={setFinalPrice}
-                  keyboardType="numeric"
-                  placeholder="Enter amount"
-                  placeholderTextColor={colors.textTertiary}
-                />
-              </View>
-
-              {/* RANGE INFO */}
-              <Text
-                className="text-[10px] font-bold uppercase tracking-wide mb-4 ml-1"
-                style={{ color: colors.textTertiary }}
-              >
-                Allowed Range: ₹{pricing.base_price} - ₹{pricing.premium_price}
-              </Text>
-
-              {/* QUICK SELECT CHIPS */}
-              <View className="flex-row gap-3">
-                <Pressable
-                  className="px-5 py-3 rounded-full border"
-                  style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}
-                  onPress={() => setFinalPrice(pricing.base_price.toString())}
-                >
-                  <Text
-                    className="font-bold text-[11px] uppercase tracking-wide"
-                    style={{ color: colors.primary }}
-                  >
-                    Base: ₹{pricing.base_price}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  className="px-5 py-3 rounded-full border"
-                  style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}
-                  onPress={() => setFinalPrice(pricing.premium_price.toString())}
-                >
-                  <Text
-                    className="font-bold text-[11px] uppercase tracking-wide"
-                    style={{ color: colors.primary }}
-                  >
-                    Premium: ₹{pricing.premium_price}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : (
-            <Text className="mb-5 font-bold" style={{ color: colors.danger }}>
-              Failed to load pricing
+          <View className="mb-8">
+            <Text className="font-label text-[10px] uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
+              Service Price
             </Text>
-          )}
+
+            {loadingPricing ? (
+              <ActivityIndicator size="small" color="#0EA5E9" />
+            ) : pricing ? (
+              <View>
+                {/* PRICE INPUT */}
+                <View className="clay-card flex-row items-center px-4 py-4 mb-3 bg-white border border-gray-100">
+                  <Text className="text-xl font-heading mr-2 text-clay-text">₹</Text>
+                  <TextInput
+                    className="flex-1 text-xl font-heading text-[#0EA5E9]"
+                    value={finalPrice}
+                    onChangeText={setFinalPrice}
+                    keyboardType="numeric"
+                    placeholder="Enter amount"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+
+                {/* RANGE INFO */}
+                <Text className="text-[10px] font-bold uppercase tracking-wide mb-4 ml-1 text-clay-secondary/60">
+                  Allowed Range: ₹{pricing.base_price} - ₹{pricing.premium_price}
+                </Text>
+
+                {/* QUICK SELECT CHIPS */}
+                <View className="flex-row gap-3">
+                  <Pressable
+                    className="flex-1 py-3 rounded-xl border border-[#0EA5E9] bg-[#E0F2FE] items-center"
+                    onPress={() => setFinalPrice(pricing.base_price.toString())}
+                  >
+                    <Text className="font-heading text-[11px] uppercase tracking-wide text-[#0EA5E9]">
+                      Base: ₹{pricing.base_price}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    className="flex-1 py-3 rounded-xl border border-[#0EA5E9] bg-[#E0F2FE] items-center"
+                    onPress={() => setFinalPrice(pricing.premium_price.toString())}
+                  >
+                    <Text className="font-heading text-[11px] uppercase tracking-wide text-[#0EA5E9]">
+                      Premium: ₹{pricing.premium_price}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Text className="font-heading text-[#EF4444]">Failed to load pricing</Text>
+            )}
+          </View>
 
           {/* CONTINUE BUTTON */}
           <Pressable
-            className={`py-5 rounded-xl justify-center items-center mb-10 shadow-lg ${
+            className={`w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center mb-10 clay-button bg-[#0EA5E9] ${
               loading || !canSubmit ? 'opacity-50' : ''
             }`}
-            style={{
-              backgroundColor: loading || !canSubmit ? colors.border : colors.primary,
-              shadowColor: colors.primary,
-              shadowOpacity: 0.3,
-            }}
             disabled={loading || !canSubmit}
             onPress={handleContinue}
           >
-            <Text className="text-white text-[12px] font-black uppercase tracking-widest">
-              {loading ? 'Uploading...' : 'Continue to Summary'}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
+                Continue to Summary
+              </Text>
+            )}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

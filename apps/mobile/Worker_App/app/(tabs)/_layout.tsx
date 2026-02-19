@@ -1,23 +1,22 @@
+// apps/mobile/Worker_App/app/(tabs)/_layout.tsx
+
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { View, Text, Pressable, Animated, Dimensions } from 'react-native';
-import { PieChart, Home, User } from 'lucide-react-native';
-import React, { useRef, useEffect } from 'react';
+import { View, Text, Platform, Dimensions, Pressable, Animated } from 'react-native';
+import { Home, User, PieChart } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
 
-const ACTIVE = '#ffffff';
-const INACTIVE = '#9ca3af';
-
+const ACTIVE = '#ffffff'; // White for active text
+const INACTIVE = '#9ca3af'; // Gray for inactive
 const { width } = Dimensions.get('window');
 const CONTAINER_WIDTH = width * 0.9;
-const TAB_WIDTH = CONTAINER_WIDTH / 3;
+const TAB_COUNT = 3;
+const TAB_WIDTH = CONTAINER_WIDTH / TAB_COUNT;
 
 export default function TabLayout() {
-  const translateX = useRef(new Animated.Value(0)).current;
-
   return (
-    <Tabs
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => <CustomTabBar {...props} translateX={translateX} />}
-    >
+    <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <CustomTabBar {...props} />}>
       <Tabs.Screen name="Analytics" />
       <Tabs.Screen name="Homepage" />
       <Tabs.Screen name="Profile" />
@@ -32,12 +31,8 @@ export default function TabLayout() {
   );
 }
 
-interface CustomTabBarProps {
-  state: { routes: any[]; index: number };
-  translateX: Animated.Value;
-}
-
-function CustomTabBar({ translateX }: CustomTabBarProps) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CustomTabBar(props: any) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,18 +42,19 @@ function CustomTabBar({ translateX }: CustomTabBarProps) {
     '/Profile': 2,
   };
 
-  const activeIndex = routeIndexMap[pathname] !== undefined ? routeIndexMap[pathname] : 1;
+  const activeIndex = routeIndexMap[pathname] ?? 1;
+  // Fix: Use useState for stable initialization instead of useRef during render
+  const [slideAnim] = useState(() => new Animated.Value(activeIndex * TAB_WIDTH));
 
   useEffect(() => {
-    Animated.spring(translateX, {
+    Animated.spring(slideAnim, {
       toValue: activeIndex * TAB_WIDTH,
       useNativeDriver: true,
       friction: 9,
       tension: 60,
     }).start();
-  }, [activeIndex, translateX]);
+  }, [activeIndex, slideAnim]);
 
-  // Hide tab bar on utility screens
   const hiddenScreens = [
     '/AddJob',
     '/AfterWash',
@@ -71,42 +67,60 @@ function CustomTabBar({ translateX }: CustomTabBarProps) {
   if (hiddenScreens.includes(pathname)) return null;
 
   return (
-    <View className="absolute bottom-6 w-full items-center">
-      <View
-        style={{ width: CONTAINER_WIDTH }}
-        className="h-[72px] bg-white rounded-full flex-row items-center shadow-xl shadow-black/10 px-2"
+    <View className="absolute bottom-8 w-full items-center">
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 30 : 100}
+        tint="light"
+        className="overflow-hidden rounded-full shadow-xl shadow-blue-900/20"
+        style={{ width: CONTAINER_WIDTH, height: 72 }}
       >
-        {/* Active Indicator */}
-        <Animated.View
-          style={{
-            width: TAB_WIDTH,
-            transform: [{ translateX }],
-          }}
-          className="absolute h-[60px] bg-[#1B86C6] rounded-full left-2"
+        <LinearGradient
+          colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+          className="absolute w-full h-full"
         />
+        <View className="flex-row items-center w-full h-full relative">
+          {/* Active Pill with Gradient */}
+          <Animated.View
+            style={{
+              width: TAB_WIDTH,
+              height: 56,
+              paddingHorizontal: 8,
+              transform: [{ translateX: slideAnim }],
+              position: 'absolute',
+              left: 0,
+            }}
+          >
+            <LinearGradient
+              colors={['#0EA5E9', '#0284C7']}
+              className="w-full h-full rounded-[20px] shadow-lg shadow-blue-400"
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
+          </Animated.View>
 
-        {/* Tabs */}
-        <TabButton
-          label="Stats"
-          icon={<PieChart size={20} />}
-          active={activeIndex === 0}
-          onPress={() => router.push('/Analytics')}
-        />
+          {/* Tabs */}
+          <TabButton
+            label="Stats"
+            icon={<PieChart size={22} />}
+            active={activeIndex === 0}
+            onPress={() => router.push('/Analytics')}
+          />
 
-        <TabButton
-          label="Home"
-          icon={<Home size={20} />}
-          active={activeIndex === 1}
-          onPress={() => router.push('/Homepage')}
-        />
+          <TabButton
+            label="Home"
+            icon={<Home size={22} />}
+            active={activeIndex === 1}
+            onPress={() => router.push('/Homepage')}
+          />
 
-        <TabButton
-          label="Profile"
-          icon={<User size={20} />}
-          active={activeIndex === 2}
-          onPress={() => router.push('/Profile')}
-        />
-      </View>
+          <TabButton
+            label="Profile"
+            icon={<User size={22} />}
+            active={activeIndex === 2}
+            onPress={() => router.push('/Profile')}
+          />
+        </View>
+      </BlurView>
     </View>
   );
 }
@@ -123,16 +137,20 @@ function TabButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} className="flex-1 h-[60px] items-center justify-center gap-1">
-      {React.cloneElement(icon, {
-        color: active ? ACTIVE : INACTIVE,
-      } as any)}
-      <Text
-        className="text-[11px] font-semibold tracking-wide"
-        style={{ color: active ? ACTIVE : INACTIVE }}
-      >
-        {label}
-      </Text>
+    <Pressable onPress={onPress} className="flex-1 h-full items-center justify-center z-10">
+      <View className="items-center justify-center gap-[4px]">
+        {React.cloneElement(icon, {
+          color: active ? ACTIVE : INACTIVE,
+          strokeWidth: active ? 2.5 : 2,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)}
+        <Text
+          className="text-[10px] font-bold tracking-widest uppercase"
+          style={{ color: active ? ACTIVE : INACTIVE }}
+        >
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }

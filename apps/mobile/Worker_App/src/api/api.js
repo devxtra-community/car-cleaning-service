@@ -26,9 +26,13 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
 
+    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('[API Request Error]', error);
+    return Promise.reject(error);
+  }
 );
 
 /* ================= RESPONSE INTERCEPTOR ================= */
@@ -69,6 +73,13 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
+
+    console.error('[API Response Error]', {
+      url: originalRequest?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data,
+    });
 
     return Promise.reject(error);
   }

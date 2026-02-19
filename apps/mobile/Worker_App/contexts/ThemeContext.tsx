@@ -29,49 +29,49 @@ export interface Theme {
 }
 
 const lightTheme: Theme = {
-  background: '#F5F7FA',
+  background: '#E0F2FE', // Light Blue Background
   cardBackground: '#FFFFFF',
-  text: '#1F2937',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  primary: '#1B86C6',
-  primaryLight: '#E0F2FE',
-  primaryDark: '#0369A1',
-  border: '#E5E7EB',
-  borderLight: '#F3F4F6',
+  text: '#1E293B', // Dark Slate
+  textSecondary: '#64748B', // Blue Gray
+  textTertiary: '#94A3B8', // Light Slate
+  primary: '#0EA5E9', // Sky Blue
+  primaryLight: '#BAE6FD', // Very Light Sky Blue
+  primaryDark: '#0284C7', // Darker Sky Blue
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
   success: '#10B981',
-  successLight: '#D1FAE5',
+  successLight: '#ECFDF5',
   warning: '#F59E0B',
-  warningLight: '#FEF3C7',
+  warningLight: '#FFFBEB',
   danger: '#EF4444',
-  dangerLight: '#FEE2E2',
+  dangerLight: '#FEF2F2',
   info: '#3B82F6',
-  infoLight: '#DBEAFE',
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  infoLight: '#EFF6FF',
+  shadow: 'rgba(14, 165, 233, 0.15)', // Blue-tinted shadow
+  overlay: 'rgba(255, 255, 255, 0.6)', // Light overlay
 };
 
 const darkTheme: Theme = {
-  background: '#0F172A',
+  background: '#0F172A', // Dark Slate
   cardBackground: '#1E293B',
-  text: '#F1F5F9',
-  textSecondary: '#94A3B8',
-  textTertiary: '#64748B',
-  primary: '#3B82F6',
-  primaryLight: '#1E3A8A',
-  primaryDark: '#60A5FA',
+  text: '#F8FAFC',
+  textSecondary: '#CBD5E1',
+  textTertiary: '#94A3B8',
+  primary: '#38BDF8', // Lighter Sky Blue for Dark Mode
+  primaryLight: '#075985',
+  primaryDark: '#7DD3FC',
   border: '#334155',
   borderLight: '#475569',
   success: '#22C55E',
   successLight: '#14532D',
-  warning: '#F59E0B',
+  warning: '#FBBF24',
   warningLight: '#78350F',
-  danger: '#EF4444',
+  danger: '#F87171',
   dangerLight: '#7F1D1D',
-  info: '#3B82F6',
+  info: '#60A5FA',
   infoLight: '#1E3A8A',
-  shadow: 'rgba(0, 0, 0, 0.3)',
-  overlay: 'rgba(0, 0, 0, 0.7)',
+  shadow: 'rgba(0, 0, 0, 0.4)',
+  overlay: 'rgba(0, 0, 0, 0.8)',
 };
 
 interface ThemeContextType {

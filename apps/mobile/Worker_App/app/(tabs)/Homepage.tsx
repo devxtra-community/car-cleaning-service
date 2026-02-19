@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import {
   Plus,
   Wallet,
@@ -30,8 +31,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Location from 'expo-location';
 import api from '../../src/api/api';
-
-// const { width } = Dimensions.get('window');
 
 type Job = {
   id: string;
@@ -65,32 +64,24 @@ const QuickAction = ({
   onPress?: () => void;
   color?: string;
 }) => {
-  const { colors } = useTheme();
-  const iconColor = color || colors.primary;
+  // Simplified color logic for glass/clay look
+  const iconColor = color || '#0EA5E9'; // Sky blue default
 
   return (
     <Pressable
       onPress={onPress}
-      className="p-3 rounded-[28px] items-center justify-center gap-1.5 shadow-sm min-h-[90px] w-[31%] mb-2.5"
-      style={{
-        backgroundColor: colors.cardBackground,
-        borderColor: colors.border,
-        borderWidth: 1,
-      }}
+      className="clay-button w-[31%] mb-4 p-3 items-center justify-center min-h-[100px] bg-white"
     >
       <View
-        className="w-9 h-9 rounded-full items-center justify-center"
-        style={{ backgroundColor: `${iconColor}10` }}
+        className="w-10 h-10 rounded-full items-center justify-center mb-2 shadow-sm"
+        style={{ backgroundColor: `${iconColor}15` }}
       >
         {React.cloneElement(icon as React.ReactElement<{ color: string; size: number }>, {
           color: iconColor,
-          size: 20,
+          size: 22,
         })}
       </View>
-      <Text
-        className="font-bold text-center text-[11px] tracking-tight"
-        style={{ color: colors.textSecondary }}
-      >
+      <Text className="font-label text-center text-[10px] tracking-wide text-clay-secondary">
         {title}
       </Text>
     </Pressable>
@@ -106,31 +97,20 @@ const JobDetailRow = ({
   label: string;
   value?: string;
 }) => {
-  const { colors } = useTheme();
-
   return (
-    <View
-      className="flex-row items-center justify-between py-2"
-      style={{ borderBottomColor: colors.borderLight, borderBottomWidth: 1 }}
-    >
+    <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
       <View className="flex-row items-center gap-2">
-        <View
-          className="w-7 h-7 rounded-full items-center justify-center"
-          style={{ backgroundColor: `${colors.primary}15` }}
-        >
+        <View className="w-6 h-6 rounded-full items-center justify-center bg-clay-background">
           {React.cloneElement(icon as React.ReactElement<{ color: string; size: number }>, {
-            color: colors.primary,
+            color: '#64748B',
             size: 14,
           })}
         </View>
-        <Text
-          className="text-[11px] font-bold uppercase tracking-wider"
-          style={{ color: colors.textSecondary }}
-        >
+        <Text className="font-label text-[11px] uppercase tracking-wider text-clay-secondary">
           {label}
         </Text>
       </View>
-      <Text className="font-extrabold text-[12px]" style={{ color: colors.text }} numberOfLines={1}>
+      <Text className="font-heading text-[13px] text-clay-text" numberOfLines={1}>
         {value || 'N/A'}
       </Text>
     </View>
@@ -138,14 +118,12 @@ const JobDetailRow = ({
 };
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [worker, setWorker] = useState({ name: '', jobsDone: 0, totalRevenue: 0 });
   const [supervisor, setSupervisor] = useState({ name: '', location: '', jobsDoneToday: 0 });
   const [refreshing, setRefreshing] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [workerInfo, setWorkerInfo] = useState<WorkerInfo | null>(null);
   const [isMarkingAttendance, setIsMarkingAttendance] = useState(false);
@@ -153,12 +131,12 @@ export default function HomeScreen() {
 
   const loadDashboard = async () => {
     try {
-      const res = await api.get('/workers/dashboard?range=day'); // Explicitly request day range
+      const res = await api.get('/workers/dashboard?range=day');
       if (res.data) {
         setWorker({
           name: res.data.name,
-          jobsDone: res.data.period?.jobs || 0, // Changed to period jobs (Daily)
-          totalRevenue: res.data.period?.revenue || 0, // Changed to period revenue (Daily)
+          jobsDone: res.data.period?.jobs || 0,
+          totalRevenue: res.data.period?.revenue || 0,
         });
         setSupervisor({
           name: res.data.supervisor?.name || 'Not assigned',
@@ -183,32 +161,17 @@ export default function HomeScreen() {
 
   const checkAttendanceStatus = async () => {
     try {
-      console.log('🔍 Checking attendance status...');
       const res = await api.get('/attendance/status');
-      console.log('✅ Attendance status response:', res.data);
-
-      if (res.data && res.data.success) {
-        console.log('📌 Attendance marked:', res.data.marked);
-
-        if (!res.data.marked) {
-          console.log('📞 Fetching worker info...');
-          // Load worker info for the modal
-          const infoRes = await api.get('/attendance/worker-info');
-          console.log('✅ Worker info response:', infoRes.data);
-
-          if (infoRes.data && infoRes.data.success) {
-            setWorkerInfo(infoRes.data.data);
-            console.log('🎯 Showing attendance modal!');
-            setShowAttendanceModal(true);
-          } else {
-            console.log('❌ Worker info fetch failed or no data');
-          }
+      if (res.data && res.data.success && !res.data.marked) {
+        const infoRes = await api.get('/attendance/worker-info');
+        if (infoRes.data && infoRes.data.success) {
+          setWorkerInfo(infoRes.data.data);
+          setShowAttendanceModal(true);
         }
       }
-    } catch (e) {
-      // Silently handle 401 (not authenticated)
-      // Don't show attendance modal if there's an auth issue
-      if ((e as any).response?.status === 401) {
+    } catch (e: unknown) {
+      const error = e as { response?: { status?: number } };
+      if (error.response?.status === 401) {
         console.log('Not authenticated for attendance check');
       } else {
         console.error('Attendance check error:', e);
@@ -219,30 +182,24 @@ export default function HomeScreen() {
   const markAttendance = async () => {
     try {
       setIsMarkingAttendance(true);
-
-      // Request location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to mark attendance');
+        Alert.alert('Permission Denied', 'Location permission is required.');
         return;
       }
-
-      // Get current location
       const location = await Location.getCurrentPositionAsync({});
-
-      // Mark attendance
       const res = await api.post('/attendance/mark', {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
-
       if (res.data && res.data.success) {
         Alert.alert('Success', 'Attendance marked successfully!');
         setShowAttendanceModal(false);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Mark attendance error:', error);
-      const message = (error as any).response?.data?.message || 'Failed to mark attendance';
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message || 'Failed to mark attendance';
       Alert.alert('Error', message);
     } finally {
       setIsMarkingAttendance(false);
@@ -257,30 +214,35 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // Countdown timer effect
   React.useEffect(() => {
     if (!activeJob?.wash_time || !activeJob?.created_at) {
       setTimeRemaining(null);
       return;
     }
-
     const updateTimer = () => {
+      // Parse created_at. It might be a string or a Date object.
+      // If it's a string from Postgres, it might be in UTC or local time.
+      // The debug script will confirming this, but usually new Date(string) works if ISO format.
       const createdAt = new Date(activeJob.created_at!).getTime();
-      const washTimeMs = activeJob.wash_time! * 60 * 1000; // Convert minutes to milliseconds
+
+      // wash_time is in minutes
+      const washTimeMs = activeJob.wash_time! * 60 * 1000;
       const endTime = createdAt + washTimeMs;
       const now = Date.now();
       const remaining = endTime - now;
 
+      // Debugging logs (can// colors removed later)
+      // console.log('Timer Debug:', { createdAt, washTimeMs, endTime, now, remaining });
+
       if (remaining <= 0) {
         setTimeRemaining(0);
       } else {
-        setTimeRemaining(Math.floor(remaining / 1000)); // In seconds
+        setTimeRemaining(Math.floor(remaining / 1000));
       }
     };
 
-    updateTimer();
+    updateTimer(); // Initial call
     const interval = setInterval(updateTimer, 1000);
-
     return () => clearInterval(interval);
   }, [activeJob]);
 
@@ -298,120 +260,78 @@ export default function HomeScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View className="flex-1 bg-[#E0F2FE]">
+      {/* Background Gradient for overall soft feel */}
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        className="absolute w-full h-full"
+      />
+
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0EA5E9" />
         }
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* HEADER SECTION */}
-        <View
-          className="rounded-b-[40px] shadow-sm pb-8"
-          style={{
-            paddingTop: insets.top + 10,
-            backgroundColor: colors.cardBackground,
-            borderBottomColor: colors.border,
-            borderBottomWidth: 1,
-          }}
+        {/* HEADER SECTION WITH GLASS EFFECT */}
+        <BlurView
+          intensity={20}
+          tint="light"
+          className="rounded-b-[40px] overflow-hidden"
+          style={{ paddingTop: insets.top + 10, paddingBottom: 30 }}
         >
-          <View className="px-6 flex-row justify-between items-center mb-5">
+          <View className="px-6 flex-row justify-between items-center mb-6">
             <View>
-              <Text
-                className="text-[10px] font-black uppercase tracking-[2.5px] mb-0.5"
-                style={{ color: colors.textSecondary }}
-              >
+              <Text className="font-label uppercase tracking-[2.5px] text-clay-secondary mb-1">
                 Field Associate
               </Text>
-              <Text
-                className="text-3xl font-black tracking-tighter"
-                style={{ color: colors.primary }}
-              >
+              <Text className="text-3xl font-heading tracking-tight text-clay-text">
                 Hi, {worker.name.split(' ')[0] || 'Worker'}
               </Text>
             </View>
-            <View
-              className="w-12 h-12 rounded-2xl items-center justify-center"
-              style={{
-                backgroundColor: colors.primaryLight,
-                borderColor: colors.border,
-                borderWidth: 1,
-              }}
-            >
-              <User size={22} color={colors.primary} />
+            <View className="w-12 h-12 rounded-2xl items-center justify-center bg-white border border-white shadow-sm">
+              <User size={22} color="#0EA5E9" />
             </View>
           </View>
 
-          {/* STATS MINI CARDS */}
+          {/* STATS CLAY CARDS */}
           <View className="px-6 flex-row gap-4">
-            <View
-              className="flex-1 p-5 rounded-[28px] shadow-md"
-              style={{
-                backgroundColor: colors.primary,
-                shadowColor: colors.primary,
-                shadowOpacity: 0.3,
-              }}
-            >
+            {/* Jobs Done Card */}
+            <View className="flex-1 clay-card p-5 bg-[#0EA5E9]">
               <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center mb-3">
                 <ClipboardCheck size={16} color="white" />
               </View>
-              <Text className="text-white/70 text-[10px] font-black uppercase tracking-widest mb-0.5">
+              <Text className="text-white/80 font-label uppercase tracking-widest mb-1">
                 Daily Tasks
               </Text>
-              <Text className="text-white text-2xl font-black">{worker.jobsDone}</Text>
+              <Text className="text-white text-3xl font-heading">{worker.jobsDone}</Text>
             </View>
 
-            <View
-              className="flex-1 p-5 rounded-[28px] shadow-sm"
-              style={{
-                backgroundColor: colors.cardBackground,
-                borderColor: colors.border,
-                borderWidth: 1,
-              }}
-            >
-              <View
-                className="w-8 h-8 rounded-full items-center justify-center mb-3"
-                style={{ backgroundColor: colors.primaryLight }}
-              >
-                <Wallet size={16} color={colors.primary} />
+            {/* Revenue Card */}
+            <View className="flex-1 clay-card p-5 bg-white">
+              <View className="w-8 h-8 rounded-full items-center justify-center mb-3 bg-[#E0F2FE]">
+                <Wallet size={16} color="#0EA5E9" />
               </View>
-              <Text
-                className="text-[10px] font-black uppercase tracking-widest mb-0.5"
-                style={{ color: colors.textSecondary }}
-              >
+              <Text className="font-label uppercase tracking-widest mb-1 text-clay-secondary">
                 Daily Earnings
               </Text>
-              <Text className="text-2xl font-black" style={{ color: colors.primary }}>
-                ₹{worker.totalRevenue}
-              </Text>
+              <Text className="text-3xl font-heading text-[#0EA5E9]">₹{worker.totalRevenue}</Text>
             </View>
           </View>
-        </View>
+        </BlurView>
 
-        <View className="px-6 -mt-5">
+        <View className="px-6 -mt-4">
           {/* ACTIVE JOB SECTION */}
-          <View className="mb-6">
-            <View className="flex-row justify-between items-center mb-2 px-1">
-              <Text
-                className="font-black text-[11px] uppercase tracking-[2px] mt-10"
-                style={{ color: colors.textSecondary }}
-              >
+          <View className="mb-8">
+            <View className="flex-row justify-between items-center mb-3 px-1">
+              <Text className="font-label uppercase tracking-[2px] text-clay-secondary">
                 Active Assignment
               </Text>
               {activeJob && (
-                <View
-                  className="px-3 py-1 rounded-full border"
-                  style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}
-                >
-                  <Text
-                    className="font-black text-[10px] uppercase tracking-tighter"
-                    style={{ color: colors.primary }}
-                  >
+                <View className="px-3 py-1 rounded-full bg-[#E0F2FE] border border-[#0EA5E9]/20">
+                  <Text className="font-label uppercase text-[#0EA5E9] text-[10px] tracking-wide">
                     In Progress
                   </Text>
                 </View>
@@ -419,109 +339,75 @@ export default function HomeScreen() {
             </View>
 
             {activeJob ? (
-              <View
-                className="rounded-[32px] overflow-hidden shadow-sm border"
-                style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
-              >
-                <View className="h-44 relative" style={{ backgroundColor: colors.background }}>
+              <View className="clay-card overflow-hidden">
+                <View className="h-48 relative bg-gray-100">
                   {activeJob.car_image_url ? (
                     <Image source={{ uri: activeJob.car_image_url }} className="w-full h-full" />
                   ) : (
-                    <View className="w-full h-full items-center justify-center">
-                      <Car size={48} color={colors.primary} strokeWidth={1} />
+                    <View className="w-full h-full items-center justify-center bg-clay-background">
+                      <Car size={56} color="#94A3B8" strokeWidth={1.5} />
                     </View>
                   )}
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.8)']}
-                    className="absolute bottom-0 w-full p-5 pt-12"
-                  >
-                    <View className="flex-row justify-between items-end">
-                      <View>
-                        <Text className="text-white font-black text-2xl tracking-tighter">
-                          {activeJob.car_number}
-                        </Text>
-                        <Text className="text-white/90 text-[11px] uppercase font-bold tracking-widest">
-                          {activeJob.car_type} • {activeJob.car_model}
-                        </Text>
-                      </View>
-                      <View className="bg-white/20 px-3 py-1.5 rounded-xl border border-white/30 backdrop-blur-md">
-                        <Text className="text-white font-black text-[10px] uppercase">Active</Text>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </View>
-
-                <View className="p-5">
-                  {/* Vehicle Number & Timer Header */}
-                  <View
-                    className="flex-row items-center justify-between mb-4 pb-4 border-b"
-                    style={{ borderBottomColor: colors.border }}
+                  {/* Glass overlay for title */}
+                  <BlurView
+                    intensity={40}
+                    tint="dark"
+                    className="absolute bottom-4 left-4 right-4 rounded-2xl overflow-hidden p-4 flex-row justify-between items-center"
                   >
                     <View>
-                      <Text
-                        className="text-[9px] font-bold uppercase tracking-widest mb-1"
-                        style={{ color: colors.textSecondary }}
-                      >
-                        Vehicle No.
-                      </Text>
-                      <Text className="font-black text-xl" style={{ color: colors.text }}>
+                      <Text className="text-white font-heading text-xl tracking-tight">
                         {activeJob.car_number}
                       </Text>
+                      <Text className="text-white/80 font-label text-[11px] uppercase tracking-wider">
+                        {activeJob.car_type} • {activeJob.car_model}
+                      </Text>
                     </View>
-                    <View
-                      className="px-5 py-3 rounded-xl border"
-                      style={{
-                        backgroundColor:
-                          timeRemaining !== null && timeRemaining < 300
-                            ? colors.dangerLight
-                            : colors.primaryLight,
-                        borderColor:
-                          timeRemaining !== null && timeRemaining < 300
-                            ? colors.danger
-                            : colors.primary,
-                      }}
-                    >
-                      <Text
-                        className="text-[9px] font-bold uppercase tracking-widest text-center mb-0.5"
-                        style={{ color: colors.textSecondary }}
-                      >
-                        Time Left
+                    <View className="bg-white/20 px-3 py-1 rounded-lg">
+                      <Text className="text-white font-bold text-[10px] uppercase">Active</Text>
+                    </View>
+                  </BlurView>
+                </View>
+
+                <View className="p-6">
+                  {/* Timer Section */}
+                  <View className="flex-row items-center justify-between mb-6">
+                    <View>
+                      <Text className="font-label text-[10px] uppercase tracking-widest mb-1">
+                        Time Remaining
                       </Text>
                       <Text
-                        className="font-black text-2xl text-center"
+                        className="font-heading text-3xl"
                         style={{
                           color:
-                            timeRemaining !== null && timeRemaining < 300
-                              ? colors.danger
-                              : colors.primary,
+                            timeRemaining !== null && timeRemaining > 300
+                              ? '#10B981' // Green if > 5 mins
+                              : '#EF4444', // Red if <= 5 mins
                         }}
                       >
                         {formatTime(timeRemaining)}
                       </Text>
                     </View>
+                    <View className="w-12 h-12 rounded-full items-center justify-center bg-clay-background border border-white">
+                      <Clock size={20} color="#64748B" />
+                    </View>
                   </View>
 
-                  {/* Job Details - Crystal Clear Layout */}
-                  <View className="gap-3">
+                  {/* Job Details */}
+                  <View className="gap-3 mb-6">
                     <JobDetailRow
-                      icon={<User size={14} color={colors.primary} />}
+                      icon={<User size={14} color="#0EA5E9" />}
                       label="Customer"
                       value={activeJob.owner_name}
                     />
                     <JobDetailRow
-                      icon={<Phone size={14} color={colors.success} />}
+                      icon={<Phone size={14} color="#10B981" />}
                       label="Phone"
                       value={activeJob.owner_phone}
                     />
                     <JobDetailRow
-                      icon={<Car size={14} color={colors.info} />}
-                      label="Model"
+                      icon={<Car size={14} color="#F59E0B" />}
+                      label="Details"
                       value={`${activeJob.car_color} ${activeJob.car_model}`}
-                    />
-                    <JobDetailRow
-                      icon={<Car size={14} color={colors.warning} />}
-                      label="Type"
-                      value={activeJob.car_type}
                     />
                   </View>
 
@@ -533,54 +419,29 @@ export default function HomeScreen() {
                         params: { jobId: activeJob.id, carType: activeJob.car_type },
                       })
                     }
-                    className="mt-6 py-4 rounded-2xl"
-                    style={{
-                      backgroundColor: colors.primary,
-                      shadowColor: colors.primary,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    }}
+                    className="clay-button bg-[#0EA5E9] py-4 items-center justify-center"
                   >
-                    <Text className="text-white text-center font-black text-[12px] uppercase tracking-widest">
+                    <Text className="text-white font-heading text-sm uppercase tracking-widest">
                       Complete Wash
                     </Text>
                   </Pressable>
                 </View>
               </View>
             ) : (
-              <View
-                className="rounded-[32px] p-8 items-center border shadow-sm"
-                style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
-              >
-                <View
-                  className="w-14 h-14 rounded-[24px] items-center justify-center mb-4"
-                  style={{ backgroundColor: colors.primaryLight }}
-                >
-                  <Plus size={28} color={colors.primary} />
+              <View className="clay-card p-8 items-center justify-center">
+                <View className="w-16 h-16 rounded-3xl items-center justify-center bg-[#E0F2FE] mb-4 shadow-inner">
+                  <Plus size={32} color="#0EA5E9" />
                 </View>
-                <Text className="font-extrabold text-base" style={{ color: colors.text }}>
-                  No Active Jobs
-                </Text>
-                <Text
-                  className="text-center text-[11px] font-bold mt-1 mb-6 uppercase tracking-wide"
-                  style={{ color: colors.textSecondary }}
-                >
-                  Create a new job entry below
+                <Text className="font-heading text-lg text-clay-text mb-2">No Active Jobs</Text>
+                <Text className="text-center font-label text-xs max-w-[200px] leading-5 mb-6">
+                  Ready to work? Start a new job by tapping the button below.
                 </Text>
                 <Pressable
                   onPress={() => router.push('/(tabs)/AddJob')}
-                  className="px-10 py-4 rounded-full shadow-md"
-                  style={{
-                    backgroundColor: colors.primary,
-                    shadowColor: colors.primary,
-                    shadowOpacity: 0.2,
-                  }}
+                  className="clay-button bg-[#0EA5E9] px-8 py-3 w-full"
                 >
-                  <Text className="text-white font-black text-[12px] uppercase tracking-widest">
-                    {' '}
-                    + New job{' '}
+                  <Text className="text-white font-heading text-xs uppercase tracking-widest text-center">
+                    + Start New Job
                   </Text>
                 </Pressable>
               </View>
@@ -588,278 +449,142 @@ export default function HomeScreen() {
           </View>
 
           {/* SUPERVISOR & TEAM OVERVIEW */}
-          <View className="mb-6">
-            <Text
-              className="font-black text-[11px] uppercase tracking-[2px] mb-2 px-1"
-              style={{ color: colors.textSecondary }}
-            >
+          <View className="mb-8">
+            <Text className="font-label text-[11px] uppercase tracking-[2px] mb-3 px-1">
               Team Overview
             </Text>
 
-            <View
-              className="rounded-[28px] p-5 shadow-sm border"
-              style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
-            >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-4">
-                  <View
-                    className="w-12 h-12 rounded-2xl items-center justify-center border"
-                    style={{
-                      backgroundColor: colors.primaryLight,
-                      borderColor: `${colors.primary}30`,
-                    }}
-                  >
-                    <User size={24} color={colors.primary} />
-                  </View>
-
-                  <View>
-                    <Text
-                      className="text-[10px] font-bold uppercase tracking-[1.5px] mb-0.5"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Supervisor
-                    </Text>
-                    <Text
-                      className="font-extrabold text-base tracking-tight"
-                      style={{ color: colors.text }}
-                    >
-                      {supervisor.name}
-                    </Text>
-                  </View>
+            <View className="clay-card p-5 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-4">
+                <View className="w-12 h-12 rounded-2xl items-center justify-center bg-[#E0F2FE] border border-white">
+                  <User size={24} color="#0EA5E9" />
                 </View>
-
-                <View
-                  className="px-4 py-3 rounded-xl items-center border"
-                  style={{
-                    backgroundColor: `${colors.primary}10`,
-                    borderColor: `${colors.primary}20`,
-                  }}
-                >
-                  <Text
-                    className="font-black text-xl leading-none"
-                    style={{ color: colors.primary }}
-                  >
-                    {supervisor.jobsDoneToday}
+                <View>
+                  <Text className="font-label text-[10px] uppercase tracking-[1.5px] mb-0.5">
+                    Supervisor
                   </Text>
-                  <Text
-                    className="text-[8px] font-black uppercase mt-0.5 tracking-tighter"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Team Jobs
-                  </Text>
+                  <Text className="font-heading text-base text-clay-text">{supervisor.name}</Text>
+                  <View className="flex-row items-center gap-1 mt-1">
+                    <MapPin size={10} color="#94A3B8" />
+                    <Text className="text-[10px] text-clay-secondary/80">
+                      {supervisor.location}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
-              <View className="flex-row items-center gap-2 mt-4 px-1">
-                <MapPin size={12} color={colors.info} />
-                <Text
-                  className="text-[10px] font-bold uppercase tracking-tight"
-                  style={{ color: colors.textSecondary }}
-                >
-                  Hub: {supervisor.location}
+              <View className="items-end">
+                <Text className="font-heading text-2xl text-[#0EA5E9] leading-6">
+                  {supervisor.jobsDoneToday}
                 </Text>
+                <Text className="font-label text-[9px] uppercase tracking-wide">Team Jobs</Text>
               </View>
             </View>
           </View>
 
           {/* QUICK ACTIONS GRID */}
-          <View className="mb-24">
-            <Text
-              className="font-black text-[11px] uppercase tracking-[2px] mb-2 px-1"
-              style={{ color: colors.textSecondary }}
-            >
+          <View className="mb-32">
+            <Text className="font-label text-[11px] uppercase tracking-[2px] mb-3 px-1">
               Quick Actions
             </Text>
             <View className="flex-row flex-wrap justify-between">
               <QuickAction
                 icon={<Wallet />}
                 title="MY WALLET"
-                color={colors.success}
+                color="#10B981"
                 onPress={() => router.push('/(tabs)/Wallet')}
-              />
-              <QuickAction
-                icon={<Banknote />}
-                title="SALARY"
-                color={colors.warning}
-                onPress={() => {}}
               />
               <QuickAction
                 icon={<Clock />}
                 title="JOB LOGS"
-                color={colors.primary}
+                color="#0EA5E9"
                 onPress={() => router.push('/(tabs)/JobLogs')}
               />
               <QuickAction
                 icon={<CalendarCheck />}
                 title="ATTENDANCE"
-                color={colors.warning}
+                color="#F59E0B"
                 onPress={() => router.push('/(tabs)/Attendance')}
-              />
-              <QuickAction
-                icon={<AlertTriangle />}
-                title="GET HELP"
-                color={colors.danger}
-                onPress={() => {}}
               />
               <QuickAction
                 icon={<FileWarning />}
                 title="PENALTIES"
-                color={colors.danger}
+                color="#EF4444"
                 onPress={() => router.push('/(tabs)/Penalties')}
               />
+              <QuickAction
+                icon={<AlertTriangle />}
+                title="GET HELP"
+                color="#8B5CF6"
+                onPress={() => {}}
+              />
+              <QuickAction icon={<Banknote />} title="SALARY" color="#6366F1" onPress={() => {}} />
             </View>
           </View>
         </View>
 
-        {/* CUSTOM MODAL */}
-        <Modal transparent visible={showAlert} animationType="fade">
-          <View
-            className="flex-1 justify-center items-center p-6"
-            style={{ backgroundColor: colors.overlay }}
-          >
-            <View
-              className="w-full rounded-[32px] p-7 items-center shadow-xl border"
-              style={{ backgroundColor: colors.cardBackground, borderColor: colors.border }}
-            >
-              <View
-                className="w-16 h-16 rounded-[24px] items-center justify-center mb-5"
-                style={{ backgroundColor: colors.primaryLight }}
-              >
-                <ClipboardCheck size={32} color={colors.primary} />
-              </View>
-
-              <Text
-                className="text-2xl font-black tracking-tight text-center"
-                style={{ color: colors.text }}
-              >
-                Finish Current Job?
-              </Text>
-              <Text
-                className="text-center mt-2 mb-7 text-[13px] px-2 font-bold leading-5 uppercase tracking-wide"
-                style={{ color: colors.textSecondary }}
-              >
-                Great job! Proceed to record final payment details.
+        {/* ATTENDANCE MODAL */}
+        <Modal visible={showAttendanceModal} animationType="slide" transparent>
+          <BlurView intensity={20} className="flex-1 justify-end">
+            <View className="bg-[#E0F2FE] rounded-t-[40px] p-6 pb-12 shadow-2xl border-t border-white">
+              <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
+              <Text className="font-heading text-xl text-center mb-6 text-clay-text">
+                Mark Today's Attendance
               </Text>
 
-              <View className="flex-row gap-3 w-full">
+              {workerInfo && (
+                <View className="clay-card p-5 mb-6 bg-white">
+                  <View className="mb-4">
+                    <Text className="font-label text-[10px] uppercase mb-1">Worker</Text>
+                    <Text className="font-heading text-base text-clay-text">
+                      {workerInfo.worker_name}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <View>
+                      <Text className="font-label text-[10px] uppercase mb-1">Supervisor</Text>
+                      <Text className="font-heading text-sm text-clay-text">
+                        {workerInfo.supervisor_name || 'N/A'}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text className="font-label text-[10px] uppercase mb-1">Hub</Text>
+                      <Text className="font-heading text-sm text-clay-text">
+                        {workerInfo.building_name || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <Text className="text-xs text-center mb-8 text-clay-secondary/80 font-body">
+                Your location will be verified. You must be within the designated area (100m radius)
+                to mark attendance.
+              </Text>
+
+              <View className="flex-row gap-4">
                 <Pressable
-                  onPress={() => setShowAlert(false)}
-                  className="flex-1 py-4 rounded-[20px] items-center border"
-                  style={{ backgroundColor: colors.background, borderColor: colors.border }}
+                  onPress={() => setShowAttendanceModal(false)}
+                  className="flex-1 py-4 rounded-2xl bg-white border border-clay-secondary/20 items-center justify-center clay-button"
                 >
-                  <Text
-                    className="font-black uppercase text-[11px] tracking-widest"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Go Back
-                  </Text>
+                  <Text className="font-heading text-sm text-clay-secondary">Cancel</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => {
-                    setShowAlert(false);
-                    router.push({
-                      pathname: '/(tabs)/AfterWash',
-                      params: { jobId: activeJob?.id, carType: activeJob?.car_type },
-                    });
-                  }}
-                  className="flex-1 py-4 rounded-[20px] items-center shadow-md"
-                  style={{ backgroundColor: colors.primary }}
+                  onPress={markAttendance}
+                  disabled={isMarkingAttendance}
+                  className="flex-1 py-4 rounded-2xl bg-[#10B981] items-center justify-center clay-button"
                 >
-                  <Text className="font-black text-white uppercase text-[11px] tracking-widest">
-                    Complete
-                  </Text>
+                  {isMarkingAttendance ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text className="font-heading text-sm text-white">Mark Present</Text>
+                  )}
                 </Pressable>
               </View>
             </View>
-          </View>
+          </BlurView>
         </Modal>
       </ScrollView>
-
-      {/* Attendance Modal */}
-      <Modal visible={showAttendanceModal} animationType="slide" transparent>
-        <View className="flex-1 justify-end" style={{ backgroundColor: colors.overlay }}>
-          <View
-            className="rounded-t-3xl p-6"
-            style={{
-              backgroundColor: colors.cardBackground,
-              paddingBottom: insets.bottom + 20,
-            }}
-          >
-            <Text className="font-bold text-lg mb-4 text-center" style={{ color: colors.text }}>
-              Mark Today's Attendance
-            </Text>
-
-            {workerInfo && (
-              <View className="rounded-2xl p-4 mb-4" style={{ backgroundColor: colors.background }}>
-                <View className="mb-3">
-                  <Text
-                    className="text-[11px] font-bold uppercase mb-1"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Worker
-                  </Text>
-                  <Text className="font-bold text-base" style={{ color: colors.text }}>
-                    {workerInfo.worker_name}
-                  </Text>
-                </View>
-                <View className="mb-3">
-                  <Text
-                    className="text-[11px] font-bold uppercase mb-1"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Supervisor
-                  </Text>
-                  <Text className="font-bold text-base" style={{ color: colors.text }}>
-                    {workerInfo.supervisor_name || 'Not assigned'}
-                  </Text>
-                </View>
-                <View>
-                  <Text
-                    className="text-[11px] font-bold uppercase mb-1"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Building
-                  </Text>
-                  <Text className="font-bold text-base" style={{ color: colors.text }}>
-                    {workerInfo.building_name || 'Not assigned'}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            <Text className="text-[12px] text-center mb-6" style={{ color: colors.textSecondary }}>
-              Your location will be verified (must be within 100m of building)
-            </Text>
-
-            <View className="flex-row gap-4">
-              <Pressable
-                onPress={() => setShowAttendanceModal(false)}
-                className="flex-1 py-4 rounded-xl"
-                style={{ backgroundColor: colors.borderLight }}
-                disabled={isMarkingAttendance}
-              >
-                <Text className="font-bold text-base text-center" style={{ color: colors.text }}>
-                  Later
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={markAttendance}
-                className="flex-1 py-4 rounded-xl"
-                style={{ backgroundColor: colors.success }}
-                disabled={isMarkingAttendance}
-              >
-                {isMarkingAttendance ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Text className="text-white font-bold text-base text-center">
-                    Mark Attendance
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
