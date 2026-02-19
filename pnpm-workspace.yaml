@@ -1,4 +1,10 @@
 packages:
-  - 'apps/*'
-  - 'backend'
-  - 'shared'
+  - apps/*
+  - backend
+  - shared
+
+ignoredBuiltDependencies:
+  - aws-sdk
+  - bcrypt
+  - esbuild
+  - unrs-resolver

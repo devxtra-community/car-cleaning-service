@@ -1,12 +1,69 @@
 import React from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Pressable, ScrollView, StatusBar, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  Image,
+  Dimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
-import { User, UserCog, Calendar, ClipboardList, AlertCircle } from 'lucide-react-native';
+import {
+  User,
+  UserCog,
+  Calendar,
+  ClipboardList,
+  AlertCircle,
+  ChevronRight,
+  TrendingUp,
+  LayoutGrid,
+} from 'lucide-react-native';
 import { router } from 'expo-router';
-import { fs } from '@/src/theme/scale';
+import Svg, { Path, Circle } from 'react-native-svg';
 import api from '../../src/api/api';
+
+/* -------------------- DECORATIVE PATTERN -------------------- */
+const TopoPattern = () => (
+  <Svg
+    height="100%"
+    width="100%"
+    style={StyleSheet.absoluteFillObject}
+    viewBox="0 0 400 400"
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <Path
+      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+      stroke="rgba(14, 165, 233, 0.08)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+      stroke="rgba(14, 165, 233, 0.06)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Circle
+      cx="320"
+      cy="100"
+      r="30"
+      stroke="rgba(14, 165, 233, 0.08)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Circle
+      cx="320"
+      cy="100"
+      r="45"
+      stroke="rgba(14, 165, 233, 0.06)"
+      strokeWidth="2"
+      fill="none"
+    />
+  </Svg>
+);
 
 /* -------------------- ACTION CARD COMPONENT -------------------- */
 const ActionCard = ({
@@ -21,10 +78,10 @@ const ActionCard = ({
   onPress?: () => void;
 }) => (
   <Pressable
-    style={({ pressed }) => [styles.actionItem, pressed && styles.actionItemPressed]}
+    style={({ pressed }) => [styles.actionItemClay, pressed && styles.actionItemPressed]}
     onPress={onPress}
   >
-    <View style={styles.actionIconContainer}>{icon}</View>
+    <View style={styles.actionIconClayContainer}>{icon}</View>
     <Text style={styles.actionItemTitle}>{title}</Text>
     <Text style={styles.actionItemSubtitle}>{subtitle}</Text>
   </Pressable>
@@ -32,6 +89,7 @@ const ActionCard = ({
 
 /* -------------------- MAIN SCREEN -------------------- */
 export default function HomePage() {
+  const insets = useSafeAreaInsets();
   const [user, setUser] = React.useState<{
     full_name?: string;
     role?: string;
@@ -54,280 +112,380 @@ export default function HomePage() {
   }, []);
 
   return (
-    <>
-      <StatusBar barStyle="light-content" backgroundColor="#5AB9E0" />
+    <View style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" />
+      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+      <TopoPattern />
 
-      <SafeAreaView style={styles.safeArea}>
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.gradient}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+      >
+        {/* PROFILE HEADER */}
+        <View style={styles.profileSection}>
+          <View
+            style={[
+              styles.avatarClayContainer,
+              user?.profile_image && { padding: 0, overflow: 'hidden' },
+            ]}
           >
-            {/* PROFILE HEADER */}
-            <View style={styles.profileSection}>
-              <View
-                style={[
-                  styles.profileIcon,
-                  user?.profile_image && { padding: 0, overflow: 'hidden' },
-                ]}
-              >
-                {user?.profile_image ? (
-                  <Image
-                    source={{ uri: user.profile_image }}
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                ) : (
-                  <User size={26} color="#3DA2CE" />
-                )}
-              </View>
-              <View>
-                <Text style={styles.greeting}>Hi, {user?.full_name || 'Supervisor'}</Text>
-                <Text style={styles.phoneNumber}>{user?.role?.toUpperCase() || 'ROLE'}</Text>
-              </View>
+            {user?.profile_image ? (
+              <Image
+                source={{ uri: user.profile_image }}
+                style={{ width: '100%', height: '100%' }}
+              />
+            ) : (
+              <User size={30} color="#0EA5E9" />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greetingText}>Welcome back,</Text>
+            <Text style={styles.userNameText}>{user?.full_name || 'Supervisor'}</Text>
+          </View>
+          <Pressable style={styles.notificationClayBtn}>
+            <LayoutGrid size={22} color="#0EA5E9" />
+          </Pressable>
+        </View>
+
+        {/* EARNINGS CARD CLAY SECTION */}
+        <View style={styles.earningsClayCard}>
+          <View style={styles.earningsHeader}>
+            <TrendingUp size={14} color="#0EA5E9" />
+            <Text style={styles.earningsLabel}>Daily Performance</Text>
+          </View>
+
+          <View style={styles.earningsMain}>
+            <Text style={styles.currencySymbol}>₹</Text>
+            <Text style={styles.earningsAmountText}>5,580</Text>
+            <View style={styles.earningsTrendBadge}>
+              <Text style={styles.trendText}>+12%</Text>
             </View>
+          </View>
 
-            {/* EARNINGS CARD */}
-            <View style={styles.earningsCard}>
-              <Text style={styles.earningsLabel}>Today's Earnings</Text>
-              <View style={styles.earningsRow}>
-                <Text style={styles.currencySymbol}>₹</Text>
-                <Text style={styles.earningsAmount}>5,580</Text>
-                <Text style={styles.earningsCents}>.31</Text>
-              </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>30 jobs completed today</Text>
-              </View>
+          <View style={styles.statsDivider} />
+
+          <View style={styles.statsFooter}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>30</Text>
+              <Text style={styles.statLabel}>Jobs Done</Text>
             </View>
-
-            {/* TOP ACTION BUTTONS */}
-            <View style={styles.actionButtons}>
-              <Pressable
-                style={styles.actionButton}
-                onPress={() => router.push('/(tabs)/supervisor/add-task')}
-              >
-                <UserCog size={20} color="#3DA2CE" />
-                <Text style={styles.actionButtonText}>Add Tasks</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.actionButton}
-                onPress={() => router.push('/(tabs)/penalty/add-penalties')}
-              >
-                <AlertCircle size={20} color="#EF4444" strokeWidth={2.5} />
-                <Text style={styles.actionButtonText}>Add Penalty</Text>
-              </Pressable>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>04</Text>
+              <Text style={styles.statLabel}>Pending</Text>
             </View>
-
-            {/* QUICK ACTIONS */}
-            <View style={styles.quickActionsCard}>
-              <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-
-              <View style={styles.actionsGrid}>
-                <ActionCard
-                  icon={<UserCog size={24} color="#3DA2CE" />}
-                  title="Live Workers"
-                  subtitle="Current Status"
-                  onPress={() => router.push('/supervisor/live-worker')}
-                />
-
-                <ActionCard
-                  icon={<Calendar size={24} color="#3DA2CE" />}
-                  title="Attendance"
-                  subtitle="Clock In / Out"
-                />
-
-                <ActionCard
-                  icon={<ClipboardList size={24} color="#3DA2CE" />}
-                  title="Tasks"
-                  subtitle="Tasks Summary"
-                  onPress={() => router.push('/(tabs)/supervisor/tasks-summary')}
-                />
-
-                <ActionCard
-                  icon={<AlertCircle size={24} color="#3DA2CE" />}
-                  title="Report Issue"
-                  subtitle="Get Help"
-                />
-              </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>98%</Text>
+              <Text style={styles.statLabel}>Rating</Text>
             </View>
-          </ScrollView>
-        </LinearGradient>
-      </SafeAreaView>
-    </>
+          </View>
+        </View>
+
+        {/* ACTION BUTTONS REDESIGN */}
+        <View style={styles.topActionRow}>
+          <Pressable
+            style={styles.primaryClayBtn}
+            onPress={() => router.push('/(tabs)/supervisor/add-task')}
+          >
+            <LinearGradient
+              colors={['#0EA5E9', '#0284C7']}
+              style={styles.btnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <UserCog size={22} color="#FFF" />
+              <Text style={styles.primaryBtnText}>Add Tasks</Text>
+              <ChevronRight size={18} color="#FFF" opacity={0.6} />
+            </LinearGradient>
+          </Pressable>
+
+          <Pressable
+            style={styles.secondaryClayBtn}
+            onPress={() => router.push('/(tabs)/penalty/add-penalties')}
+          >
+            <View style={styles.alertIconCircle}>
+              <AlertCircle size={22} color="#EF4444" strokeWidth={2.5} />
+            </View>
+            <Text style={styles.secondaryBtnText}>Penalties</Text>
+          </Pressable>
+        </View>
+
+        {/* QUICK ACTIONS SECTION */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Dashboard</Text>
+          <Pressable>
+            <Text style={styles.seeAllText}>Manage</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.actionsGridRedesign}>
+          <ActionCard
+            icon={<UserCog size={24} color="#0EA5E9" />}
+            title="Live Workers"
+            subtitle="Active Crew"
+            onPress={() => router.push('/supervisor/live-worker')}
+          />
+
+          <ActionCard
+            icon={<Calendar size={24} color="#0EA5E9" />}
+            title="Attendance"
+            subtitle="Check-in/Out"
+          />
+
+          <ActionCard
+            icon={<ClipboardList size={24} color="#0EA5E9" />}
+            title="Task Feed"
+            subtitle="History"
+            onPress={() => router.push('/(tabs)/supervisor/tasks-summary')}
+          />
+
+          <ActionCard
+            icon={<AlertCircle size={24} color="#0EA5E9" />}
+            title="Support"
+            subtitle="Get Help"
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
-/* -------------------- STYLES -------------------- */
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#5AB9E0',
-  },
-
-  gradient: {
-    flex: 1,
-  },
-
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 140,
   },
-
-  /* PROFILE */
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-
-  profileIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF',
+  avatarClayContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#E0F2FE',
   },
-
-  greeting: {
-    fontSize: fs(18),
-    fontWeight: '700',
-    color: '#FFF',
-  },
-
-  phoneNumber: {
-    fontSize: fs(13),
-    color: 'rgba(255,255,255,0.85)',
-  },
-
-  /* EARNINGS */
-  earningsCard: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-
-  earningsLabel: {
-    fontSize: fs(13),
-    color: '#FFF',
-    marginBottom: 6,
+  greetingText: {
+    fontSize: 14,
+    color: '#64748B',
     fontWeight: '500',
   },
-
-  earningsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  userNameText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E293B',
   },
-
-  currencySymbol: {
-    fontSize: fs(26),
-    color: '#FFF',
-    marginTop: 6,
-  },
-
-  earningsAmount: {
-    fontSize: fs(46),
-    fontWeight: '700',
-    color: '#FFF',
-  },
-
-  earningsCents: {
-    fontSize: fs(18),
-    color: '#FFF',
-    marginTop: 10,
-  },
-
-  badge: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 10,
-  },
-
-  badgeText: {
-    fontSize: fs(12),
-    color: '#3DA2CE',
-    fontWeight: '600',
-  },
-
-  /* TOP BUTTONS */
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-
-  actionButtonText: {
-    fontSize: fs(14),
-    fontWeight: '600',
-    color: '#2C2C2C',
-  },
-
-  /* QUICK ACTIONS */
-  quickActionsCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 20,
-  },
-
-  quickActionsTitle: {
-    fontSize: fs(16),
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-
-  actionItem: {
-    flexBasis: '48%',
-    backgroundColor: '#F8FAFB',
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  actionItemPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.97 }],
-  },
-
-  actionIconContainer: {
+  notificationClayBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E8F4F8',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-
-  actionItemTitle: {
-    fontSize: fs(14),
+  earningsClayCard: {
+    backgroundColor: '#fff',
+    borderRadius: 32,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  earningsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  earningsLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0EA5E9',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  earningsMain: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 16,
+  },
+  currencySymbol: {
+    fontSize: 20,
+    color: '#1E293B',
     fontWeight: '600',
+    marginRight: 4,
   },
-
+  earningsAmountText: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: '#1E293B',
+    letterSpacing: -1,
+  },
+  earningsTrendBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 12,
+  },
+  trendText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  statsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+    marginBottom: 16,
+  },
+  statsFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  topActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  primaryClayBtn: {
+    flex: 1.6,
+    height: 60,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  btnGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+  },
+  primaryBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+    flex: 1,
+    marginLeft: 12,
+  },
+  secondaryClayBtn: {
+    flex: 1,
+    height: 60,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    gap: 10,
+  },
+  alertIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0EA5E9',
+  },
+  actionsGridRedesign: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  actionItemClay: {
+    width: (Dimensions.get('window').width - 40 - 16) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  actionItemPressed: {
+    transform: [{ scale: 0.96 }],
+    backgroundColor: '#F8FAFB',
+  },
+  actionIconClayContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 20,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  actionItemTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
   actionItemSubtitle: {
-    fontSize: fs(11),
-    color: '#7A7A7A',
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });
