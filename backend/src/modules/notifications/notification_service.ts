@@ -1,9 +1,7 @@
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { pool } from '../../database/connectDatabase';
-import { logger } from '../../config/logger';
 
 const expo = new Expo();
-const PUSH_ENABLED = process.env.PUSH_NOTIFICATIONS_ENABLED === 'true';
 
 export const sendNotificationToUser = async (
   userId: string,
@@ -11,6 +9,7 @@ export const sendNotificationToUser = async (
   message: string,
   data?: Record<string, unknown>
 ): Promise<boolean> => {
+  const PUSH_ENABLED = process.env.PUSH_NOTIFICATIONS_ENABLED === 'true';
   if (!PUSH_ENABLED) {
     console.log('Push notifications disabled');
     return false;

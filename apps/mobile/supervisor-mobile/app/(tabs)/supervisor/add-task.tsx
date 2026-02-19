@@ -10,13 +10,44 @@ import {
   ScrollView,
   Alert,
   Image,
+  Dimensions,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useEffect, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Car, X, Camera, ChevronDown, MapPin, ImageIcon } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { User, Car, X, Camera, MapPin, ArrowLeft, Phone, Info } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { useRouter } from 'expo-router';
+import Svg, { Path, Circle } from 'react-native-svg';
 import api from '@/src/api/api';
+
+// Topographic Pattern for Headers
+const TopoPattern = ({ color = 'rgba(14, 165, 233, 0.08)' }: { color?: string }) => (
+  <Svg
+    height="100%"
+    width="100%"
+    style={StyleSheet.absoluteFillObject}
+    viewBox="0 0 400 400"
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <Path
+      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+      stroke={color}
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+      stroke={color}
+      strokeWidth="2"
+      fill="none"
+    />
+    <Circle cx="320" cy="100" r="30" stroke={color} strokeWidth="2" fill="none" />
+  </Svg>
+);
 
 interface Worker {
   id: string;
@@ -31,13 +62,47 @@ interface Worker {
   car_model?: string;
   car_type?: string;
   car_color?: string;
-  task_amount?: string;
   task_started_at?: string;
   car_image_url?: string;
   car_location?: string;
 }
 
-export default function AddTasksScreen() {
+const InputField = ({
+  icon,
+  label,
+  placeholder,
+  value,
+  onChange,
+  keyboard = 'default',
+}: {
+  icon: React.ReactNode;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (text: string) => void;
+  keyboard?: 'default' | 'phone-pad' | 'numeric' | 'email-address';
+}) => {
+  return (
+    <View style={styles.inputFieldContainer}>
+      <Text style={styles.inputFieldLabel}>{label}</Text>
+      <View style={styles.clayInputCard}>
+        <View style={styles.inputIconWrapper}>{icon}</View>
+        <TextInput
+          style={styles.textInput}
+          placeholder={placeholder}
+          placeholderTextColor="#94A3B8"
+          value={value}
+          onChangeText={onChange}
+          keyboardType={keyboard}
+        />
+      </View>
+    </View>
+  );
+};
+
+export default function AddTaskScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +120,6 @@ export default function AddTasksScreen() {
     car_model: '',
     car_type: '',
     car_color: '',
-    task_amount: '',
     car_image_url: '',
     car_location: '',
   });
@@ -186,7 +250,6 @@ export default function AddTasksScreen() {
         car_model: worker.car_model || '',
         car_type: worker.car_type || '',
         car_color: worker.car_color || '',
-        task_amount: worker.task_amount?.toString() || '',
         car_image_url: worker.car_image_url || '',
         car_location: worker.car_location || '',
       });
@@ -198,7 +261,6 @@ export default function AddTasksScreen() {
         car_model: '',
         car_type: '',
         car_color: '',
-        task_amount: '',
         car_image_url: '',
         car_location: '',
       });
@@ -239,30 +301,45 @@ export default function AddTasksScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3DA2CE" />
+        <LinearGradient
+          colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+          style={StyleSheet.absoluteFill}
+        />
+        <TopoPattern />
+        <ActivityIndicator size="large" color="#0EA5E9" />
         <Text style={styles.loadingText}>Loading workers...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Assign or Update Tasks</Text>
+    <View style={{ flex: 1 }}>
+      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+      <TopoPattern />
+
+      {/* HEADER SECTION */}
+      <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
+        <View style={styles.headerFlex}>
+          <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
+            <ArrowLeft size={22} color="#1E293B" />
+          </Pressable>
+          <Text style={styles.headerTitleText}>ASSIGN TASKS</Text>
+          <View style={{ width: 40 }} />
+        </View>
       </View>
 
       <FlatList
         data={workers}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
         ListEmptyComponent={<Text style={styles.emptyText}>No workers assigned to you</Text>}
         onRefresh={loadWorkers}
         refreshing={loading}
         renderItem={({ item }) => (
-          <View style={styles.workerCard}>
+          <View style={styles.workerClayCard}>
             <View style={styles.cardHeader}>
-              <View style={styles.avatarContainer}>
-                <User size={24} color="#3DA2CE" />
+              <View style={styles.avatarClayContainer}>
+                <User size={24} color="#0EA5E9" />
               </View>
               <View style={styles.workerBasicInfo}>
                 <Text style={styles.workerName}>{item.full_name}</Text>
@@ -270,207 +347,201 @@ export default function AddTasksScreen() {
                   <View
                     style={[
                       styles.statusDot,
-                      { backgroundColor: item.status === 'working' ? '#16A34A' : '#9CA3AF' },
+                      { backgroundColor: item.status === 'working' ? '#10B981' : '#94A3B8' },
                     ]}
                   />
                   <Text
                     style={[
                       styles.statusText,
-                      { color: item.status === 'working' ? '#16A34A' : '#6B7280' },
+                      { color: item.status === 'working' ? '#10B981' : '#64748B' },
                     ]}
                   >
                     {item.status === 'working' ? 'Working' : 'Idle'}
                   </Text>
-                  {item.status === 'working' && item.task_started_at && (
-                    <Text style={styles.statusTime}>
-                      {' '}
-                      • Since{' '}
-                      {new Date(item.task_started_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  )}
                 </View>
               </View>
             </View>
 
             {item.status === 'working' && (
-              <View style={styles.taskInfoContainer}>
+              <BlurView intensity={20} style={styles.taskInfoGlassContainer}>
                 <View style={styles.taskDetailHeader}>
-                  <Car size={16} color="#3DA2CE" />
-                  <Text style={styles.taskDetailTitle}>Current Task Details</Text>
+                  <Car size={16} color="#0EA5E9" />
+                  <Text style={styles.taskDetailTitle}>Current Task</Text>
                 </View>
 
                 <View style={styles.taskGrid}>
                   <View style={styles.taskGridItem}>
-                    <Text style={styles.taskLabel}>Car</Text>
+                    <Text style={styles.taskLabel}>Vehicle</Text>
                     <Text style={styles.taskValue}>{item.car_model}</Text>
                     <Text style={styles.taskSubValue}>{item.car_number}</Text>
                   </View>
                   <View style={styles.taskGridItem}>
                     <Text style={styles.taskLabel}>Owner</Text>
                     <Text style={styles.taskValue}>{item.owner_name || 'N/A'}</Text>
-                    <Text style={styles.taskSubValue}>{item.owner_phone || 'N/A'}</Text>
                   </View>
                 </View>
-
-                <View style={styles.taskFooter}>
-                  <View style={styles.taskBadge}>
-                    <Text style={styles.taskBadgeText}>{item.car_type}</Text>
-                  </View>
-                  {item.car_color && (
-                    <View style={[styles.taskBadge, { backgroundColor: '#F3F4F6' }]}>
-                      <Text style={[styles.taskBadgeText, { color: '#4B5563' }]}>
-                        {item.car_color}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+              </BlurView>
             )}
 
             <View style={styles.cardActions}>
-              {item.status === 'idle' ? (
-                <Pressable style={styles.assignButton} onPress={() => handleOpenModal(item, false)}>
-                  <Text style={styles.assignButtonText}>Assign Task</Text>
-                </Pressable>
-              ) : (
-                <Pressable style={styles.updateButton} onPress={() => handleOpenModal(item, true)}>
-                  <Text style={styles.updateButtonText}>Update Task</Text>
-                </Pressable>
-              )}
+              <Pressable
+                style={[
+                  styles.clayActionButton,
+                  item.status === 'working' ? styles.updateBtnStyle : styles.assignBtnStyle,
+                ]}
+                onPress={() => handleOpenModal(item, item.status === 'working')}
+              >
+                <Text
+                  style={[
+                    styles.clayActionBtnText,
+                    item.status === 'working' ? { color: '#0EA5E9' } : { color: '#fff' },
+                  ]}
+                >
+                  {item.status === 'working' ? 'Update Task' : 'Assign Task'}
+                </Text>
+              </Pressable>
             </View>
           </View>
         )}
       />
 
-      {/* TASK MODAL */}
       <Modal
         visible={modalVisible}
+        transparent
         animationType="slide"
-        transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isUpdating ? 'Update Task' : 'Assign New Task'}
-              </Text>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <X size={24} color="#2C2C2C" />
-              </Pressable>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalForm}>
-              <Text style={styles.inputLabel}>Owner Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: John Doe"
-                value={formData.owner_name}
-                onChangeText={(text) => setFormData({ ...formData, owner_name: text })}
-              />
-
-              <Text style={styles.inputLabel}>Owner Phone</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 9876543210"
-                keyboardType="phone-pad"
-                value={formData.owner_phone}
-                onChangeText={(text) => setFormData({ ...formData, owner_phone: text })}
-              />
-
-              <Text style={styles.inputLabel}>Car Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: KA 01 AB 1234"
-                autoCapitalize="characters"
-                value={formData.car_number}
-                onChangeText={(text) => setFormData({ ...formData, car_number: text })}
-              />
-
-              <Text style={styles.inputLabel}>Car Model</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Honda City"
-                value={formData.car_model}
-                onChangeText={(text) => setFormData({ ...formData, car_model: text })}
-              />
-
-              <Text style={styles.inputLabel}>Car Type</Text>
-              <Pressable style={styles.dropdownTrigger} onPress={() => setShowTypePicker(true)}>
-                <Text style={[styles.dropdownValue, !formData.car_type && { color: '#9CA3AF' }]}>
-                  {formData.car_type || 'Select Car Type'}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1, justifyContent: 'flex-end' }}
+          >
+            <View style={[styles.modalContentRedesign, { paddingBottom: insets.bottom + 20 }]}>
+              <View style={styles.modalHeaderRedesign}>
+                <Text style={styles.modalTitleRedesign}>
+                  {isUpdating ? 'Update Task' : 'New Job Entry'}
                 </Text>
-                <ChevronDown size={20} color="#6B7280" />
-              </Pressable>
-
-              <Text style={styles.inputLabel}>Car Location (Optional)</Text>
-              <View style={styles.inputWithIcon}>
-                <MapPin size={18} color="#9CA3AF" style={styles.fieldIcon} />
-                <TextInput
-                  style={[styles.input, { marginBottom: 0, flex: 1, borderWidth: 0 }]}
-                  placeholder="Ex: Parking Level 2, Spot B12"
-                  value={formData.car_location}
-                  onChangeText={(text) => setFormData({ ...formData, car_location: text })}
-                />
+                <Pressable onPress={() => setModalVisible(false)}>
+                  <X size={24} color="#1E293B" />
+                </Pressable>
               </View>
 
-              <Text style={styles.inputLabel}>Car Color</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: White"
-                value={formData.car_color}
-                onChangeText={(text) => setFormData({ ...formData, car_color: text })}
-              />
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: Dimensions.get('window').height * 0.7 }}
+              >
+                <View style={styles.formGap}>
+                  <Pressable onPress={showImageOptions} style={styles.imageUploadClayContainer}>
+                    {uploadingImage ? (
+                      <ActivityIndicator size="large" color="#0EA5E9" />
+                    ) : formData.car_image_url ? (
+                      <Image
+                        source={{ uri: formData.car_image_url }}
+                        style={styles.imagePreviewFull}
+                      />
+                    ) : (
+                      <View style={{ alignItems: 'center' }}>
+                        <View style={styles.cameraIconCircle}>
+                          <Camera size={40} color="#0EA5E9" />
+                        </View>
+                        <Text style={styles.uploadTextCaps}>Take Vehicle Photo</Text>
+                      </View>
+                    )}
+                  </Pressable>
 
-              <Text style={styles.inputLabel}>Car Photo</Text>
-              <Pressable style={styles.photoUploadButton} onPress={showImageOptions}>
-                {uploadingImage ? (
-                  <ActivityIndicator color="#3DA2CE" />
-                ) : formData.car_image_url ? (
-                  <View style={styles.photoPreviewContainer}>
-                    <Image source={{ uri: formData.car_image_url }} style={styles.photoPreview} />
-                    <View style={styles.photoOverlay}>
-                      <Camera size={20} color="#FFF" />
-                      <Text style={styles.photoOverlayText}>Change Photo</Text>
+                  <InputField
+                    icon={<User size={18} color="#0EA5E9" />}
+                    label="Customer Name"
+                    placeholder="Eg: Rahul Sharma"
+                    value={formData.owner_name}
+                    onChange={(txt) => setFormData({ ...formData, owner_name: txt })}
+                  />
+
+                  <InputField
+                    icon={<Phone size={18} color="#0EA5E9" />}
+                    label="Contact Number"
+                    placeholder="99000 00000"
+                    value={formData.owner_phone}
+                    onChange={(txt) => setFormData({ ...formData, owner_phone: txt })}
+                    keyboard="phone-pad"
+                  />
+
+                  <InputField
+                    icon={<Car size={18} color="#0EA5E9" />}
+                    label="Vehicle Number"
+                    placeholder="DL 01 AB 1234"
+                    value={formData.car_number}
+                    onChange={(txt) => setFormData({ ...formData, car_number: txt })}
+                  />
+
+                  <View style={styles.rowFlexGap}>
+                    <View style={{ flex: 1.2 }}>
+                      <InputField
+                        icon={<Info size={18} color="#0EA5E9" />}
+                        label="Model/Color"
+                        placeholder="White Nexon"
+                        value={
+                          formData.car_color && formData.car_model
+                            ? `${formData.car_color} ${formData.car_model}`
+                            : formData.car_color || formData.car_model
+                        }
+                        onChange={(txt) => {
+                          const parts = txt.trim().split(/\s+/);
+                          if (parts.length > 1) {
+                            setFormData({
+                              ...formData,
+                              car_color: parts[0],
+                              car_model: parts.slice(1).join(' '),
+                            });
+                          } else {
+                            setFormData({ ...formData, car_color: '', car_model: txt.trim() });
+                          }
+                        }}
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginBottom: 24 }}>
+                      <Text style={styles.inputFieldLabel}>Car Type</Text>
+                      <Pressable
+                        onPress={() => setShowTypePicker(true)}
+                        style={styles.clayPickerTrigger}
+                      >
+                        <Text
+                          style={[
+                            styles.pickerValueText,
+                            !formData.car_type && { color: '#94A3B8' },
+                          ]}
+                        >
+                          {formData.car_type || 'Select Type'}
+                        </Text>
+                      </Pressable>
                     </View>
                   </View>
+
+                  <InputField
+                    icon={<MapPin size={18} color="#0EA5E9" />}
+                    label="Location (Optional)"
+                    placeholder="Parking Level 2..."
+                    value={formData.car_location}
+                    onChange={(txt) => setFormData({ ...formData, car_location: txt })}
+                  />
+                </View>
+              </ScrollView>
+
+              <Pressable
+                onPress={handleSubmit}
+                disabled={submitting}
+                style={[styles.claySubmitButton, submitting && { opacity: 0.7 }]}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="white" />
                 ) : (
-                  <>
-                    <ImageIcon size={24} color="#3DA2CE" />
-                    <Text style={styles.photoUploadText}>Upload Car Photo</Text>
-                  </>
+                  <Text style={styles.claySubmitButtonText}>
+                    {isUpdating ? 'Update Task' : 'Submit Job'}
+                  </Text>
                 )}
               </Pressable>
-
-              <Text style={styles.inputLabel}>Task Amount (₹)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 500"
-                keyboardType="numeric"
-                value={formData.task_amount}
-                onChangeText={(text) => setFormData({ ...formData, task_amount: text })}
-              />
-
-              <View style={{ height: 40 }} />
-            </ScrollView>
-
-            <Pressable
-              style={[styles.submitButton, submitting && { opacity: 0.7 }]}
-              onPress={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.submitButtonText}>
-                  {isUpdating ? 'Update Task' : 'Assign Task'}
-                </Text>
-              )}
-            </Pressable>
-          </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -507,85 +578,99 @@ export default function AddTasksScreen() {
           </View>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    padding: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
+    zIndex: 1,
   },
-  errorText: {
-    fontSize: 14,
-    color: '#EF4444',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
-    fontSize: 15,
-    color: '#9CA3AF',
-  },
-  workerCard: {
-    padding: 16,
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  headerContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
+    zIndex: 10,
+  },
+  headerFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  headerTitleText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: -0.5,
+  },
+  listContent: {
+    padding: 24,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 60,
+    fontSize: 16,
+    color: '#94A3B8',
+  },
+  workerClayCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 28,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 5,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  avatarContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#E8F4F8',
-    justifyContent: 'center',
+  avatarClayContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E0F2FE',
     alignItems: 'center',
-    marginRight: 14,
+    justifyContent: 'center',
+    marginRight: 16,
   },
   workerBasicInfo: {
     flex: 1,
   },
   workerName: {
+    fontSize: 16,
     fontWeight: '700',
-    fontSize: 17,
-    color: '#1F2937',
+    color: '#1E293B',
   },
   statusBadgeContainer: {
     flexDirection: 'row',
@@ -602,18 +687,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  statusTime: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  taskInfoContainer: {
-    backgroundColor: '#F8FAFB',
-    borderRadius: 12,
+  taskInfoGlassContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 24,
     padding: 16,
     marginBottom: 16,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#3DA2CE',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   taskDetailHeader: {
     flexDirection: 'row',
@@ -622,211 +703,194 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   taskDetailTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#3DA2CE',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0EA5E9',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   taskGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   taskGridItem: {
     flex: 1,
   },
   taskLabel: {
     fontSize: 10,
-    color: '#9CA3AF',
+    color: '#94A3B8',
     textTransform: 'uppercase',
     fontWeight: '700',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   taskValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1E293B',
   },
   taskSubValue: {
     fontSize: 12,
-    color: '#6B7280',
-  },
-  taskFooter: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  taskBadge: {
-    backgroundColor: '#E8F4F8',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  taskBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#3DA2CE',
+    color: '#64748B',
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 12,
   },
-  assignButton: {
+  clayActionButton: {
     flex: 1,
-    backgroundColor: '#3DA2CE',
-    paddingVertical: 12,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  assignButtonText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  updateButton: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#3DA2CE',
-  },
-  updateButtonText: {
-    color: '#3DA2CE',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1F2937',
-  },
-  modalForm: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4B5563',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    marginBottom: 16,
-    color: '#1F2937',
-  },
-  submitButton: {
-    backgroundColor: '#3DA2CE',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#3DA2CE',
+  assignBtnStyle: {
+    backgroundColor: '#0EA5E9',
+    shadowColor: '#0EA5E9',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 4,
   },
-  submitButtonText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 16,
+  updateBtnStyle: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#0EA5E9',
   },
-  dropdownTrigger: {
+  clayActionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  // Modal Style Redesign
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  modalContentRedesign: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 20,
+  },
+  modalHeaderRedesign: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  dropdownValue: {
-    fontSize: 15,
-    color: '#1F2937',
+  modalTitleRedesign: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1E293B',
   },
-  inputWithIcon: {
+  imageUploadClayContainer: {
+    height: 200,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: 'rgba(14, 165, 233, 0.2)',
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  imagePreviewFull: {
+    width: '100%',
+    height: '100%',
+  },
+  cameraIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  uploadTextCaps: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  formGap: {
+    gap: 4,
+  },
+  inputFieldContainer: {
+    marginBottom: 24,
+  },
+  inputFieldLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: 'rgba(148, 163, 184, 0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+  clayInputCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    height: 52,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
+    borderColor: '#F1F5F9',
   },
-  fieldIcon: {
+  inputIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
   },
-  photoUploadButton: {
-    height: 120,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  photoUploadText: {
-    marginTop: 8,
+  textInput: {
+    flex: 1,
     fontSize: 14,
-    color: '#3DA2CE',
     fontWeight: '600',
+    color: '#1E293B',
   },
-  photoPreviewContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
-  },
-  photoPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  photoOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  rowFlexGap: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 8,
-    gap: 6,
+    gap: 16,
   },
-  photoOverlayText: {
-    color: '#FFF',
-    fontSize: 12,
+  clayPickerTrigger: {
+    height: 52,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  pickerValueText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#1E293B',
+  },
+  claySubmitButton: {
+    height: 56,
+    backgroundColor: '#0EA5E9',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  claySubmitButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
   pickerContent: {
     backgroundColor: '#FFF',
@@ -865,6 +929,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#3DA2CE',
+    backgroundColor: '#0EA5E9',
   },
 });

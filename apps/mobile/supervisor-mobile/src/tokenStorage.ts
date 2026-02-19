@@ -4,6 +4,15 @@ const ACCESS_KEY = 'accessToken';
 const REFRESH_KEY = 'refreshToken';
 
 export const saveTokens = async (accessToken: string, refreshToken: string) => {
+  console.log(
+    'Saving tokens... AT length:',
+    accessToken?.length,
+    'RT length:',
+    refreshToken?.length
+  );
+  if (!refreshToken) {
+    console.warn('WARNING: refreshToken is null or undefined!');
+  }
   await SecureStore.setItemAsync(ACCESS_KEY, accessToken);
   await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
 };

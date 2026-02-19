@@ -14,9 +14,11 @@ export default function RootLayout() {
     const checkAuth = async () => {
       try {
         const token = await getAccessToken();
-        setInitialRoute(token ? '(tabs)' : '(auth)/login');
 
-        // ✅ REGISTER PUSH TOKEN AFTER AUTH CHECK
+        // We always want to show login first as per user request
+        setInitialRoute('(auth)/login');
+
+        // ✅ REGISTER PUSH TOKEN AFTER AUTH CHECK (if token exists)
         if (token && expoPushToken) {
           console.log('📤 Registering supervisor push token...');
           await sendTokenToBackend(expoPushToken, token);
@@ -35,7 +37,7 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+    <Stack screenOptions={{ headerShown: false }} initialRouteName="(auth)/login">
       {/* Auth first */}
       <Stack.Screen name="(auth)/login" />
 
