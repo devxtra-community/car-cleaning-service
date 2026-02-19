@@ -1,3 +1,4 @@
+// src/services/tasks/tasks_service.ts
 import { pool } from '../../database/connectDatabase';
 
 interface TaskInput {
@@ -63,9 +64,8 @@ export const createTaskService = async (data: TaskInput) => {
     // Check if within radius (default 100m)
     const allowedRadius = building.radius || 100;
     if (distance > allowedRadius) {
-      throw new Error(
-        `You must be within ${allowedRadius}m of ${building.building_name} to create tasks. Current distance: ${Math.round(distance)}m`
-      );
+      throw new Error();
+      // You must be within ${allowedRadius}m of ${building.building_name} to create tasks. Current distance: ${Math.round(distance)}m
     }
   }
 
@@ -99,4 +99,247 @@ export const createTaskService = async (data: TaskInput) => {
   );
 
   return result.rows[0];
+};
+
+/* ================= INCENTIVE CALCULATION HELPERS ================= */
+
+interface IncentiveRule {
+  id: string;
+  incentive_type_id: string;
+  rule_name: string;
+  base_amount: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  criteria: any;
+  priority: number;
+  category: string;
+}
+
+// src/modules/tasks/tasks_service.ts
+
+// Find this function and replace it:
+const calculatePerformanceIncentive = (
+  tasksCompleted: number,
+  rule: IncentiveRule
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): { amount: number; details: any } | null => {
+  // Parse criteria values as numbers to avoid string concatenation
+  const targetTasks = Number(rule.criteria.target_tasks);
+  const bonusPerExtra = Number(rule.criteria.bonus_per_extra);
+  const baseAmount = Number(rule.base_amount);
+
+  if (tasksCompleted < targetTasks) {
+    return null; // Didn't meet target
+  }
+
+  const extraTasks = tasksCompleted - targetTasks;
+  const bonusAmount = extraTasks > 0 ? extraTasks * bonusPerExtra : 0;
+  const totalAmount = baseAmount + bonusAmount; // This will now correctly add numbers
+
+  return {
+    amount: totalAmount,
+    details: {
+      target_tasks: targetTasks,
+      tasks_completed: tasksCompleted,
+      base_incentive: baseAmount, // Now a number
+      bonus_incentive: bonusAmount, // Now a number
+      extra_tasks: extraTasks,
+    },
+  };
+};
+
+// Calculate milestone incentive
+const calculateMilestoneIncentive = (
+  totalTasks: number,
+  rule: IncentiveRule
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): { amount: number; details: any } | null => {
+  const { total_tasks } = rule.criteria;
+
+  if (total_tasks && totalTasks === total_tasks) {
+    return {
+      amount: rule.base_amount,
+      details: {
+        milestone: `${total_tasks} tasks completed`,
+        total_tasks: totalTasks,
+      },
+    };
+  }
+
+  return null;
+};
+
+export const updateDailyWorkRecord = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  cleanerId: string,
+  tasksCompletedToday: number,
+  todayDate: string
+) => {
+  // Get all active performance rules
+  const rulesRes = await client.query(
+    `
+    SELECT 
+      ir.id,
+      ir.incentive_type_id,
+      ir.rule_name,
+      ir.base_amount,
+      ir.criteria,
+      ir.priority,
+      it.category
+    FROM incentive_rules ir
+    JOIN incentive_types it ON ir.incentive_type_id = it.id
+    WHERE ir.active = true 
+      AND it.active = true
+      AND it.category = 'performance'
+    ORDER BY ir.priority
+    `
+  );
+
+  let totalIncentive = 0;
+  const incentivesEarned = [];
+
+  // Check if daily work record exists
+  const existingRecord = await client.query(
+    `
+    SELECT id FROM daily_work_records
+    WHERE cleaner_id = $1 AND date = $2
+    `,
+    [cleanerId, todayDate]
+  );
+
+  let workRecordId;
+
+  if (existingRecord.rows.length > 0) {
+    // Update existing record
+    workRecordId = existingRecord.rows[0].id;
+    await client.query(
+      `
+      UPDATE daily_work_records
+      SET tasks_completed = $1,
+          updated_at = NOW()
+      WHERE id = $2
+      `,
+      [tasksCompletedToday, workRecordId]
+    );
+
+    // Delete old incentive breakdown
+    await client.query(
+      `
+      DELETE FROM daily_incentive_breakdown
+      WHERE daily_work_record_id = $1
+      `,
+      [workRecordId]
+    );
+  } else {
+    // Create new record
+    const newRecord = await client.query(
+      `
+      INSERT INTO daily_work_records (cleaner_id, date, tasks_completed)
+      VALUES ($1, $2, $3)
+      RETURNING id
+      `,
+      [cleanerId, todayDate, tasksCompletedToday]
+    );
+    workRecordId = newRecord.rows[0].id;
+  }
+
+  // Calculate incentives for each rule
+  for (const rule of rulesRes.rows) {
+    const calculation = calculatePerformanceIncentive(tasksCompletedToday, rule);
+
+    if (calculation) {
+      // Record in daily_incentive_breakdown
+      await client.query(
+        `
+        INSERT INTO daily_incentive_breakdown (
+          daily_work_record_id,
+          incentive_rule_id,
+          amount,
+          calculation_details
+        )
+        VALUES ($1, $2, $3, $4)
+        `,
+        [workRecordId, rule.id, calculation.amount, JSON.stringify(calculation.details)]
+      );
+
+      totalIncentive += calculation.amount;
+      incentivesEarned.push({
+        rule_name: rule.rule_name,
+        category: rule.category,
+        amount: calculation.amount,
+        details: calculation.details,
+      });
+    }
+  }
+
+  return {
+    incentivesEarned,
+    totalIncentive,
+  };
+};
+
+export const checkMilestoneIncentives = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  cleanerId: string,
+  totalTasks: number
+) => {
+  // Get all active milestone rules
+  const rulesRes = await client.query(
+    `
+    SELECT 
+      ir.id,
+      ir.rule_name,
+      ir.base_amount,
+      ir.criteria
+    FROM incentive_rules ir
+    JOIN incentive_types it ON ir.incentive_type_id = it.id
+    WHERE ir.active = true 
+      AND it.active = true
+      AND it.category = 'milestone'
+    ORDER BY ir.priority
+    `
+  );
+
+  const milestonesEarned = [];
+
+  for (const rule of rulesRes.rows) {
+    const calculation = calculateMilestoneIncentive(totalTasks, rule);
+
+    if (calculation) {
+      // Check if milestone already awarded
+      const existing = await client.query(
+        `
+        SELECT id FROM milestone_achievements
+        WHERE cleaner_id = $1 AND incentive_rule_id = $2
+        `,
+        [cleanerId, rule.id]
+      );
+
+      if (existing.rows.length === 0) {
+        // Award milestone
+        await client.query(
+          `
+          INSERT INTO milestone_achievements (
+            cleaner_id,
+            incentive_rule_id,
+            amount,
+            achievement_details,
+            achieved_at
+          )
+          VALUES ($1, $2, $3, $4, NOW())
+          `,
+          [cleanerId, rule.id, calculation.amount, JSON.stringify(calculation.details)]
+        );
+
+        milestonesEarned.push({
+          rule_name: rule.rule_name,
+          amount: calculation.amount,
+          details: calculation.details,
+        });
+      }
+    }
+  }
+
+  return milestonesEarned;
 };

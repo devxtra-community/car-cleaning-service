@@ -1,3 +1,4 @@
+// src/modules/Worker/workers_controller.ts
 import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { pool } from '../../database/connectDatabase';
@@ -16,10 +17,8 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
     let dateCondition = '';
 
     if (range === 'week') {
-      // Filter for the week of the selected date (ISO week)
       dateCondition = `AND t2.completed_at >= date_trunc('week', $2::date) AND t2.completed_at < date_trunc('week', $2::date) + interval '1 week'`;
     } else if (range === 'month') {
-      // Filter for the month
       dateCondition = `AND t2.completed_at >= date_trunc('month', $2::date) AND t2.completed_at < date_trunc('month', $2::date) + interval '1 month'`;
     } else {
       // Default 'day'
@@ -31,55 +30,65 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
 
     // Single robust query to get profile and stats
     const query = `
-  SELECT 
-    u.id as user_id, 
-    u.full_name,
-    u.document_id as emp_id,
-    s_u.full_name as supervisor_name,
-    b.building_name as location,
-    c.total_earning,
-    c.total_tasks,
-    (
-      SELECT COUNT(*)::int 
-      FROM tasks t2 
-      WHERE t2.cleaner_id = c.id 
-        AND t2.status = 'completed' 
-        ${dateCondition}
-    ) as period_jobs,
-    (
-      SELECT COALESCE(SUM(t3.final_price), 0)::float 
-      FROM tasks t3 
-      WHERE t3.cleaner_id = c.id 
-        AND t3.status = 'completed' 
-        ${revenueCondition}
-    ) as period_revenue,
-    (
-      SELECT COALESCE(SUM(i_d.amount), 0)::float
-      FROM cleaner_incentives i_d
-      WHERE i_d.cleaner_id = c.id
-        AND i_d.created_at::date = $2::date
-    ) as incentive_day,
-    (
-      SELECT COALESCE(SUM(i_w.amount), 0)::float
-      FROM cleaner_incentives i_w
-      WHERE i_w.cleaner_id = c.id
-        AND i_w.created_at >= date_trunc('week', $2::date)
-        AND i_w.created_at < date_trunc('week', $2::date) + interval '1 week'
-    ) as incentive_week,
-    (
-      SELECT COALESCE(SUM(i_m.amount), 0)::float
-      FROM cleaner_incentives i_m
-      WHERE i_m.cleaner_id = c.id
-        AND i_m.created_at >= date_trunc('month', $2::date)
-        AND i_m.created_at < date_trunc('month', $2::date) + interval '1 month'
-    ) as incentive_month
-  FROM users u
-  LEFT JOIN cleaners c ON c.user_id = u.id
-  LEFT JOIN supervisors s ON c.supervisor_id = s.id
-  LEFT JOIN users s_u ON s.user_id = s_u.id
-  LEFT JOIN buildings b ON s.building_id = b.id
-  WHERE u.id = $1
-`;
+      SELECT 
+        u.id as user_id, 
+        u.full_name,
+        u.email,
+        u.phone as phone_number,
+        u.document_id as emp_id,
+        s_u.full_name as supervisor_name,
+        b.building_name as location,
+        c.total_earning,
+        c.total_tasks,
+        (
+          SELECT COUNT(*)::int 
+          FROM tasks t2 
+          WHERE t2.cleaner_id = c.id 
+            AND t2.status = 'completed' 
+            ${dateCondition}
+        ) as period_jobs,
+        (
+          SELECT COALESCE(SUM(t3.final_price), 0)::float 
+          FROM tasks t3 
+          WHERE t3.cleaner_id = c.id 
+            AND t3.status = 'completed' 
+            ${revenueCondition}
+        ) as period_revenue,
+        (
+          SELECT COALESCE(SUM(dib_d.amount), 0)::float
+          FROM daily_work_records dwr_d
+          JOIN daily_incentive_breakdown dib_d ON dwr_d.id = dib_d.daily_work_record_id
+          WHERE dwr_d.cleaner_id = c.id
+            AND dwr_d.date = $2::date
+        ) as incentive_day,
+        (
+          SELECT COALESCE(SUM(dib_w.amount), 0)::float
+          FROM daily_work_records dwr_w
+          JOIN daily_incentive_breakdown dib_w ON dwr_w.id = dib_w.daily_work_record_id
+          WHERE dwr_w.cleaner_id = c.id
+            AND dwr_w.date >= date_trunc('week', $2::date)::date
+            AND dwr_w.date < (date_trunc('week', $2::date) + interval '1 week')::date
+        ) as incentive_week,
+        (
+          SELECT COALESCE(SUM(dib_m.amount), 0)::float
+          FROM daily_work_records dwr_m
+          JOIN daily_incentive_breakdown dib_m ON dwr_m.id = dib_m.daily_work_record_id
+          WHERE dwr_m.cleaner_id = c.id
+            AND dwr_m.date >= date_trunc('month', $2::date)::date
+            AND dwr_m.date < (date_trunc('month', $2::date) + interval '1 month')::date
+        ) as incentive_month,
+        (
+          SELECT COALESCE(SUM(ma.amount), 0)::float
+          FROM milestone_achievements ma
+          WHERE ma.cleaner_id = c.id
+        ) as milestone_total
+      FROM users u
+      LEFT JOIN cleaners c ON c.user_id = u.id
+      LEFT JOIN supervisors s ON c.supervisor_id = s.id
+      LEFT JOIN users s_u ON s.user_id = s_u.id
+      LEFT JOIN buildings b ON s.building_id = b.id
+      WHERE u.id = $1
+    `;
 
     const result = await pool.query(query, [workerId, selectedDate]);
 
@@ -89,34 +98,51 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
 
     const data = result.rows[0];
 
-    // Get active incentives to calculate progress
+    // Get active performance incentive rules to calculate progress
     const incentivesRes = await pool.query(
-      `SELECT id, target_tasks, incentive_amount 
-       FROM incentives 
-       WHERE active = true 
-       ORDER BY target_tasks ASC`
+      `
+      SELECT ir.id, ir.rule_name, ir.base_amount, ir.criteria, ir.priority
+      FROM incentive_rules ir
+      JOIN incentive_types it ON ir.incentive_type_id = it.id
+      WHERE ir.active = true 
+        AND it.active = true
+        AND it.category = 'performance'
+      ORDER BY ir.priority ASC
+      `
     );
 
     const periodJobs = data.period_jobs || 0;
 
-    // Find next target
-    const nextIncentive = incentivesRes.rows.find((rule) => rule.target_tasks > periodJobs);
+    // Find next target based on performance rules
+    let nextTarget = 10; // Default
+    let incentiveAmount = 0;
 
-    // If no next target (all achieved), use the last one or show completed state
-    // For now, let's show the highest target if all are done, or the next one.
-    const currentTarget = nextIncentive || incentivesRes.rows[incentivesRes.rows.length - 1];
+    if (incentivesRes.rows.length > 0) {
+      // Find the rule with the lowest target that hasn't been achieved yet
+      const nextIncentive = incentivesRes.rows.find(
+        (rule) => rule.criteria.target_tasks > periodJobs
+      );
 
-    const nextTarget = currentTarget ? currentTarget.target_tasks : 10; // Default 10 if no rules
-    const incentiveAmount = currentTarget ? currentTarget.incentive_amount : 0;
+      if (nextIncentive) {
+        nextTarget = nextIncentive.criteria.target_tasks;
+        incentiveAmount = nextIncentive.base_amount;
+      } else {
+        // All targets achieved, show the highest one
+        const lastRule = incentivesRes.rows[incentivesRes.rows.length - 1];
+        nextTarget = lastRule.criteria.target_tasks;
+        incentiveAmount = lastRule.base_amount;
+      }
+    }
 
     // Calculate progress percentage
-    // If target is 10 and done is 3, progress is 30%
-    // If done > target (all targets met), progress is 100%
     const progress = Math.min((periodJobs / nextTarget) * 100, 100);
 
     return res.json({
       success: true,
       name: data.full_name,
+      email: data.email,
+      phone: data.phone_number,
+      profilePhoto: null,
       empId: data.emp_id,
       jobsDone: data.total_tasks || 0,
       totalRevenue: data.total_earning || 0,
@@ -137,10 +163,12 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
         day: data.incentive_day || 0,
         week: data.incentive_week || 0,
         month: data.incentive_month || 0,
+        milestones: data.milestone_total || 0,
       },
     });
   } catch (err) {
     console.error('DASHBOARD ERROR:', err);
+    console.error('Stack:', err instanceof Error ? err.stack : 'No stack');
     return res.status(500).json({
       success: false,
       message: err instanceof Error ? err.message : 'Internal Server Error',
@@ -151,13 +179,12 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
 export const getWorkerPenalties = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
-    const { period = 'week' } = req.query; // 'day' | 'week' | 'month'
+    const { period = 'week' } = req.query;
 
     if (!workerId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Get cleaner_id from user_id (workerId)
     const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
     if (!cleanerRes.rows.length) {
       return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
@@ -166,24 +193,19 @@ export const getWorkerPenalties = async (req: AuthRequest, res: Response) => {
 
     let dateCondition = '';
 
-    // Using current date as reference
-
     if (period === 'day') {
       dateCondition = `AND created_at::date = CURRENT_DATE`;
     } else if (period === 'week') {
-      // Current week
       dateCondition = `
         AND created_at >= date_trunc('week', CURRENT_DATE)
         AND created_at < date_trunc('week', CURRENT_DATE) + interval '1 week'
       `;
     } else if (period === 'month') {
-      // Current month
       dateCondition = `
         AND created_at >= date_trunc('month', CURRENT_DATE)
         AND created_at < date_trunc('month', CURRENT_DATE) + interval '1 month'
       `;
     } else {
-      // Default to all time or specific limit if needed, but let's default to week if invalid
       dateCondition = `
         AND created_at >= date_trunc('week', CURRENT_DATE)
         AND created_at < date_trunc('week', CURRENT_DATE) + interval '1 week'
@@ -227,34 +249,35 @@ export const getWorkerPenalties = async (req: AuthRequest, res: Response) => {
 export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
-    const { range = 'day', date } = req.query; // 'day' | 'week' | 'month'
+    const { range = 'day', date } = req.query;
 
     if (!workerId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Get cleaner_id
     const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
     if (!cleanerRes.rows.length) {
       return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
     }
     const cleanerId = cleanerRes.rows[0].id;
 
-    // Calculate dates based on range
     const selectedDate = date ? new Date(date as string) : new Date();
     let dateCondition = '';
     let penaltyDateCondition = '';
+    let incentiveDateCondition = '';
 
     if (range === 'week') {
       dateCondition = `AND completed_at >= date_trunc('week', $2::date) AND completed_at < date_trunc('week', $2::date) + interval '1 week'`;
       penaltyDateCondition = `AND created_at >= date_trunc('week', $2::date) AND created_at < date_trunc('week', $2::date) + interval '1 week'`;
+      incentiveDateCondition = `AND dwr.date >= date_trunc('week', $2::date)::date AND dwr.date < (date_trunc('week', $2::date) + interval '1 week')::date`;
     } else if (range === 'month') {
       dateCondition = `AND completed_at >= date_trunc('month', $2::date) AND completed_at < date_trunc('month', $2::date) + interval '1 month'`;
       penaltyDateCondition = `AND created_at >= date_trunc('month', $2::date) AND created_at < date_trunc('month', $2::date) + interval '1 month'`;
+      incentiveDateCondition = `AND dwr.date >= date_trunc('month', $2::date)::date AND dwr.date < (date_trunc('month', $2::date) + interval '1 month')::date`;
     } else {
-      // Default 'day'
       dateCondition = `AND completed_at::date = $2::date`;
       penaltyDateCondition = `AND created_at::date = $2::date`;
+      incentiveDateCondition = `AND dwr.date = $2::date`;
     }
 
     // 1. Tasks Details
@@ -272,21 +295,39 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
     `;
     const tasksRes = await pool.query(tasksQuery, [cleanerId, selectedDate]);
 
-    // 2. Incentives Details
+    // 2. Incentives Details (from daily_work_records)
     const incentivesQuery = `
       SELECT 
-        id,
-        amount::float as amount,
-        created_at as date,
+        dib.id,
+        dib.amount::float as amount,
+        dwr.date as date,
         'incentive' as type,
-        'Performance Bonus' as description
-      FROM cleaner_incentives
-      WHERE cleaner_id = $1
-        ${penaltyDateCondition}
+        ir.rule_name as description
+      FROM daily_work_records dwr
+      JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id
+      JOIN incentive_rules ir ON dib.incentive_rule_id = ir.id
+      WHERE dwr.cleaner_id = $1
+        ${incentiveDateCondition}
     `;
     const incentivesRes = await pool.query(incentivesQuery, [cleanerId, selectedDate]);
 
-    // 3. Penalties Details
+    // 3. Milestone Incentives (if any achieved in this period)
+    const milestonesQuery = `
+      SELECT 
+        ma.id,
+        ma.amount::float as amount,
+        ma.achieved_at as date,
+        'milestone' as type,
+        ir.rule_name as description
+      FROM milestone_achievements ma
+      JOIN incentive_rules ir ON ma.incentive_rule_id = ir.id
+      WHERE ma.cleaner_id = $1
+        AND ma.achieved_at::date >= $2::date
+        AND ma.achieved_at::date < ($2::date + interval '1 day')
+    `;
+    const milestonesRes = await pool.query(milestonesQuery, [cleanerId, selectedDate]);
+
+    // 4. Penalties Details
     const penaltiesQuery = `
       SELECT 
         id,
@@ -300,9 +341,9 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
     `;
     const penaltiesRes = await pool.query(penaltiesQuery, [cleanerId, selectedDate]);
 
-    // Only include TASKS in the wallet transactions (not incentives/penalties)
-    const transactions = tasksRes.rows
-      .map((t) => ({
+    // Combine all transactions
+    const transactions = [
+      ...tasksRes.rows.map((t) => ({
         id: t.id,
         type: 'task' as const,
         description: `Car wash - ${t.car_number}`,
@@ -310,12 +351,37 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
         date: t.date,
         isCredit: true,
         car_number: t.car_number,
-      }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      })),
+      ...incentivesRes.rows.map((i) => ({
+        id: i.id,
+        type: 'incentive' as const,
+        description: i.description || 'Performance Bonus',
+        amount: i.amount,
+        date: i.date,
+        isCredit: true,
+      })),
+      ...milestonesRes.rows.map((m) => ({
+        id: m.id,
+        type: 'milestone' as const,
+        description: m.description || 'Milestone Achievement',
+        amount: m.amount,
+        date: m.date,
+        isCredit: true,
+      })),
+      ...penaltiesRes.rows.map((p) => ({
+        id: p.id,
+        type: 'penalty' as const,
+        description: p.description || 'Penalty',
+        amount: p.amount,
+        date: p.date,
+        isCredit: false,
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // Calculate totals
     const taskTotal = tasksRes.rows.reduce((sum, t) => sum + t.amount, 0);
     const incentiveTotal = incentivesRes.rows.reduce((sum, i) => sum + i.amount, 0);
+    const milestoneTotal = milestonesRes.rows.reduce((sum, m) => sum + m.amount, 0);
     const penaltyTotal = penaltiesRes.rows.reduce((sum, p) => sum + p.amount, 0);
 
     return res.json({
@@ -323,10 +389,11 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
       range,
       date: selectedDate,
       summary: {
-        totalEarnings: taskTotal, // Only job earnings
+        totalEarnings: taskTotal + incentiveTotal + milestoneTotal - penaltyTotal,
         taskCount: tasksRes.rows.length,
         taskTotal,
         incentiveTotal,
+        milestoneTotal,
         penaltyTotal,
       },
       transactions,
@@ -349,17 +416,14 @@ export const getWorkerTaskLogs = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Get cleaner_id
     const cleanerRes = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
     if (!cleanerRes.rows.length) {
       return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
     }
     const cleanerId = cleanerRes.rows[0].id;
 
-    // Use provided date or default to today
     const selectedDate = date ? new Date(date as string) : new Date();
 
-    // Fetch all completed tasks for the selected date
     const tasksQuery = `
       SELECT 
         id,

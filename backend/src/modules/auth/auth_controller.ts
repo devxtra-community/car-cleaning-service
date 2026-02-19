@@ -7,9 +7,7 @@ import { uploadToS3 } from 'src/middlewares/uploadMiddleware';
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const files = req.files as {
-      [fieldname: string]: Express.Multer.File[];
-    };
+    const files = req.files as any;
 
     const documentFile = files?.document?.[0];
     const profilePhotoFile = files?.profile_image?.[0];
@@ -171,15 +169,20 @@ export const getCleaners = async (req: Request, res: Response) => {
 
         b.building_name,
 
-        s_u.full_name AS supervisor_name
+        s_u.full_name AS supervisor_name,
+
+        COALESCE(AVG(r.rating), 0) AS average_rating,
+        COUNT(r.id) AS total_reviews
 
       FROM cleaners c
       JOIN users u ON c.user_id = u.id
       LEFT JOIN buildings b ON c.building_id = b.id
       LEFT JOIN supervisors s ON c.supervisor_id = s.id
       LEFT JOIN users s_u ON s.user_id = s_u.id
+      LEFT JOIN reviews r ON c.id = r.cleaner_id
 
       WHERE u.role = 'cleaner'
+      GROUP BY c.id, u.id, b.id, s.id, s_u.id
       ORDER BY u.full_name ASC
       `
     );

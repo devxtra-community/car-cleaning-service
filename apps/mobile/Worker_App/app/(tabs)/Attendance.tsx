@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronLeft, Calendar as CalendarIcon, CheckCircle, XCircle } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -14,7 +15,6 @@ type AttendanceDay = {
 export default function Attendance() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [calendar, setCalendar] = useState<AttendanceDay[]>([]);
@@ -31,8 +31,9 @@ export default function Attendance() {
         setCreatedAt(res.data.createdAt || null);
         setTotalDays(res.data.totalDays || 0);
       }
-    } catch (e) {
-      if ((e as any).response?.status === 401) {
+    } catch (e: unknown) {
+      const error = e as { response?: { status?: number } };
+      if (error.response?.status === 401) {
         console.log('Not authenticated for calendar fetch');
       } else {
         console.error('Calendar fetch error:', e);
@@ -82,7 +83,6 @@ export default function Attendance() {
   };
 
   const changeMonth = (delta: number) => {
-    // Prevent going before creation date
     if (delta < 0 && !canGoBack()) {
       return;
     }
@@ -133,32 +133,34 @@ export default function Attendance() {
         <View key={day} className="w-[14.28%] aspect-square p-1">
           <View
             className={`flex-1 rounded-xl items-center justify-center border ${
-              marked ? '' : past ? '' : ''
+              isToday ? 'border-[#0EA5E9] border-2' : 'border-white/50'
             }`}
             style={{
               backgroundColor: marked
-                ? colors.successLight
+                ? '#10B981' // Success Green
                 : past
-                  ? colors.dangerLight
-                  : colors.background,
-              borderColor: marked ? colors.success : past ? colors.danger : colors.border,
-              borderWidth: isToday ? 2 : 1,
-              ...(isToday ? { borderColor: colors.primary } : {}),
+                  ? '#EF4444' // Danger Red
+                  : '#F0F9FF', // Default light blue
+              elevation: 2,
+              shadowColor: marked || past ? '#000' : '#BFDBFE',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 3,
             }}
           >
             <Text
-              className="text-[11px] font-bold mb-0.5"
+              className="text-[11px] font-heading mb-0.5"
               style={{
-                color: marked ? colors.success : past ? colors.danger : colors.textTertiary,
+                color: marked || past ? 'white' : '#64748B',
               }}
             >
               {day}
             </Text>
             {past &&
               (marked ? (
-                <CheckCircle size={10} color={colors.success} />
+                <CheckCircle size={10} color="white" />
               ) : (
-                <XCircle size={10} color={colors.danger} />
+                <XCircle size={10} color="white" />
               ))}
           </View>
         </View>
@@ -169,27 +171,26 @@ export default function Attendance() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View className="flex-1 bg-[#E0F2FE]">
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        className="absolute w-full h-full"
+      />
+
       <View
-        className="pb-4"
+        className="pb-4 rounded-b-[40px] shadow-sm bg-white/80"
         style={{
           paddingTop: insets.top + 10,
-          backgroundColor: colors.cardBackground,
-          borderBottomColor: colors.border,
-          borderBottomWidth: 1,
         }}
       >
         <View className="px-6 flex-row items-center justify-between mb-4">
           <Pressable
             onPress={() => router.push('/(tabs)/Homepage')}
-            className="w-10 h-10 rounded-xl items-center justify-center shadow-sm"
-            style={{ backgroundColor: colors.background }}
+            className="w-10 h-10 rounded-xl items-center justify-center bg-white shadow-sm border border-gray-100"
           >
-            <ChevronLeft size={24} color={colors.text} />
+            <ChevronLeft size={24} color="#1E293B" />
           </Pressable>
-          <Text className="text-lg font-black tracking-tight" style={{ color: colors.text }}>
-            Attendance
-          </Text>
+          <Text className="text-xl font-heading tracking-tight text-clay-text">Attendance</Text>
           <View className="w-10" />
         </View>
 
@@ -198,33 +199,24 @@ export default function Attendance() {
           <Pressable
             onPress={() => changeMonth(-1)}
             disabled={!canGoBack()}
-            className="w-10 h-10 rounded-xl items-center justify-center shadow-sm"
-            style={{ backgroundColor: canGoBack() ? colors.background : colors.cardBackground }}
+            className="w-10 h-10 rounded-xl items-center justify-center shadow-sm clay-button bg-white"
           >
             <Text
-              className="font-black text-lg"
-              style={{ color: canGoBack() ? colors.primary : colors.textTertiary }}
+              className="font-heading text-lg"
+              style={{ color: canGoBack() ? '#0EA5E9' : '#94A3B8' }}
             >
               ←
             </Text>
           </Pressable>
-          <View
-            className="flex-row items-center gap-2 px-4 py-2 rounded-full"
-            style={{ backgroundColor: colors.background }}
-          >
-            <CalendarIcon size={16} color={colors.textSecondary} />
-            <Text className="font-bold text-[12px]" style={{ color: colors.text }}>
-              {getMonthName()}
-            </Text>
+          <View className="flex-row items-center gap-2 px-5 py-2.5 rounded-full bg-white shadow-sm border border-gray-100">
+            <CalendarIcon size={16} color="#64748B" />
+            <Text className="font-heading text-[13px] text-clay-text">{getMonthName()}</Text>
           </View>
           <Pressable
             onPress={() => changeMonth(1)}
-            className="w-10 h-10 rounded-xl items-center justify-center shadow-sm"
-            style={{ backgroundColor: colors.background }}
+            className="w-10 h-10 rounded-xl items-center justify-center shadow-sm clay-button bg-white"
           >
-            <Text className="font-black text-lg" style={{ color: colors.primary }}>
-              →
-            </Text>
+            <Text className="font-heading text-lg text-[#0EA5E9]">→</Text>
           </Pressable>
         </View>
       </View>
@@ -233,59 +225,45 @@ export default function Attendance() {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B86C6" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0EA5E9" />
         }
       >
-        <View className="px-6 pt-4">
+        <View className="px-6 pt-6 pb-20">
           {loading && !refreshing ? (
             <View className="mt-20 items-center">
-              <ActivityIndicator size="small" color="#1B86C6" />
+              <ActivityIndicator size="small" color="#0EA5E9" />
             </View>
           ) : (
             <>
               {/* Legend */}
-              <View className="flex-row gap-4 mb-6 justify-center">
+              <View className="flex-row gap-6 mb-8 justify-center">
                 <View className="flex-row items-center gap-2">
-                  <View
-                    className="w-4 h-4 rounded-full border"
-                    style={{ backgroundColor: colors.successLight, borderColor: colors.success }}
-                  />
-                  <Text
-                    className="text-[10px] font-bold uppercase tracking-wide"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Marked
+                  <View className="w-3 h-3 rounded-full bg-[#10B981] shadow-sm" />
+                  <Text className="text-[11px] font-label uppercase tracking-wide text-clay-secondary">
+                    Present
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-2">
-                  <View
-                    className="w-4 h-4 rounded-full border"
-                    style={{ backgroundColor: colors.dangerLight, borderColor: colors.danger }}
-                  />
-                  <Text
-                    className="text-[10px] font-bold uppercase tracking-wide"
-                    style={{ color: colors.textSecondary }}
-                  >
+                  <View className="w-3 h-3 rounded-full bg-[#EF4444] shadow-sm" />
+                  <Text className="text-[11px] font-label uppercase tracking-wide text-clay-secondary">
                     Absent
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <View className="w-3 h-3 rounded-full bg-[#F0F9FF] border border-gray-200" />
+                  <Text className="text-[11px] font-label uppercase tracking-wide text-clay-secondary">
+                    Upcoming
                   </Text>
                 </View>
               </View>
 
               {/* Calendar */}
-              <View
-                className="rounded-[32px] p-5 shadow-sm mb-6"
-                style={{ backgroundColor: colors.cardBackground }}
-              >
+              <View className="clay-card p-5 mb-8 bg-white">
                 {/* Week days header */}
                 <View className="flex-row mb-4">
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
                     <View key={i} className="w-[14.28%] items-center">
-                      <Text
-                        className="text-[10px] font-black"
-                        style={{ color: colors.textTertiary }}
-                      >
-                        {day}
-                      </Text>
+                      <Text className="text-[10px] font-heading text-clay-secondary/60">{day}</Text>
                     </View>
                   ))}
                 </View>
@@ -295,61 +273,34 @@ export default function Attendance() {
               </View>
 
               {/* Stats */}
-              <View
-                className="rounded-[32px] p-6 shadow-sm mb-8"
-                style={{ backgroundColor: colors.cardBackground }}
-              >
-                <Text
-                  className="text-[11px] font-black uppercase tracking-widest mb-4"
-                  style={{ color: colors.textSecondary }}
-                >
+              <View className="clay-card p-6 bg-white">
+                <Text className="text-[11px] font-label uppercase tracking-widest mb-5 text-clay-secondary">
                   This Month
                 </Text>
-                <View className="flex-row gap-3 mb-6">
-                  <View
-                    className="flex-1 p-4 rounded-2xl"
-                    style={{ backgroundColor: colors.successLight }}
-                  >
-                    <Text
-                      className="text-[10px] font-black uppercase tracking-wide mb-1"
-                      style={{ color: colors.success }}
-                    >
+                <View className="flex-row gap-4 mb-6">
+                  <View className="flex-1 p-4 rounded-3xl bg-[#ECFDF5] items-center justify-center border border-[#10B981]/20">
+                    <Text className="text-[10px] font-label uppercase tracking-wide mb-1 text-[#10B981]">
                       Present
                     </Text>
-                    <Text className="text-2xl font-black" style={{ color: colors.success }}>
-                      {calendar.length}
-                    </Text>
+                    <Text className="text-3xl font-heading text-[#10B981]">{calendar.length}</Text>
                   </View>
-                  <View
-                    className="flex-1 p-4 rounded-2xl"
-                    style={{ backgroundColor: colors.background }}
-                  >
-                    <Text
-                      className="text-[10px] font-black uppercase tracking-wide mb-1"
-                      style={{ color: colors.textSecondary }}
-                    >
+                  <View className="flex-1 p-4 rounded-3xl bg-[#F8FAFC] items-center justify-center border border-gray-100">
+                    <Text className="text-[10px] font-label uppercase tracking-wide mb-1 text-clay-secondary">
                       Total Days
                     </Text>
-                    <Text className="text-2xl font-black" style={{ color: colors.text }}>
-                      {getDaysInMonth()}
-                    </Text>
+                    <Text className="text-3xl font-heading text-clay-text">{getDaysInMonth()}</Text>
                   </View>
                 </View>
 
-                <View className="pt-4 border-t" style={{ borderTopColor: colors.borderLight }}>
+                <View className="pt-5 border-t border-gray-100">
                   <View className="flex-row items-center justify-between mb-2">
-                    <Text
-                      className="text-[10px] font-black uppercase tracking-widest"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      TOTAL ATTENDANCE
+                    <Text className="text-[10px] font-label uppercase tracking-widest text-clay-secondary">
+                      TOTAL ALL TIME
                     </Text>
-                    <Text className="text-lg font-black" style={{ color: colors.primary }}>
-                      {totalDays} days
-                    </Text>
+                    <Text className="text-lg font-heading text-[#0EA5E9]">{totalDays} days</Text>
                   </View>
                   {createdAt && (
-                    <Text className="text-[10px] font-bold" style={{ color: colors.textTertiary }}>
+                    <Text className="text-[10px] font-body text-clay-secondary/60 text-right">
                       Worker since{' '}
                       {new Date(createdAt).toLocaleDateString('en-IN', {
                         month: 'short',
@@ -361,7 +312,6 @@ export default function Attendance() {
               </View>
             </>
           )}
-          <View className="h-16" />
         </View>
       </ScrollView>
     </View>

@@ -16,8 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { Camera, ArrowLeft, User, Phone, Car, Info } from 'lucide-react-native';
+import { Camera, ArrowLeft, User, Phone, Car, Info, MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -38,35 +40,19 @@ const InputField = ({
   onChange,
   keyboard = 'default',
 }: InputFieldProps) => {
-  const { colors } = useTheme();
   return (
     <View className="mb-6">
-      <Text
-        className="text-[11px] font-bold uppercase tracking-widest mb-2 ml-1"
-        style={{ color: colors.textSecondary }}
-      >
+      <Text className="text-[10px] font-label uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
         {label}
       </Text>
-      <View
-        className="flex-row items-center border shadow-sm rounded-[22px] px-4 py-4"
-        style={{
-          backgroundColor: colors.cardBackground,
-          borderColor: colors.border,
-          shadowColor: colors.shadow,
-          shadowOpacity: 0.05,
-        }}
-      >
-        <View
-          className="w-10 h-10 rounded-full items-center justify-center mr-3"
-          style={{ backgroundColor: colors.primaryLight }}
-        >
+      <View className="clay-card flex-row items-center px-4 py-4 bg-white border border-gray-100">
+        <View className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-[#E0F2FE]">
           {icon}
         </View>
         <TextInput
-          className="flex-1 font-bold text-base"
-          style={{ color: colors.text }}
+          className="flex-1 font-heading text-base text-clay-text"
           placeholder={placeholder}
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor="#94A3B8"
           value={value}
           onChangeText={onChange}
           keyboardType={keyboard}
@@ -78,7 +64,6 @@ const InputField = ({
 
 export default function AddJob() {
   const router = useRouter();
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [image, setImage] = useState<ImagePickerAsset | null>(null);
   const [ownerName, setOwnerName] = useState('');
@@ -180,12 +165,12 @@ export default function AddJob() {
               longitude: location.coords.longitude,
             });
             router.replace('/(tabs)/Homepage');
-          } catch (error) {
+          } catch (error: unknown) {
             console.error('Task submission error:', error);
+            const err = error as { response?: { data?: { message?: string } }; message?: string };
             const errorMessage =
-              (error as any).response?.data?.message ||
-              (error as Error).message ||
-              'Could not save task. Try again.';
+              err.response?.data?.message ||
+              (error instanceof Error ? error.message : 'Could not save task. Try again.');
             Alert.alert('Failed', errorMessage);
           } finally {
             setLoading(false);
@@ -197,7 +182,12 @@ export default function AddJob() {
   };
 
   return (
-    <>
+    <View className="flex-1 bg-[#E0F2FE]">
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        className="absolute w-full h-full"
+      />
+
       {/* Custom Type Picker Modal */}
       <Modal
         visible={showTypePicker}
@@ -205,22 +195,15 @@ export default function AddJob() {
         animationType="slide"
         onRequestClose={() => setShowTypePicker(false)}
       >
-        <View className="flex-1 justify-end" style={{ backgroundColor: colors.overlay }}>
+        <BlurView intensity={20} className="flex-1 justify-end">
           <View
-            className="rounded-t-3xl pb-8"
-            style={{ backgroundColor: colors.cardBackground, paddingBottom: insets.bottom + 20 }}
+            className="rounded-t-[40px] pb-8 bg-white/90"
+            style={{ paddingBottom: insets.bottom + 20 }}
           >
-            <View
-              className="flex-row items-center justify-between px-6 py-4 border-b"
-              style={{ borderBottomColor: colors.border }}
-            >
-              <Text className="text-xl font-bold" style={{ color: colors.text }}>
-                Select Car Type
-              </Text>
+            <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
+              <Text className="text-xl font-heading text-clay-text">Select Car Type</Text>
               <Pressable onPress={() => setShowTypePicker(false)}>
-                <Text className="font-bold text-base" style={{ color: colors.primary }}>
-                  Done
-                </Text>
+                <Text className="font-heading text-base text-[#0EA5E9]">Done</Text>
               </Pressable>
             </View>
             <ScrollView className="max-h-96">
@@ -231,15 +214,14 @@ export default function AddJob() {
                     setCarType(type);
                     setShowTypePicker(false);
                   }}
-                  className="px-6 py-5 border-b"
-                  style={{
-                    borderBottomColor: colors.border,
-                    backgroundColor: carType === type ? colors.primaryLight : 'transparent',
-                  }}
+                  className={`px-6 py-5 border-b border-gray-100 ${
+                    carType === type ? 'bg-[#E0F2FE]' : 'transparent'
+                  }`}
                 >
                   <Text
-                    className="text-lg font-bold"
-                    style={{ color: carType === type ? colors.primary : colors.text }}
+                    className={`text-lg font-heading ${
+                      carType === type ? 'text-[#0EA5E9]' : 'text-clay-text'
+                    }`}
                   >
                     {type}
                   </Text>
@@ -247,69 +229,70 @@ export default function AddJob() {
               ))}
             </ScrollView>
           </View>
-        </View>
+        </BlurView>
       </Modal>
 
-      <View className="flex-1" style={{ backgroundColor: colors.background }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+      >
+        <View
+          className="pb-6 rounded-b-[40px] shadow-sm bg-white/80 z-10"
+          style={{ paddingTop: insets.top + 10 }}
         >
-          <View
-            className="flex-row items-center justify-between px-6 pb-4"
-            style={{ paddingTop: insets.top + 10 }}
-          >
+          <View className="flex-row items-center justify-between px-6">
             <Pressable
               onPress={() => router.push('/(tabs)/Homepage')}
-              className="w-12 h-12 rounded-xl items-center justify-center shadow-sm"
-              style={{ backgroundColor: colors.cardBackground }}
+              className="w-10 h-10 rounded-xl items-center justify-center bg-white shadow-sm border border-gray-100"
             >
-              <ArrowLeft size={24} color={colors.text} />
+              <ArrowLeft size={24} color="#1E293B" />
             </Pressable>
-            <Text className="font-black text-xl tracking-tighter" style={{ color: colors.text }}>
+            <Text className="text-xl font-heading tracking-tight text-clay-text">
               New Job Entry
             </Text>
-            <View className="w-12" />
+            <View className="w-10" />
           </View>
+        </View>
 
-          <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-            <Pressable
-              onPress={openCamera}
-              className="h-60 rounded-[32px] overflow-hidden border-2 border-dashed justify-center items-center my-6"
-              style={{
-                backgroundColor: colors.cardBackground,
-                borderColor: colors.border,
-              }}
-            >
-              {image ? (
-                <Image source={{ uri: image.uri }} className="w-full h-full" />
-              ) : (
-                <View className="items-center">
-                  <View
-                    className="w-20 h-20 rounded-full items-center justify-center shadow-sm mb-4"
-                    style={{ backgroundColor: colors.primaryLight }}
-                  >
-                    <Camera size={40} color={colors.primary} />
-                  </View>
-                  <Text
-                    className="font-bold text-[10px] uppercase tracking-widest"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Take Vehicle Photo
-                  </Text>
+        <ScrollView
+          className="flex-1 px-6"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
+        >
+          <Pressable
+            onPress={openCamera}
+            className="h-60 rounded-[32px] overflow-hidden border-2 border-dashed border-clay-secondary/30 justify-center items-center mb-8 bg-white/50"
+          >
+            {image ? (
+              <Image source={{ uri: image.uri }} className="w-full h-full" />
+            ) : (
+              <View className="items-center">
+                <View className="w-20 h-20 rounded-full items-center justify-center shadow-sm mb-4 bg-[#E0F2FE]">
+                  <Camera size={40} color="#0EA5E9" />
                 </View>
-              )}
-            </Pressable>
+                <Text className="font-heading text-xs uppercase tracking-widest text-clay-secondary">
+                  Take Vehicle Photo
+                </Text>
+              </View>
+            )}
+            <View className="absolute bottom-4 right-4 bg-white/80 px-3 py-1 rounded-full">
+              <View className="flex-row items-center gap-1">
+                <MapPin size={12} color="#0EA5E9" />
+                <Text className="text-[10px] font-bold text-clay-secondary">Tagging Location</Text>
+              </View>
+            </View>
+          </Pressable>
 
+          <View className="gap-2">
             <InputField
-              icon={<User size={20} color={colors.primary} />}
+              icon={<User size={20} color="#0EA5E9" />}
               label="Customer Name"
               placeholder="Eg: Rahul Sharma"
               value={ownerName}
               onChange={setOwnerName}
             />
             <InputField
-              icon={<Phone size={20} color={colors.primary} />}
+              icon={<Phone size={20} color="#0EA5E9" />}
               label="Contact Number"
               placeholder="99000 00000"
               value={ownerPhone}
@@ -317,7 +300,7 @@ export default function AddJob() {
               keyboard="phone-pad"
             />
             <InputField
-              icon={<Car size={20} color={colors.primary} />}
+              icon={<Car size={20} color="#0EA5E9" />}
               label="Vehicle Number"
               placeholder="DL 01 AB 1234"
               value={carNumber}
@@ -327,7 +310,7 @@ export default function AddJob() {
             <View className="flex-row gap-4 mb-4">
               <View className="flex-[1.2]">
                 <InputField
-                  icon={<Info size={20} color={colors.primary} />}
+                  icon={<Info size={20} color="#0EA5E9" />}
                   label="Model/Color"
                   placeholder="White Nexon"
                   value={carColor && carModel ? `${carColor} ${carModel}` : carColor || carModel}
@@ -343,27 +326,21 @@ export default function AddJob() {
                   }}
                 />
               </View>
-              <View className="flex-1">
-                <Text
-                  className="text-[11px] font-bold uppercase tracking-widest mb-2 ml-1"
-                  style={{ color: colors.textSecondary }}
-                >
+              <View className="flex-1 mb-6">
+                <Text className="text-[10px] font-label uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
                   Car Type
                 </Text>
                 <Pressable
                   onPress={() => setShowTypePicker(true)}
-                  className="border shadow-sm rounded-[22px] h-[72px] justify-center px-4"
-                  style={{
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.border,
-                  }}
+                  className="clay-card h-[60px] justify-center px-4 bg-white border border-gray-100"
                 >
                   {loadingTypes ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color="#0EA5E9" />
                   ) : (
                     <Text
-                      className="text-base font-bold"
-                      style={{ color: carType ? colors.text : colors.textTertiary }}
+                      className={`text-base font-heading ${
+                        carType ? 'text-clay-text' : 'text-gray-400'
+                      }`}
                     >
                       {carType || 'Select Type'}
                     </Text>
@@ -371,33 +348,28 @@ export default function AddJob() {
                 </Pressable>
               </View>
             </View>
+          </View>
 
-            <Pressable
-              onPress={submit}
-              disabled={loading}
-              className="w-full py-5 rounded-[22px] shadow-xl items-center mt-4 mb-10"
-              style={{
-                backgroundColor: colors.primary,
-                shadowColor: colors.primary,
-                shadowOpacity: 0.3,
-              }}
-            >
-              {loading ? (
-                <View className="flex-row items-center gap-2">
-                  <ActivityIndicator color="white" size="small" />
-                  <Text className="text-white font-black text-[12px] tracking-widest uppercase">
-                    {gettingLocation ? 'Getting Location...' : 'Submitting...'}
-                  </Text>
-                </View>
-              ) : (
-                <Text className="text-white font-black text-[12px] tracking-widest uppercase">
-                  Submit Job
+          <Pressable
+            onPress={submit}
+            disabled={loading}
+            className="w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center clay-button bg-[#0EA5E9]"
+          >
+            {loading ? (
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator color="white" size="small" />
+                <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
+                  {gettingLocation ? 'Getting Location...' : 'Submitting...'}
                 </Text>
-              )}
-            </Pressable>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
-    </>
+              </View>
+            ) : (
+              <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
+                Submit Job
+              </Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

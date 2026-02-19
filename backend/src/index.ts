@@ -34,7 +34,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: '*',
+    origin: true, // Reflects the request origin, required for credentials: true
     credentials: true,
   })
 );

@@ -35,7 +35,7 @@ const SalaryPerPerson = lazy(() => import('./components/shared/SalaryPerPerson')
 const AddIncetiveTarget = lazy(() => import('./components/shared/AddIncentiveTarget'));
 const AnalyticsProgress = lazy(() => import('./components/shared/AnalyticsProgress'));
 const SalaryCycle = lazy(() => import('./components/shared/SalaryCycles'));
-// const SalaryListing = lazy(() => import('./components/shared/SalaryList'));
+const Review = lazy(() => import('./pages/Review'));
 
 function App() {
   return (
@@ -48,6 +48,7 @@ function App() {
           {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/privacyPolicy" element={<PrivacyPolicy />} />
+          <Route path="/review/:taskId" element={<Review />} />
 
           {/* Accountant Portal */}
           <Route path="/accountant" element={<AccountantPortal />}>

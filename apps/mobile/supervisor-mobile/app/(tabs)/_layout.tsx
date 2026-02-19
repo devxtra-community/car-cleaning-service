@@ -1,3 +1,4 @@
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native';
 import { PieChart, Home, User } from 'lucide-react-native';
@@ -8,17 +9,7 @@ const PADDING = 4;
 const CONTAINER_WIDTH = width * 0.94;
 const TAB_WIDTH = (CONTAINER_WIDTH - PADDING * 2) / 3;
 
-interface TabBarProps {
-  state: {
-    index: number;
-    routes: Array<{ key: string; name: string }>;
-  };
-  navigation: {
-    navigate: (name: string) => void;
-  };
-}
-
-function CustomTabBar({ state, navigation }: TabBarProps) {
+function CustomTabBar({ state, descriptors: _descriptors, navigation }: BottomTabBarProps) {
   const [translateX] = useState(() => new Animated.Value(PADDING));
   const index = state.index;
 

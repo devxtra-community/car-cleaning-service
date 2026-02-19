@@ -21,11 +21,18 @@ jobs:
             cd /var/www/car-cleaning/car-cleaning-service
             git pull origin main
 
-            export HUSKY=0
+            # Install root dependencies (for workspaces)
+            npm install
 
             cd backend
             npm install
             npm run build
 
-            pm2 restart car-cleaning-api
+            # Check if process exists to decide between start or reload
+            if pm2 describe car-cleaning-api > /dev/null; then
+              pm2 reload car-cleaning-api
+            else
+              pm2 start dist/index.js --name car-cleaning-api
+            fi
+            
             pm2 save

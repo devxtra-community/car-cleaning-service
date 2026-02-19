@@ -1,6 +1,11 @@
+// src/modules/tasks/tasks_controller.ts
 import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
-import { createTaskService } from './tasks_service';
+import {
+  createTaskService,
+  updateDailyWorkRecord,
+  checkMilestoneIncentives,
+} from './tasks_service';
 import { pool } from '../../database/connectDatabase';
 
 /* ================= CREATE TASK ================= */
@@ -75,14 +80,15 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
     console.log('CreateTask: Task Inserted:', task);
 
     return res.status(201).json({ success: true, data: task });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.log('CREATE TASK ERROR:', err);
 
     // Handle GPS-related errors
-    if (err.message.includes('within') || err.message.includes('building')) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    if (errorMessage.includes('within') || errorMessage.includes('building')) {
       return res.status(400).json({
         success: false,
-        message: err.message,
+        message: errorMessage,
       });
     }
 
@@ -124,7 +130,8 @@ export const GetTaskpending = async (req: AuthRequest, res: Response) => {
 
     return res.json(result.rows);
   } catch (err) {
-    console.log(err);
+    console.error('GET TASK PENDING ERROR:', err);
+    console.error('Stack:', err instanceof Error ? err.stack : 'No stack');
     return res.status(500).json({ success: false });
   }
 };
@@ -145,6 +152,10 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
   try {
     await client.query('BEGIN');
 
+    console.log('🚀 Starting Task Completion Process');
+    console.log('Task ID:', taskId);
+    console.log('Worker ID:', workerId);
+
     // Get cleaner_id from cleaners table using workerId (user_id)
     const cleanerProfileRes = await client.query('SELECT id FROM cleaners WHERE user_id = $1', [
       workerId,
@@ -155,10 +166,9 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
     }
 
     const cleanerProfileId = cleanerProfileRes.rows[0].id;
+    console.log('✅ Cleaner Profile ID:', cleanerProfileId);
 
     /* ================= COMPLETE TASK ================= */
-
-    console.log('Completing Task:', { taskId, workerId, body: req.body });
 
     const taskRes = await client.query(
       `
@@ -169,7 +179,7 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
           payment_method = COALESCE($4, payment_method),
           final_price = COALESCE($5, final_price)
       WHERE id = $1 AND cleaner_id = $2
-      RETURNING task_amount, final_price
+      RETURNING task_amount, final_price, DATE(completed_at) as completed_date
       `,
       [taskId, cleanerProfileId, after_wash_image_url, payment_method, final_price]
     );
@@ -178,8 +188,9 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
       throw new Error('TASK_NOT_FOUND');
     }
 
-    // Use final_price if available, otherwise use task_amount
     const taskAmount = Number(taskRes.rows[0].final_price || taskRes.rows[0].task_amount || 0);
+    const completedDate = taskRes.rows[0].completed_date;
+    console.log('✅ Task marked as completed. Amount:', taskAmount, 'Date:', completedDate);
 
     /* ================= UPDATE CLEANER TASK COUNT ================= */
 
@@ -200,56 +211,68 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
 
     const cleanerId = cleanerRes.rows[0].id;
     const totalTasks = cleanerRes.rows[0].total_tasks;
+    console.log('✅ Cleaner Stats Updated. Total Tasks:', totalTasks);
 
-    /* ================= INCENTIVE RULE CHECK ================= */
+    /* ================= COUNT TODAY'S TASKS ================= */
 
-    // Get all active incentive rules
-    const rulesRes = await client.query(
+    const todayTasksRes = await client.query(
       `
-      SELECT id, target_tasks, incentive_amount, reason
-      FROM incentives
-      WHERE active = true
-      ORDER BY target_tasks ASC
-      `
+      SELECT COUNT(*)::int as tasks_today
+      FROM tasks
+      WHERE cleaner_id = $1 
+        AND status = 'completed'
+        AND DATE(completed_at) = $2
+      `,
+      [cleanerId, completedDate]
     );
 
-    for (const rule of rulesRes.rows) {
-      const target = rule.target_tasks;
+    const tasksCompletedToday = todayTasksRes.rows[0].tasks_today || 0;
+    console.log('✅ Tasks Completed Today:', tasksCompletedToday);
 
-      if (totalTasks % target === 0) {
-        const milestoneCount = totalTasks / target;
+    /* ================= UPDATE DAILY WORK RECORD & CALCULATE INCENTIVES ================= */
 
-        await client.query(
-          `
-      INSERT INTO cleaner_incentives (
-        cleaner_id,
-        incentive_rule_id,
-        milestone_count,
-        amount,
-        reason
-      )
-      VALUES ($1,$2,$3,$4,$5)
-      ON CONFLICT (cleaner_id, incentive_rule_id, milestone_count)
-      DO NOTHING
-    `,
-          [
-            cleanerId,
-            rule.id,
-            milestoneCount,
-            rule.incentive_amount,
-            rule.reason || `Completed ${target * milestoneCount} tasks`,
-          ]
-        );
-      }
-    }
+    const dailyIncentives = await updateDailyWorkRecord(
+      client,
+      cleanerId,
+      tasksCompletedToday,
+      completedDate
+    );
+
+    /* ================= CHECK MILESTONE INCENTIVES ================= */
+
+    const milestoneIncentives = await checkMilestoneIncentives(client, cleanerId, totalTasks);
 
     await client.query('COMMIT');
+    console.log('✅ Transaction Committed Successfully');
 
-    return res.json({ success: true });
+    const allIncentives = [...dailyIncentives.incentivesEarned, ...milestoneIncentives];
+
+    const totalIncentiveAmount = allIncentives.reduce((sum, inc) => sum + inc.amount, 0);
+
+    console.log('🎉 Task Completion Summary:');
+    console.log('- Daily Incentives:', dailyIncentives.incentivesEarned.length);
+    console.log('- Milestone Incentives:', milestoneIncentives.length);
+    console.log('- Total Incentive Amount:', totalIncentiveAmount);
+
+    return res.json({
+      success: true,
+      data: {
+        task_completed: true,
+        total_tasks: totalTasks,
+        tasks_today: tasksCompletedToday,
+        incentives_earned: allIncentives,
+        total_incentive_amount: totalIncentiveAmount,
+        daily_incentives: dailyIncentives.incentivesEarned,
+        milestone_incentives: milestoneIncentives,
+      },
+    });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.log('COMPLETE TASK ERROR:', err);
-    return res.status(500).json({ success: false });
+    console.error('❌ COMPLETE TASK ERROR:', err);
+    return res.status(500).json({
+      success: false,
+      message: err instanceof Error ? err.message : 'Failed to complete task',
+    });
   } finally {
     client.release();
   }
