@@ -2,7 +2,12 @@ import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import { logger } from '../../config/logger';
 import { pool } from '../../database/connectDatabase';
-import { createUser, CreateUserInput } from './auth_service';
+import {
+  createUser,
+  CreateUserInput,
+  getAllAccountantsService,
+  getAllAdminsService,
+} from './auth_service';
 import { uploadToS3 } from 'src/middlewares/uploadMiddleware';
 
 export const registerUser = async (req: Request, res: Response) => {
@@ -240,6 +245,50 @@ export const getAllSupervisors = async (req: Request, res: Response) => {
       success: false,
       message: 'Failed to fetch supervisors',
       error: process.env.NODE_ENV === 'development' ? error : undefined,
+    });
+  }
+};
+
+/**
+ * GET /api/users/accountants
+ */
+export const getAllAccountantsController = async (req: Request, res: Response) => {
+  try {
+    const accountants = await getAllAccountantsService();
+
+    return res.status(200).json({
+      success: true,
+      count: accountants.length,
+      data: accountants,
+    });
+  } catch (error) {
+    console.error('Error fetching accountants:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch accountants',
+    });
+  }
+};
+
+/**
+ * GET /api/users/admins
+ */
+export const getAllAdminsController = async (req: Request, res: Response) => {
+  try {
+    const admins = await getAllAdminsService();
+
+    return res.status(200).json({
+      success: true,
+      count: admins.length,
+      data: admins,
+    });
+  } catch (error) {
+    console.error('Error fetching admins:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch admins',
     });
   }
 };

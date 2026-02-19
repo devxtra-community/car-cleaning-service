@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { pool } from '../../database/connectDatabase';
+import { Pool } from 'pg';
 
 const SALT_ROUNDS = 12;
 
@@ -240,4 +240,61 @@ export const createUser = async (data: CreateUserInput) => {
   } finally {
     client.release();
   }
+};
+const pool = new Pool();
+
+/**
+ * Get all accountants
+ */
+export const getAllAccountantsService = async () => {
+  const query = `
+    SELECT 
+      id,
+      full_name,
+      email,
+      phone,
+      age,
+      nationality,
+      document_id,
+      base_salary,
+      profile_image,
+      building_id,
+      floor_id,
+      joining_date,
+      last_login,
+      created_at
+    FROM users
+    WHERE role = 'accountant'
+    ORDER BY created_at DESC
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows;
+};
+
+/**
+ * Get all admins
+ */
+export const getAllAdminsService = async () => {
+  const query = `
+    SELECT 
+      id,
+      full_name,
+      email,
+      phone,
+      age,
+      nationality,
+      document_id,
+      base_salary,
+      profile_image,
+      joining_date,
+      last_login,
+      created_at
+    FROM users
+    WHERE role = 'admin'
+    ORDER BY created_at DESC
+  `;
+
+  const { rows } = await pool.query(query);
+  return rows;
 };

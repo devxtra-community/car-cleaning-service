@@ -14,7 +14,7 @@ export const getBuildingReconciliation = async (cycleId: string) => {
     `
     SELECT 
       b.id,
-      b.name AS building_name,
+      b.building_name AS building_name,
 
       COALESCE(SUM(t.amount_charged),0) AS expected_collection,
 

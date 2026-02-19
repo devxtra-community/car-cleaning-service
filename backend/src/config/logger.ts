@@ -1,39 +1,37 @@
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-type LogMeta = Record<string,unknown>
+import winston from 'winston';
+
 const isProduction = process.env.NODE_ENV === 'production';
 
-function log(level: LogLevel, message: string, meta?: LogMeta) {
-  if (level === 'debug' && isProduction) return;
+const logger = winston.createLogger({
+  level: isProduction ? 'info' : 'debug',
 
-  const logEntry = {
-    level,
-    message,
-    timestamp: new Date().toISOString(),
-    ...(meta && { meta }),
-  };
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    isProduction
+      ? winston.format.json()
+      : winston.format.combine(
+          winston.format.colorize(),
+          winston.format.printf(({ level, message, timestamp, ...meta }) => {
+            return `${timestamp} [${level}]: ${message} ${
+              Object.keys(meta).length ? JSON.stringify(meta) : ''
+            }`;
+          })
+        )
+  ),
 
-  switch (level) {
-    case 'error':
-      console.error(logEntry);
-      break;
-    case 'warn':
-      console.warn(logEntry);
-      break;
-    default:
-      console.log(logEntry);
-  }
-}
+  transports: [
+    new winston.transports.Console(),
 
-export const logger = {
-  info: (message: string, meta?: LogMeta) =>
-    log('info', message, meta),
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+    }),
 
-  warn: (message: string, meta?: LogMeta) =>
-    log('warn', message, meta),
+    new winston.transports.File({
+      filename: 'logs/combined.log',
+    }),
+  ],
+});
 
-  error: (message: string, meta?: LogMeta) =>
-    log('error', message, meta),
-
-  debug: (message: string, meta?: LogMeta) =>
-    log('debug', message, meta),
-};
+export { logger };

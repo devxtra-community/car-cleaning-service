@@ -18,11 +18,11 @@ const Cleaners = lazy(() => import('./components/admin/Cleaners'));
 const VehicleManagement = lazy(() => import('./components/admin/Vehicle_Management'));
 const BuildingsManagement = lazy(() => import('./components/admin/BuildingsManagement'));
 const AddBuilding = lazy(() => import('./components/admin/AddBuilding'));
-
 const Supervisors = lazy(() => import('./components/admin/Supervisors'));
 const CleanerUnderSupervisorDetails = lazy(() => import('./components/admin/SupervisorDetails'));
 const AddVehicles = lazy(() => import('./components/admin/AddVehicles'));
 const RegisterUser = lazy(() => import('./components/admin/RegisterUser'));
+const CleanerDetails = lazy(() => import('./components/admin/CleanerDetails'));
 /* Accountant pages */
 const Accountant = lazy(() => import('./components/accountant/AccDashboard'));
 
@@ -32,11 +32,15 @@ const SalaryFinalization = lazy(() => import('./components/shared/SalaryFinaliza
 const MonthlyReport = lazy(() => import('./components/shared/MonthlyReport'));
 const Reconciliation = lazy(() => import('./components/shared/Reconciliation'));
 const SalaryPerPerson = lazy(() => import('./components/shared/SalaryPerPerson'));
-const AddIncetiveTarget = lazy(() => import('./components/shared/AddIncentiveTarget'));
+const IncentivesDashboard = lazy(() => import('./components/shared/IncentivesDashboard'));
+const AddIncentiveTarget = lazy(() => import('./components/shared/IncentivesDashboard'));
+const EditIncentiveTarget = lazy(() => import('./components/shared/AddEditTypeModal'));
 const AnalyticsProgress = lazy(() => import('./components/shared/AnalyticsProgress'));
 const SalaryCycle = lazy(() => import('./components/shared/SalaryCycles'));
 const SalaryList = lazy(() => import('./components/shared/SalaryList'));
 const SalarySummary = lazy(() => import('./components/shared/SalarySummary'));
+const BuildingDetailsPage = lazy(() => import('./components/admin/BuildingDetails'));
+const EditBuilding = lazy(() => import('./components/admin/EditBuilding'));
 function App() {
   return (
     <AuthProvider>
@@ -60,7 +64,7 @@ function App() {
             <Route path="monthlyReport" element={<MonthlyReport />} />
             <Route path="reconciliation" element={<Reconciliation />} />
             <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
-            <Route path="addIncetiveTarget" element={<AddIncetiveTarget />} />
+            <Route path="incentives" element={<IncentivesDashboard />} />
           </Route>
 
           {/* Admin Portal */}
@@ -81,19 +85,24 @@ function App() {
             <Route path="supervisors" element={<Supervisors />} />
             <Route path="supervisor/:supervisorId" element={<CleanerUnderSupervisorDetails />} />
             <Route path="register/:role" element={<RegisterUser />} />
-
+            <Route path="register/:role" element={<RegisterUser />} />
+            <Route path="cleaner/:cleanerId" element={<CleanerDetails />} />
+            <Route path="buildings/:buildingId" element={<BuildingDetailsPage />} />
+            <Route path="buildings/:buildingId/edit" element={<EditBuilding />} />
             {/* Shared salary pages for admin also */}
             <Route path="addNewSalary" element={<AddNewSalary />} />
             <Route path="salaryFinalization" element={<SalaryFinalization />} />
             <Route path="monthlyReport" element={<MonthlyReport />} />
             <Route path="reconciliation" element={<Reconciliation />} />
             <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
-            <Route path="addIncetiveTarget" element={<AddIncetiveTarget />} />
+            <Route path="incentives" element={<IncentivesDashboard />} />
             <Route path="AnalyticsProgress" element={<AnalyticsProgress />} />
             <Route path="salary-cycles" element={<SalaryCycle />} />
             <Route path="salaries/:cycleId" element={<SalaryList />} />
             <Route path="reconciliation/:cycleId" element={<Reconciliation />} />
             <Route path="salary-summary" element={<SalarySummary />} />
+            <Route path="incentives/add" element={<AddIncentiveTarget />} />
+            <Route path="incentives/edit/:incentiveId" element={<EditIncentiveTarget />} />
           </Route>
 
           {/* Catch all */}
