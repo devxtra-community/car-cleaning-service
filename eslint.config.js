@@ -6,6 +6,9 @@ import prettierPlugin from 'eslint-plugin-prettier';
 import globals from 'globals';
 
 export default [
+  {
+    ignores: ['**/dist/**', 'backend/dist/**', '**/node_modules/**', '.expo/**'],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
@@ -47,7 +50,6 @@ export default [
       '@typescript-eslint/no-require-imports': 'off',
       'no-undef': 'error',
     },
-    ignores: ['**/dist/**', '**/node_modules/**', '.expo/**'],
   },
 
   // Specific overrides for backend/scripts to ensure node globals
