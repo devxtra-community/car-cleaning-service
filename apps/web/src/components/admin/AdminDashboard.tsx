@@ -100,7 +100,6 @@ const topCleaners = [
   { name: 'Sarah Johnson', tasks: 42, rating: 4.6 },
   { name: 'Mike Wilson', tasks: 40, rating: 4.5 },
   { name: 'Emma Davis', tasks: 38, rating: 4.4 },
-  { name: 'James Brown', tasks: 35, rating: 4.3 },
 ];
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -515,7 +514,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className=" mx-auto px-6 py-8">
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between mb-8">
           <div>

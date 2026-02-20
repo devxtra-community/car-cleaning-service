@@ -137,7 +137,7 @@ const Supervisors: React.FC = () => {
 
         <Link
           to="/admin/register/supervisor"
-          className="inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition"
+          className="inline-flex items-center gap-2 bg-[#2151E7] hover:bg-[#0a3ac9] text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition"
         >
           <span className="text-lg leading-none">+</span>
           Add Supervisor
@@ -288,7 +288,7 @@ const Supervisors: React.FC = () => {
                       <div className="flex justify-center gap-2">
                         <Link
                           to={`/admin/supervisor/${sup.supervisor_id}`}
-                          className="px-3 py-1.5 text-sm border rounded-md text-slate-600 hover:bg-slate-50"
+                          className="px-3 py-1.5 text-sm shadow rounded-md text-slate-600 hover:bg-slate-50"
                         >
                           View
                         </Link>
@@ -296,7 +296,7 @@ const Supervisors: React.FC = () => {
                         <button
                           onClick={() => handleDelete(sup.supervisor_id)}
                           disabled={busy}
-                          className="px-3 py-1.5 text-sm border border-red-200 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition"
+                          className="px-3 py-1.5 text-sm shadow bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition"
                         >
                           {busy ? (
                             <span className="animate-spin w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full inline-block" />

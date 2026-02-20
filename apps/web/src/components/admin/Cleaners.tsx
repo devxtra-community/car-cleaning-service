@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/commonAPI';
+import axios from 'axios';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,13 +40,6 @@ interface Toast {
   message: string;
   type: 'success' | 'error';
 }
-const getErrorMessage = (err: unknown): string => {
-  if (typeof err === 'object' && err !== null && 'response' in err) {
-    const axiosError = err as { response?: { data?: { message?: string } } };
-    return axiosError.response?.data?.message ?? 'An error occurred';
-  }
-  return 'An error occurred';
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,7 +81,7 @@ const ToastAlert = ({ toast, onClose }: { toast: Toast; onClose: () => void }) =
 
   return (
     <div
-      className={`fixed top-5 right-5 z-200 flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border text-sm font-medium animate-slide-in
+      className={`fixed top-5 right-5 z-[200] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border text-sm font-medium animate-slide-in
         ${
           toast.type === 'success'
             ? 'bg-white border-green-200 text-green-800'
@@ -145,7 +139,18 @@ const EditModal = ({
       const res = await updateCleaner(cleaner.cleaner_id, form);
       onSaved(res.data.data ?? form);
     } catch (err: unknown) {
-      setError(getErrorMessage(err));
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error?.message ??
+            err.response?.data?.message ??
+            err.message ??
+            'Failed to update cleaner.'
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update cleaner.');
+      }
     } finally {
       setSaving(false);
     }
@@ -260,8 +265,18 @@ const DeleteModal = ({
       await deleteCleaner(cleaner.cleaner_id);
       onDeleted();
     } catch (err: unknown) {
-      const errorMsg = getErrorMessage(err) || 'Cannot delete cleaner. Please try again.';
-      setError(errorMsg);
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error?.message ??
+            err.response?.data?.message ??
+            err.message ??
+            'Cannot delete cleaner. Please try again.'
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Cannot delete cleaner. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -346,8 +361,7 @@ const Cleaners: React.FC = () => {
   const showToast = (message: string, type: Toast['type']) => setToast({ message, type });
 
   // ── Fetch ────────────────────────────────────────────────────────────────
-
-  const fetchCleaners = useCallback(async () => {
+  const fetchCleaners = async () => {
     try {
       setLoading(true);
       const res = await api.get('/api/auth/cleaners');
@@ -357,7 +371,7 @@ const Cleaners: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchCleaners();
@@ -466,7 +480,7 @@ const Cleaners: React.FC = () => {
 
       {/* ── Toolbar ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="relative flex-1 min-w-60 max-w-sm">
+        <div className="relative flex-1 min-w-[240px] max-w-sm">
           <svg
             className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
             fill="none"
@@ -568,14 +582,14 @@ const Cleaners: React.FC = () => {
                           <img
                             src={c.profile_image}
                             alt={c.full_name}
-                            className="w-10 h-10 rounded-full object-cover border-2 border-slate-100 shrink-0"
+                            className="w-10 h-10 rounded-full object-cover border-2 border-slate-100 flex-shrink-0"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                             }}
                           />
                         ) : (
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                             style={{ background: avatarColor(c.full_name) }}
                           >
                             {initials(c.full_name)}

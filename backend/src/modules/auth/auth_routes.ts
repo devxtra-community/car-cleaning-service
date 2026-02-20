@@ -7,6 +7,7 @@ import {
   getAllSupervisors,
   getAllAccountantsController,
   getAllAdminsController,
+  getCleaners,
 } from './auth_controller';
 import { uploadDocumentToS3, handleMulterError } from '../../middlewares/uploadMiddleware';
 import { protect } from 'src/middlewares/authMiddleware';
@@ -16,7 +17,14 @@ import { getAllFloors, getFloorsByBuilding } from '../floors/floor_controller';
 
 const router = Router();
 
-router.post('/register', uploadDocumentToS3, handleMulterError, protect, registerUser);
+router.post(
+  '/register',
+  uploadDocumentToS3,
+  handleMulterError,
+  protect,
+  allowRoles('admin', 'super_admin'),
+  registerUser
+);
 
 router.post('/login', login);
 
@@ -32,6 +40,7 @@ router.get(
   getAllAccountantsController
 );
 router.get('/admins', protect, allowRoles('super_admin'), getAllAdminsController);
+router.get('/cleaners', protect, allowRoles('admin', 'super_admin'), getCleaners);
 
 router.post('/refresh', refresh);
 
