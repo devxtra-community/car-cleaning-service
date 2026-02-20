@@ -263,24 +263,16 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
 
     const selectedDate = date ? new Date(date as string) : new Date();
     let dateCondition = '';
-    let penaltyDateCondition = '';
-    let incentiveDateCondition = '';
 
     if (range === 'week') {
       dateCondition = `AND completed_at >= date_trunc('week', $2::date) AND completed_at < date_trunc('week', $2::date) + interval '1 week'`;
-      penaltyDateCondition = `AND created_at >= date_trunc('week', $2::date) AND created_at < date_trunc('week', $2::date) + interval '1 week'`;
-      incentiveDateCondition = `AND dwr.date >= date_trunc('week', $2::date)::date AND dwr.date < (date_trunc('week', $2::date) + interval '1 week')::date`;
     } else if (range === 'month') {
       dateCondition = `AND completed_at >= date_trunc('month', $2::date) AND completed_at < date_trunc('month', $2::date) + interval '1 month'`;
-      penaltyDateCondition = `AND created_at >= date_trunc('month', $2::date) AND created_at < date_trunc('month', $2::date) + interval '1 month'`;
-      incentiveDateCondition = `AND dwr.date >= date_trunc('month', $2::date)::date AND dwr.date < (date_trunc('month', $2::date) + interval '1 month')::date`;
     } else {
       dateCondition = `AND completed_at::date = $2::date`;
-      penaltyDateCondition = `AND created_at::date = $2::date`;
-      incentiveDateCondition = `AND dwr.date = $2::date`;
     }
 
-    // 1. Tasks Details
+    // 1. Tasks Details - Only fetching tasks as per requirement
     const tasksQuery = `
       SELECT 
         id,
@@ -295,53 +287,7 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
     `;
     const tasksRes = await pool.query(tasksQuery, [cleanerId, selectedDate]);
 
-    // 2. Incentives Details (from daily_work_records)
-    const incentivesQuery = `
-      SELECT 
-        dib.id,
-        dib.amount::float as amount,
-        dwr.date as date,
-        'incentive' as type,
-        ir.rule_name as description
-      FROM daily_work_records dwr
-      JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id
-      JOIN incentive_rules ir ON dib.incentive_rule_id = ir.id
-      WHERE dwr.cleaner_id = $1
-        ${incentiveDateCondition}
-    `;
-    const incentivesRes = await pool.query(incentivesQuery, [cleanerId, selectedDate]);
-
-    // 3. Milestone Incentives (if any achieved in this period)
-    const milestonesQuery = `
-      SELECT 
-        ma.id,
-        ma.amount::float as amount,
-        ma.achieved_at as date,
-        'milestone' as type,
-        ir.rule_name as description
-      FROM milestone_achievements ma
-      JOIN incentive_rules ir ON ma.incentive_rule_id = ir.id
-      WHERE ma.cleaner_id = $1
-        AND ma.achieved_at::date >= $2::date
-        AND ma.achieved_at::date < ($2::date + interval '1 day')
-    `;
-    const milestonesRes = await pool.query(milestonesQuery, [cleanerId, selectedDate]);
-
-    // 4. Penalties Details
-    const penaltiesQuery = `
-      SELECT 
-        id,
-        amount::float as amount,
-        created_at as date,
-        'penalty' as type,
-        reason as description
-      FROM penalties
-      WHERE cleaner_id = $1
-        ${penaltyDateCondition}
-    `;
-    const penaltiesRes = await pool.query(penaltiesQuery, [cleanerId, selectedDate]);
-
-    // Combine all transactions
+    // Combine all transactions (Only tasks now)
     const transactions = [
       ...tasksRes.rows.map((t) => ({
         id: t.id,
@@ -352,49 +298,22 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
         isCredit: true,
         car_number: t.car_number,
       })),
-      ...incentivesRes.rows.map((i) => ({
-        id: i.id,
-        type: 'incentive' as const,
-        description: i.description || 'Performance Bonus',
-        amount: i.amount,
-        date: i.date,
-        isCredit: true,
-      })),
-      ...milestonesRes.rows.map((m) => ({
-        id: m.id,
-        type: 'milestone' as const,
-        description: m.description || 'Milestone Achievement',
-        amount: m.amount,
-        date: m.date,
-        isCredit: true,
-      })),
-      ...penaltiesRes.rows.map((p) => ({
-        id: p.id,
-        type: 'penalty' as const,
-        description: p.description || 'Penalty',
-        amount: p.amount,
-        date: p.date,
-        isCredit: false,
-      })),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     // Calculate totals
     const taskTotal = tasksRes.rows.reduce((sum, t) => sum + t.amount, 0);
-    const incentiveTotal = incentivesRes.rows.reduce((sum, i) => sum + i.amount, 0);
-    const milestoneTotal = milestonesRes.rows.reduce((sum, m) => sum + m.amount, 0);
-    const penaltyTotal = penaltiesRes.rows.reduce((sum, p) => sum + p.amount, 0);
 
     return res.json({
       success: true,
       range,
       date: selectedDate,
       summary: {
-        totalEarnings: taskTotal + incentiveTotal + milestoneTotal - penaltyTotal,
+        totalEarnings: taskTotal,
         taskCount: tasksRes.rows.length,
-        taskTotal,
-        incentiveTotal,
-        milestoneTotal,
-        penaltyTotal,
+        taskTotal: taskTotal,
+        incentiveTotal: 0,
+        milestoneTotal: 0,
+        penaltyTotal: 0,
       },
       transactions,
     });
