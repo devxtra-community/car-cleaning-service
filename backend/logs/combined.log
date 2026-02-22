@@ -350,3 +350,7 @@
 2026-02-22T11:24:57.972Z [[31merror[39m]: Unhandled error {"path":"/api/salary","method":"POST","statusCode":500,"code":"INTERNAL_ERROR","errorMessage":"invalid input syntax for type uuid: \"system\"","stack":"error: invalid input syntax for type uuid: \"system\"\n    at C:\\Users\\User\\OneDrive\\Desktop\\DevXtra\\car-cleaning-system\\backend\\node_modules\\.pnpm\\pg-pool@3.11.0_pg@8.17.1\\node_modules\\pg-pool\\index.js:45:11\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async createPeriodService (C:\\Users\\User\\OneDrive\\Desktop\\DevXtra\\car-cleaning-system\\backend\\src\\modules\\salary\\salary_service.ts:462:20)\n    at async createPeriod (C:\\Users\\User\\OneDrive\\Desktop\\DevXtra\\car-cleaning-system\\backend\\src\\modules\\salary\\salary_controller.ts:215:18)"}
 2026-02-22T11:41:14.544Z [[32minfo[39m]: Attempting database connection {"attempt":1,"maxRetries":5}
 2026-02-22T11:41:16.369Z [[32minfo[39m]: Neon PostgreSQL connected successfully 
+2026-02-22T11:56:46.002Z [[32minfo[39m]: Attempting database connection {"attempt":1,"maxRetries":5}
+2026-02-22T11:56:48.213Z [[32minfo[39m]: Neon PostgreSQL connected successfully 
+2026-02-22T12:06:52.354Z [[32minfo[39m]: Attempting database connection {"attempt":1,"maxRetries":5}
+2026-02-22T12:06:54.410Z [[32minfo[39m]: Neon PostgreSQL connected successfully 

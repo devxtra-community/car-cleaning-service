@@ -143,7 +143,6 @@ const ImageModal: React.FC<{ task: CleanerTask; onClose: () => void }> = ({ task
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
-  <NoImagePlaceholder />;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4"
@@ -200,7 +199,7 @@ const ImageModal: React.FC<{ task: CleanerTask; onClose: () => void }> = ({ task
                   className="w-full h-72 object-cover rounded-xl border border-slate-200"
                 />
               ) : (
-                <Ph />
+                <NoImagePlaceholder />
               )}
             </div>
             <div>
@@ -212,7 +211,7 @@ const ImageModal: React.FC<{ task: CleanerTask; onClose: () => void }> = ({ task
                   className="w-full h-72 object-cover rounded-xl border border-slate-200"
                 />
               ) : (
-                <Ph />
+                <NoImagePlaceholder />
               )}
             </div>
           </div>
