@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   title?: string;
-  message?: string;
+  message?: ReactNode;
   confirmText?: string;
   cancelText?: string;
   loading?: boolean;

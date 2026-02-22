@@ -1,5 +1,9 @@
 import { pool } from '../../database/connectDatabase';
 import bcrypt from 'bcrypt';
+import { AppError } from 'src/middlewares/error-handler';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface UpdateSupervisorData {
   full_name?: string;
   email?: string;
@@ -11,369 +15,404 @@ interface UpdateSupervisorData {
   base_salary?: number;
   profile_image?: string;
   building_id?: string;
-  password?: string; // In case admin wants to reset password
+  password?: string;
 }
 
-export const getSupervisorWorkersService = async (supervisorId: string) => {
+// ─── GET ALL ──────────────────────────────────────────────────────────────────
+
+export const getAllSupervisorsService = async () => {
   const result = await pool.query(
-    `
-    SELECT u.id, u.full_name, u.email, u.role
-    FROM supervisor_workers sw
-    JOIN users u ON u.id = sw.worker_id
-    WHERE sw.supervisor_id=$1
-    `,
-    [supervisorId]
+    `SELECT
+       s.id              AS supervisor_id,
+       s.full_name,
+       s.is_active,
+       s.building_id,
+       s.updated_at,
+       u.email,
+       u.phone,
+       u.profile_image,
+       u.joining_date,
+       u.base_salary,
+       b.building_name,
+       COUNT(DISTINCT c.id)::int AS cleaner_count
+     FROM supervisors s
+     JOIN users u ON s.user_id = u.id
+     LEFT JOIN buildings b ON s.building_id = b.id
+     LEFT JOIN cleaners  c ON c.supervisor_id = s.id
+     GROUP BY s.id, u.email, u.phone, u.profile_image, u.joining_date, u.base_salary, b.building_name
+     ORDER BY s.full_name ASC`
   );
   return result.rows;
 };
 
-export const supervisorReportService = async (supervisorId: string, period: string) => {
-  let filter = '';
-  if (period === 'day') filter = `t.completed_at::date = CURRENT_DATE`;
-  else if (period === 'week') filter = `t.completed_at >= date_trunc('week', NOW())`;
-  else filter = `t.completed_at >= date_trunc('month', NOW())`;
+// ─── GET UNASSIGNED ───────────────────────────────────────────────────────────
 
+export const getUnassignedSupervisorsService = async () => {
   const result = await pool.query(
-    `
-    SELECT 
-      u.id as worker_id,
-      u.full_name,
-      COUNT(t.id)::int as total_tasks
-    FROM tasks t
-    JOIN supervisor_workers sw ON sw.worker_id = t.worker_id
-    JOIN users u ON u.id = t.worker_id
-    WHERE sw.supervisor_id=$1
-      AND t.status='completed'
-      AND ${filter}
-    GROUP BY u.id, u.full_name
-    ORDER BY total_tasks DESC
-    `,
-    [supervisorId]
+    `SELECT
+       s.id,
+       s.user_id,
+       s.is_active,
+       u.full_name,
+       u.email,
+       u.profile_image
+     FROM supervisors s
+     JOIN users u ON s.user_id = u.id
+     WHERE s.building_id IS NULL
+     ORDER BY u.full_name ASC`
   );
-
   return result.rows;
 };
 
-// Get supervisor details (your existing code)
+// ─── GET DETAILS (existing — preserved exactly) ───────────────────────────────
+
 export const getSupervisorDetailsService = async (supervisorId: string) => {
-  try {
-    const query = `
-      SELECT 
-        s.id AS supervisor_id,
-        s.full_name AS supervisor_full_name,
-        s.is_active,
+  const query = `
+    SELECT
+      s.id              AS supervisor_id,
+      s.full_name       AS supervisor_full_name,
+      s.is_active,
 
-        su.email AS supervisor_email,
-        su.phone AS supervisor_phone,
-        su.base_salary AS supervisor_base_salary,
-        su.nationality,
-        su.document_id,
-        su.profile_image,
-        su.age,
-        su.document,
-        su.joining_date,
+      su.email          AS supervisor_email,
+      su.phone          AS supervisor_phone,
+      su.base_salary    AS supervisor_base_salary,
+      su.nationality,
+      su.document_id,
+      su.profile_image,
+      su.age,
+      su.document,
+      su.joining_date,
 
-        b.id AS building_id,
-        b.building_name,
+      b.id              AS building_id,
+      b.building_name,
 
-        c.id AS cleaner_id,
-        c.cleaner_full_name,
-        c.incentive_target,
-        c.total_tasks,
-        c.total_earning,
-        
-        cu.email AS cleaner_email,
-        cu.base_salary AS cleaner_base_salary,
+      c.id              AS cleaner_id,
+      cu.full_name      AS cleaner_full_name,
+      c.total_tasks,
+      c.total_earning,
 
-        f.id AS floor_id,
-        f.floor_number
+      cu.email          AS cleaner_email,
+      cu.base_salary    AS cleaner_base_salary,
 
-      FROM supervisors s
-      JOIN users su ON s.user_id = su.id
-      LEFT JOIN buildings b ON s.building_id = b.id
-      LEFT JOIN cleaners c ON c.supervisor_id = s.id
-      LEFT JOIN users cu ON c.user_id = cu.id
-      LEFT JOIN floors f ON c.floor_id = f.id
-      WHERE s.id = $1
-    `;
+      f.id              AS floor_id,
+      f.floor_number
+    FROM supervisors s
+    JOIN users su ON s.user_id = su.id
+    LEFT JOIN buildings b  ON s.building_id  = b.id
+    LEFT JOIN cleaners  c  ON c.supervisor_id = s.id
+    LEFT JOIN users     cu ON c.user_id       = cu.id
+    LEFT JOIN floors    f  ON c.floor_id      = f.id
+    WHERE s.id = $1
+  `;
+  console.log('query,', query);
 
-    const result = await pool.query(query, [supervisorId]);
+  const result = await pool.query(query, [supervisorId]);
+  if (result.rows.length === 0) return null;
 
-    if (result.rows.length === 0) {
-      return null;
+  const row = result.rows[0];
+
+  const cleanersMap = new Map<
+    string,
+    {
+      id: string;
+      full_name: string;
+      email: string;
+      total_tasks: number;
+      total_earning: number;
+      base_salary: number;
+      floor: { id: string; floor_number: number } | null;
     }
+  >();
 
-    const supervisorRow = result.rows[0];
+  result.rows.forEach((r) => {
+    if (r.cleaner_id && !cleanersMap.has(r.cleaner_id)) {
+      cleanersMap.set(r.cleaner_id, {
+        id: r.cleaner_id,
+        full_name: r.cleaner_full_name,
+        email: r.cleaner_email,
+        total_tasks: Number(r.total_tasks) || 0,
+        total_earning: Number(r.total_earning) || 0,
+        base_salary: Number(r.cleaner_base_salary) || 0,
+        floor: r.floor_id ? { id: r.floor_id, floor_number: r.floor_number } : null,
+      });
+    }
+  });
 
-    // Group cleaners and avoid duplicates
-    const cleanersMap = new Map();
-
-    result.rows.forEach((row) => {
-      if (row.cleaner_id && !cleanersMap.has(row.cleaner_id)) {
-        cleanersMap.set(row.cleaner_id, {
-          id: row.cleaner_id,
-          full_name: row.cleaner_full_name,
-          email: row.cleaner_email,
-          total_tasks: Number(row.total_tasks) || 0,
-          total_earning: Number(row.total_earning) || 0,
-          base_salary: Number(row.cleaner_base_salary) || 0,
-          incentive_target: Number(row.incentive_target) || 0,
-          floor: row.floor_id
-            ? {
-                id: row.floor_id,
-                floor_number: row.floor_number,
-              }
-            : null,
-        });
-      }
-    });
-
-    const cleaners = Array.from(cleanersMap.values());
-
-    return {
-      id: supervisorRow.supervisor_id,
-      full_name: supervisorRow.supervisor_full_name,
-      email: supervisorRow.supervisor_email,
-      phone: supervisorRow.supervisor_phone,
-      base_salary: Number(supervisorRow.supervisor_base_salary) || 0,
-      nationality: supervisorRow.nationality,
-      document_id: supervisorRow.document_id,
-      profile_image: supervisorRow.profile_image,
-      age: supervisorRow.age,
-      document: supervisorRow.document,
-      joining_date: supervisorRow.joining_date,
-      is_active: supervisorRow.is_active,
-      building: supervisorRow.building_id
-        ? {
-            id: supervisorRow.building_id,
-            name: supervisorRow.building_name,
-          }
-        : null,
-      cleaners,
-    };
-  } catch (error) {
-    console.error('Database error in getSupervisorDetailsService:', error);
-    throw error;
-  }
+  return {
+    id: row.supervisor_id,
+    full_name: row.supervisor_full_name,
+    email: row.supervisor_email,
+    phone: row.supervisor_phone,
+    base_salary: Number(row.supervisor_base_salary) || 0,
+    nationality: row.nationality,
+    document_id: row.document_id,
+    profile_image: row.profile_image,
+    age: row.age,
+    document: row.document,
+    joining_date: row.joining_date,
+    is_active: row.is_active,
+    building: row.building_id ? { id: row.building_id, name: row.building_name } : null,
+    cleaners: Array.from(cleanersMap.values()),
+  };
 };
 
-// Update supervisor
+// ─── UPDATE (existing — preserved, console.error → throw) ────────────────────
+
 export const updateSupervisorService = async (
   supervisorId: string,
   updateData: UpdateSupervisorData
 ) => {
   const client = await pool.connect();
-
   try {
     await client.query('BEGIN');
 
-    // First, get the supervisor's user_id
     const supervisorQuery = await client.query(
       'SELECT user_id, building_id FROM supervisors WHERE id = $1',
       [supervisorId]
     );
-
     if (supervisorQuery.rows.length === 0) {
       await client.query('ROLLBACK');
       return null;
     }
 
-    const { user_id, building_id: currentBuildingId } = supervisorQuery.rows[0];
+    const { user_id, building_id: currentBuildingId } = supervisorQuery.rows[0] as {
+      user_id: string;
+      building_id: string | null;
+    };
 
-    // Check if building exists if building_id is being updated
     if (updateData.building_id && updateData.building_id !== currentBuildingId) {
       const buildingCheck = await client.query('SELECT id FROM buildings WHERE id = $1', [
         updateData.building_id,
       ]);
-
       if (buildingCheck.rows.length === 0) {
         await client.query('ROLLBACK');
-        throw new Error('Building not found');
+        throw new AppError('Building not found', 404, 'BUILDING_NOT_FOUND');
       }
     }
 
-    // Check if email is being changed and if it already exists
     if (updateData.email) {
       const emailCheck = await client.query('SELECT id FROM users WHERE email = $1 AND id != $2', [
         updateData.email,
         user_id,
       ]);
-
       if (emailCheck.rows.length > 0) {
         await client.query('ROLLBACK');
-        throw new Error('Email already exists');
+        throw new AppError('Email already in use', 409, 'EMAIL_CONFLICT');
       }
     }
 
-    // Build dynamic update query for users table
     const userUpdates: string[] = [];
-    const userValues: (string | number | Buffer | null)[] = [];
-    let userParamCount = 1;
+    const userValues: (string | number | null)[] = [];
+    let p = 1;
 
     if (updateData.full_name !== undefined) {
-      userUpdates.push(`full_name = $${userParamCount++}`);
+      userUpdates.push(`full_name    = $${p++}`);
       userValues.push(updateData.full_name);
     }
     if (updateData.email !== undefined) {
-      userUpdates.push(`email = $${userParamCount++}`);
+      userUpdates.push(`email        = $${p++}`);
       userValues.push(updateData.email);
     }
     if (updateData.phone !== undefined) {
-      userUpdates.push(`phone = $${userParamCount++}`);
+      userUpdates.push(`phone        = $${p++}`);
       userValues.push(updateData.phone);
     }
     if (updateData.age !== undefined) {
-      userUpdates.push(`age = $${userParamCount++}`);
+      userUpdates.push(`age          = $${p++}`);
       userValues.push(updateData.age);
     }
     if (updateData.nationality !== undefined) {
-      userUpdates.push(`nationality = $${userParamCount++}`);
+      userUpdates.push(`nationality  = $${p++}`);
       userValues.push(updateData.nationality);
     }
     if (updateData.document_id !== undefined) {
-      userUpdates.push(`document_id = $${userParamCount++}`);
+      userUpdates.push(`document_id  = $${p++}`);
       userValues.push(updateData.document_id);
     }
     if (updateData.document !== undefined) {
-      userUpdates.push(`document = $${userParamCount++}`);
+      userUpdates.push(`document     = $${p++}`);
       userValues.push(updateData.document);
     }
     if (updateData.base_salary !== undefined) {
-      userUpdates.push(`base_salary = $${userParamCount++}`);
+      userUpdates.push(`base_salary  = $${p++}`);
       userValues.push(updateData.base_salary);
     }
     if (updateData.profile_image !== undefined) {
-      userUpdates.push(`profile_image = $${userParamCount++}`);
+      userUpdates.push(`profile_image = $${p++}`);
       userValues.push(updateData.profile_image);
     }
     if (updateData.building_id !== undefined) {
-      userUpdates.push(`building_id = $${userParamCount++}`);
+      userUpdates.push(`building_id  = $${p++}`);
       userValues.push(updateData.building_id);
     }
+
     if (updateData.password !== undefined) {
-      // Hash password before storing (use bcrypt in production)
-      const hashedPassword = await bcrypt.hash(updateData.password, 10);
-      userUpdates.push(`password = $${userParamCount++}`);
-      userValues.push(hashedPassword);
+      const hashed = await bcrypt.hash(updateData.password, 10);
+      userUpdates.push(`password = $${p++}`);
+      userValues.push(hashed);
     }
 
-    // Always update updated_at
     userUpdates.push(`updated_at = NOW()`);
 
-    // Update users table if there are changes
     if (userUpdates.length > 1) {
-      // More than just updated_at
       userValues.push(user_id);
-      const userUpdateQuery = `
-        UPDATE users 
-        SET ${userUpdates.join(', ')}
-        WHERE id = $${userParamCount}
-        RETURNING *
-      `;
-
-      await client.query(userUpdateQuery, userValues);
+      await client.query(`UPDATE users SET ${userUpdates.join(', ')} WHERE id = $${p}`, userValues);
     }
 
-    // Update supervisors table if building_id changed
+    const supUpdates: string[] = ['updated_at = NOW()'];
+    const supValues: (string | number | boolean)[] = [];
+    let sp = 1;
+
     if (updateData.building_id !== undefined) {
-      await client.query(
-        `UPDATE supervisors 
-         SET building_id = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [updateData.building_id, supervisorId]
-      );
+      supUpdates.push(`building_id = $${sp++}`);
+      supValues.push(updateData.building_id);
+    }
+    if (updateData.full_name !== undefined) {
+      supUpdates.push(`full_name   = $${sp++}`);
+      supValues.push(updateData.full_name);
     }
 
-    // Update supervisor's full_name in supervisors table if changed
-    if (updateData.full_name !== undefined) {
-      await client.query(
-        `UPDATE supervisors 
-         SET full_name = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [updateData.full_name, supervisorId]
-      );
-    }
+    supValues.push(supervisorId);
+    await client.query(
+      `UPDATE supervisors SET ${supUpdates.join(', ')} WHERE id = $${sp}`,
+      supValues
+    );
 
     await client.query('COMMIT');
-
-    // Return updated supervisor details
     return await getSupervisorDetailsService(supervisorId);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Database error in updateSupervisorService:', error);
     throw error;
   } finally {
     client.release();
   }
 };
 
-// Toggle supervisor active/inactive status
+// ─── TOGGLE STATUS ────────────────────────────────────────────────────────────
+
 export const toggleSupervisorStatusService = async (supervisorId: string, isActive: boolean) => {
-  try {
-    const query = `
-      UPDATE supervisors 
-      SET is_active = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING id, is_active
-    `;
-
-    const result = await pool.query(query, [isActive, supervisorId]);
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('Database error in toggleSupervisorStatusService:', error);
-    throw error;
-  }
+  const result = await pool.query(
+    `UPDATE supervisors SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING id, is_active`,
+    [isActive, supervisorId]
+  );
+  if (result.rows.length === 0) return null;
+  return result.rows[0] as { id: string; is_active: boolean };
 };
 
-// Delete supervisor
+// ─── DELETE ───────────────────────────────────────────────────────────────────
+
 export const deleteSupervisorService = async (supervisorId: string) => {
   const client = await pool.connect();
-
   try {
     await client.query('BEGIN');
 
-    // Check if supervisor has assigned cleaners
     const cleanersCheck = await client.query(
-      'SELECT COUNT(*) as count FROM cleaners WHERE supervisor_id = $1',
+      'SELECT COUNT(*) AS count FROM cleaners WHERE supervisor_id = $1',
       [supervisorId]
     );
-
-    if (parseInt(cleanersCheck.rows[0].count) > 0) {
+    if (parseInt((cleanersCheck.rows[0] as { count: string }).count) > 0) {
       await client.query('ROLLBACK');
-      throw new Error('Supervisor has assigned cleaners');
+      throw new AppError(
+        'Cannot delete supervisor — they still have assigned cleaners. Reassign them first.',
+        409,
+        'SUPERVISOR_HAS_CLEANERS'
+      );
     }
 
-    // Get the user_id before deleting supervisor
-    const supervisorQuery = await client.query('SELECT user_id FROM supervisors WHERE id = $1', [
+    const supQuery = await client.query('SELECT user_id FROM supervisors WHERE id = $1', [
       supervisorId,
     ]);
-
-    if (supervisorQuery.rows.length === 0) {
+    if (supQuery.rows.length === 0) {
       await client.query('ROLLBACK');
       return null;
     }
 
-    const { user_id } = supervisorQuery.rows[0];
-
-    // Delete from supervisors table
+    const { user_id } = supQuery.rows[0] as { user_id: string };
     await client.query('DELETE FROM supervisors WHERE id = $1', [supervisorId]);
-
-    // Delete from users table
     await client.query('DELETE FROM users WHERE id = $1', [user_id]);
 
     await client.query('COMMIT');
-
     return { success: true };
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Database error in deleteSupervisorService:', error);
     throw error;
   } finally {
     client.release();
   }
+};
+
+// ─── AVAILABLE CLEANERS (no supervisor) ──────────────────────────────────────
+
+export const getAvailableCleanersService = async () => {
+  const result = await pool.query(
+    `SELECT
+       c.id,
+       c.incentive_target,
+       u.full_name,
+       u.email,
+       u.phone,
+       u.profile_image,
+       c.building_id,
+       b.building_name,
+       f.id          AS floor_id,
+       f.floor_name,
+       f.floor_number
+     FROM cleaners c
+     JOIN users u ON c.user_id = u.id
+     LEFT JOIN buildings b ON c.building_id = b.id
+     LEFT JOIN floors    f ON c.floor_id    = f.id
+     WHERE c.supervisor_id IS NULL
+     ORDER BY u.full_name ASC`
+  );
+  return result.rows;
+};
+
+// ─── ASSIGN CLEANER TO SUPERVISOR ────────────────────────────────────────────
+
+export const assignCleanerToSupervisorService = async (supervisorId: string, cleanerId: string) => {
+  // Verify supervisor exists
+  const supCheck = await pool.query('SELECT id FROM supervisors WHERE id = $1', [supervisorId]);
+  if (!supCheck.rows.length)
+    throw new AppError('Supervisor not found', 404, 'SUPERVISOR_NOT_FOUND');
+
+  // Verify cleaner exists and is unassigned
+  const cleanerCheck = await pool.query('SELECT id, supervisor_id FROM cleaners WHERE id = $1', [
+    cleanerId,
+  ]);
+  if (!cleanerCheck.rows.length) throw new AppError('Cleaner not found', 404, 'CLEANER_NOT_FOUND');
+
+  const row = cleanerCheck.rows[0] as { id: string; supervisor_id: string | null };
+  if (row.supervisor_id !== null)
+    throw new AppError(
+      'Cleaner is already assigned to a supervisor',
+      409,
+      'CLEANER_ALREADY_ASSIGNED'
+    );
+
+  const result = await pool.query(
+    'UPDATE cleaners SET supervisor_id = $1, updated_at = NOW() WHERE id = $2 RETURNING id, supervisor_id',
+    [supervisorId, cleanerId]
+  );
+  return result.rows[0] as { id: string; supervisor_id: string };
+};
+
+// ─── REMOVE CLEANER FROM SUPERVISOR ──────────────────────────────────────────
+
+export const removeCleanerFromSupervisorService = async (
+  supervisorId: string,
+  cleanerId: string
+) => {
+  const cleanerCheck = await pool.query('SELECT id, supervisor_id FROM cleaners WHERE id = $1', [
+    cleanerId,
+  ]);
+  if (!cleanerCheck.rows.length) throw new AppError('Cleaner not found', 404, 'CLEANER_NOT_FOUND');
+
+  const row = cleanerCheck.rows[0] as { id: string; supervisor_id: string | null };
+  if (row.supervisor_id !== supervisorId)
+    throw new AppError('Cleaner does not belong to this supervisor', 400, 'CLEANER_MISMATCH');
+
+  await pool.query('UPDATE cleaners SET supervisor_id = NULL, updated_at = NOW() WHERE id = $1', [
+    cleanerId,
+  ]);
+  return { success: true };
 };

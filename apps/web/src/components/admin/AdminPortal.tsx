@@ -10,12 +10,13 @@ import {
   TruckIcon,
   SparklesIcon,
   UserIcon,
-  CurrencyRupeeIcon,
   CheckBadgeIcon,
   DocumentChartBarIcon,
   BanknotesIcon,
   GiftIcon,
   ChartBarIcon,
+  WalletIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
 const AdminPortal = () => {
@@ -78,7 +79,7 @@ const AdminPortal = () => {
                 }`}
               >
                 <UserIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Supervisors</span>
+                <span className="text-sm">Supervisors Management</span>
               </div>
             )}
           </NavLink>
@@ -93,7 +94,35 @@ const AdminPortal = () => {
                 }`}
               >
                 <SparklesIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Cleaners</span>
+                <span className="text-sm">Cleaners Management</span>
+              </div>
+            )}
+          </NavLink>
+          <NavLink to="/admin/admins">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ShieldCheckIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Admin Management</span>
+              </div>
+            )}
+          </NavLink>
+          <NavLink to="/admin/accountants">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <WalletIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Accountant Management</span>
               </div>
             )}
           </NavLink>
@@ -108,7 +137,7 @@ const AdminPortal = () => {
                 }`}
               >
                 <BuildingOffice2Icon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Buildings</span>
+                <span className="text-sm">Buildings Management</span>
               </div>
             )}
           </NavLink>
@@ -134,21 +163,6 @@ const AdminPortal = () => {
               Salary Management
             </p>
           </div>
-
-          <NavLink to="/admin/addNewSalary">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <CurrencyRupeeIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Add New Salary</span>
-              </div>
-            )}
-          </NavLink>
 
           <NavLink to="/admin/incentives">
             {({ isActive }) => (

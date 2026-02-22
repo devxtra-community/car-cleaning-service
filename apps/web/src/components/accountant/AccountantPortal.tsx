@@ -8,7 +8,6 @@ import {
   ArrowRightOnRectangleIcon,
   BuildingOffice2Icon,
   TruckIcon,
-  CurrencyRupeeIcon,
   CheckBadgeIcon,
   DocumentChartBarIcon,
   BanknotesIcon,
@@ -102,22 +101,6 @@ const AccountantPortal = () => {
               Salary Management
             </p>
           </div>
-
-          <NavLink to="/accountant/addNewSalary">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <CurrencyRupeeIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Add New Salary</span>
-              </div>
-            )}
-          </NavLink>
-
           <NavLink to="/accountant/addIncetiveTarget">
             {({ isActive }) => (
               <div

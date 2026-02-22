@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import carlogo from '../assets/carlogo.png';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ForgotPasswordModal from '../components/admin/Forgotpasswordmodal';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
     email: '',
     password: '',
   });
+  const [showForgot, setShowForgot] = useState(false);
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -31,6 +33,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
       <div className="w-full max-w-6xl bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl flex flex-col lg:flex-row overflow-hidden">
         {/* Left Panel - Login Form */}
         <div className="w-full lg:w-1/2 p-8 sm:p-12 lg:p-16 flex items-center justify-center">
@@ -83,12 +86,15 @@ const Login = () => {
                   />
                   <span className="ml-2 text-slate-600">Remember me</span>
                 </label>
-                <a
-                  href="#"
-                  className="text-[#00AEFF] hover:text-[#0090d9] font-medium transition-colors"
-                >
-                  Forgot password?
-                </a>
+                <div className="flex justify-end mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot(true)}
+                    className="text-xs font-semibold text-[#00AEFF] hover:text-[#0090d9] transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </div>
 
               {/* Sign In Button */}

@@ -3,12 +3,10 @@ import { pool } from '../../database/connectDatabase';
 import { AppError } from 'src/middlewares/error-handler';
 import { generateAccessToken, generateRefreshToken, hashToken, ClientType } from '../../config/jwt';
 import { v4 as uuidv4 } from 'uuid';
-
+import crypto from 'crypto';
+import { sendMail } from 'src/config/sendWelcomeMail';
 const SALT_ROUNDS = 12;
-
-// ============================================================
-// TYPES
-// ============================================================
+const OTP_EXPIRY_MINUTES = 15;
 
 type BaseUserInput = {
   email: string;
@@ -25,12 +23,14 @@ type BaseUserInput = {
 
 type SupervisorInput = BaseUserInput & {
   role: 'supervisor';
-  supervisor: { building_id: string };
+  building_id: string; // FK → buildings(id) ON DELETE SET NULL
 };
 
 type CleanerInput = BaseUserInput & {
   role: 'cleaner';
-  cleaner: { supervisor_id: string; floor_id?: string };
+  building_id: string; // chosen first — anchor for floor + supervisor filtering
+  floor_id: string; // must belong to building_id
+  supervisor_id?: string; // supervisors.id (optional) — must be in same building
 };
 
 type StaffInput = BaseUserInput & {
@@ -45,16 +45,13 @@ export interface LoginResult {
   refreshToken: string;
 }
 
-// ============================================================
-// REGISTER
-// ============================================================
-
 export const createUser = async (data: CreateUserInput) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
+    // ── Base validation ───────────────────────────────────────
     if (!data.email) throw new AppError('Email is required', 400, 'EMAIL_REQUIRED');
     if (!data.password) throw new AppError('Password is required', 400, 'PASSWORD_REQUIRED');
     if (!data.full_name) throw new AppError('Full name is required', 400, 'FULL_NAME_REQUIRED');
@@ -67,65 +64,123 @@ export const createUser = async (data: CreateUserInput) => {
 
     const email = data.email.toLowerCase().trim();
 
-    const exists = await client.query(`SELECT id FROM users WHERE email = $1`, [email]);
-    if (exists.rows.length) {
+    // ── Duplicate email check ─────────────────────────────────
+    const existing = await client.query(`SELECT id FROM users WHERE email = $1`, [email]);
+    if (existing.rows.length) {
       throw new AppError('User already exists', 409, 'USER_ALREADY_EXISTS');
     }
 
     const hashed = await bcrypt.hash(data.password, SALT_ROUNDS);
 
-    // --- Supervisor pre-checks ---
+    // ─────────────────────────────────────────────────────────
+    // SUPERVISOR pre-checks
+    // Multiple supervisors allowed per building — no uniqueness
+    // constraint on supervisors.building_id.
+    // ─────────────────────────────────────────────────────────
     if (data.role === 'supervisor') {
-      if (!data.supervisor.building_id) {
+      if (!data.building_id) {
         throw new AppError(
           'Building ID is required for supervisor',
           400,
           'BUILDING_ID_REQUIRED_FOR_SUPERVISOR'
         );
       }
-      const buildingExists = await client.query(`SELECT id FROM buildings WHERE id = $1`, [
-        data.supervisor.building_id,
+      const building = await client.query(`SELECT id FROM buildings WHERE id = $1`, [
+        data.building_id,
       ]);
-      if (!buildingExists.rows.length) {
+      if (!building.rows.length) {
         throw new AppError('Building not found', 404, 'BUILDING_NOT_FOUND');
       }
     }
 
-    // --- Cleaner pre-checks ---
+    // ─────────────────────────────────────────────────────────
+    // CLEANER pre-checks
+    //
+    // 1. building_id must exist
+    // 2. floor_id must belong to that building
+    // 3. supervisor_id (optional): must exist, be active,
+    //    and belong to the same building
+    //    — queried by supervisors.id (PK), not user_id
+    // ─────────────────────────────────────────────────────────
     if (data.role === 'cleaner') {
-      if (!data.cleaner.supervisor_id) {
+      if (!data.building_id) {
         throw new AppError(
-          'Supervisor ID is required for cleaner',
+          'Building ID is required for cleaner',
           400,
-          'SUPERVISOR_ID_REQUIRED_FOR_CLEANER'
+          'BUILDING_ID_REQUIRED_FOR_CLEANER'
         );
       }
-      const supervisorCheck = await client.query(
-        `SELECT s.building_id, u.full_name
-         FROM supervisors s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.id = $1`,
-        [data.cleaner.supervisor_id]
-      );
-      if (!supervisorCheck.rows.length) {
-        throw new AppError('Supervisor not found', 404, 'SUPERVISOR_NOT_FOUND');
-      }
-      if (!supervisorCheck.rows[0].building_id) {
+      if (!data.floor_id) {
         throw new AppError(
-          'Supervisor is not assigned to a building',
+          'Floor ID is required for cleaner',
           400,
-          'SUPERVISOR_NOT_ASSIGNED_TO_BUILDING'
+          'FLOOR_ID_REQUIRED_FOR_CLEANER'
         );
+      }
+
+      // 1. Building must exist
+      const building = await client.query(`SELECT id FROM buildings WHERE id = $1`, [
+        data.building_id,
+      ]);
+      if (!building.rows.length) {
+        throw new AppError('Building not found', 404, 'BUILDING_NOT_FOUND');
+      }
+
+      // 2. Floor must belong to this building
+      const floor = await client.query(`SELECT id FROM floors WHERE id = $1 AND building_id = $2`, [
+        data.floor_id,
+        data.building_id,
+      ]);
+      if (!floor.rows.length) {
+        throw new AppError(
+          'Floor not found or does not belong to the selected building',
+          404,
+          'FLOOR_NOT_FOUND_IN_BUILDING'
+        );
+      }
+
+      // 3. Supervisor (optional)
+      //    supervisor_id = supervisors.id (PK), not user_id
+      if (data.supervisor_id) {
+        const supervisor = await client.query(
+          `SELECT id, building_id, is_active
+           FROM supervisors
+           WHERE id = $1`,
+          [data.supervisor_id]
+        );
+        if (!supervisor.rows.length) {
+          throw new AppError('Supervisor not found', 404, 'SUPERVISOR_NOT_FOUND');
+        }
+        if (!supervisor.rows[0].is_active) {
+          throw new AppError('Supervisor is not active', 400, 'SUPERVISOR_NOT_ACTIVE');
+        }
+        if (supervisor.rows[0].building_id !== data.building_id) {
+          throw new AppError(
+            'Supervisor does not belong to the selected building',
+            400,
+            'SUPERVISOR_BUILDING_MISMATCH'
+          );
+        }
       }
     }
 
-    // --- Insert user ---
+    // ─────────────────────────────────────────────────────────
+    // Step 1 — INSERT into users
+    // ─────────────────────────────────────────────────────────
+    const userBuildingId =
+      data.role === 'supervisor' || data.role === 'cleaner' ? data.building_id : null;
+
+    const userFloorId = data.role === 'cleaner' ? data.floor_id : null;
+
     const userRes = await client.query(
       `INSERT INTO users (
-        email, password, role, full_name, document, document_id,
-        age, nationality, profile_image, phone, base_salary
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-       RETURNING *`,
+         email, password, role, full_name, document, document_id,
+         age, nationality, profile_image, phone, base_salary,
+         building_id, floor_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING id, email, role, full_name, document, document_id,
+                 age, nationality, profile_image, phone, base_salary,
+                 building_id, floor_id, created_at, updated_at`,
       [
         email,
         hashed,
@@ -135,88 +190,67 @@ export const createUser = async (data: CreateUserInput) => {
         data.document_id,
         data.age,
         data.nationality,
-        data.profile_image || null,
-        data.phone || null,
-        data.base_salary || 0,
+        data.profile_image ?? null,
+        data.phone ?? null,
+        data.base_salary ?? 0,
+        userBuildingId,
+        userFloorId,
       ]
     );
 
     const user = userRes.rows[0];
 
-    // --- Supervisor role update ---
+    // ─────────────────────────────────────────────────────────
+    // Step 2 — UPSERT into role-specific profile table
+    //
+    // ON CONFLICT (user_id) DO UPDATE is required because the DB
+    // has a trigger that auto-inserts a blank row into supervisors
+    // or cleaners the moment the users row is created.
+    // The UPSERT overwrites that blank row with real data.
+    // ─────────────────────────────────────────────────────────
+
     if (data.role === 'supervisor') {
-      const supervisorResult = await client.query(
-        `UPDATE supervisors SET building_id = $1 WHERE user_id = $2 RETURNING *`,
-        [data.supervisor.building_id, user.id]
+      await client.query(
+        `INSERT INTO supervisors (user_id, building_id, full_name, is_active)
+         VALUES ($1, $2, $3, true)
+         ON CONFLICT (user_id) DO UPDATE
+           SET building_id = EXCLUDED.building_id,
+               full_name   = EXCLUDED.full_name,
+               is_active   = true,
+               updated_at  = now()`,
+        [user.id, data.building_id, data.full_name]
       );
-      if (!supervisorResult.rows.length) {
-        throw new AppError(
-          'Failed to update supervisor record',
-          500,
-          'FAILED_TO_UPDATE_SUPERVISOR'
-        );
-      }
     }
 
-    // --- Cleaner role update ---
     if (data.role === 'cleaner') {
-      const supervisorData = await client.query(
-        `SELECT s.building_id, u.full_name
-         FROM supervisors s
-         JOIN users u ON s.user_id = u.id
-         WHERE s.id = $1`,
-        [data.cleaner.supervisor_id]
+      await client.query(
+        `INSERT INTO cleaners (
+       user_id,
+       supervisor_id,
+       building_id,
+       floor_id
+     ) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id) DO UPDATE
+       SET supervisor_id = EXCLUDED.supervisor_id,
+           building_id   = EXCLUDED.building_id,
+           floor_id      = EXCLUDED.floor_id`,
+        [user.id, data.supervisor_id ?? null, data.building_id ?? null, data.floor_id ?? null]
       );
-
-      const { building_id, full_name: supervisor_full_name } = supervisorData.rows[0];
-
-      if (data.cleaner.floor_id) {
-        const floorCheck = await client.query(
-          `SELECT id FROM floors WHERE id = $1 AND building_id = $2`,
-          [data.cleaner.floor_id, building_id]
-        );
-        if (!floorCheck.rows.length) {
-          throw new AppError('Floor not found in building', 404, 'FLOOR_NOT_FOUND_IN_BUILDING');
-        }
-      }
-
-      const cleanerResult = await client.query(
-        `UPDATE cleaners
-         SET supervisor_id = $1, building_id = $2, floor_id = $3, supervisor_full_name = $4
-         WHERE user_id = $5
-         RETURNING *`,
-        [
-          data.cleaner.supervisor_id,
-          building_id,
-          data.cleaner.floor_id || null,
-          supervisor_full_name,
-          user.id,
-        ]
-      );
-      if (!cleanerResult.rows.length) {
-        throw new AppError('Failed to update cleaner record', 500, 'FAILED_TO_UPDATE_CLEANER');
-      }
     }
 
     await client.query('COMMIT');
-    delete user.password;
     return user;
   } catch (err: unknown) {
     await client.query('ROLLBACK');
 
-    // Re-wrap DB constraint errors as AppError
     if (typeof err === 'object' && err !== null && 'code' in err && 'constraint' in err) {
       const dbErr = err as { code?: string; constraint?: string };
       if (dbErr.code === '23505') {
+        if (dbErr.constraint === 'users_email_key') {
+          throw new AppError('User already exists', 409, 'USER_ALREADY_EXISTS');
+        }
         if (dbErr.constraint === 'cleaners_user_id_key') {
           throw new AppError('Cleaner record already exists', 409, 'CLEANER_RECORD_ALREADY_EXISTS');
-        }
-        if (dbErr.constraint === 'supervisors_user_id_key') {
-          throw new AppError(
-            'Supervisor record already exists',
-            409,
-            'SUPERVISOR_RECORD_ALREADY_EXISTS'
-          );
         }
       }
     }
@@ -226,11 +260,6 @@ export const createUser = async (data: CreateUserInput) => {
     client.release();
   }
 };
-
-// ============================================================
-// LOGIN
-// ============================================================
-
 export const loginService = async (
   email: string,
   password: string,
@@ -291,10 +320,6 @@ export const loginService = async (
   }
 };
 
-// ============================================================
-// LOGOUT — delete token from DB (was missing in original)
-// ============================================================
-
 export const logoutService = async (userId: string, tokenId?: string) => {
   const client = await pool.connect();
 
@@ -316,10 +341,6 @@ export const logoutService = async (userId: string, tokenId?: string) => {
     client.release();
   }
 };
-
-// ============================================================
-// CLEANERS
-// ============================================================
 
 export const getAllCleanersService = async () => {
   const { rows } = await pool.query(
@@ -416,4 +437,198 @@ export const getAllAdminsService = async () => {
      FROM users WHERE role = 'admin' ORDER BY created_at DESC`
   );
   return rows;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// src/modules/auth/auth_service.ts  — add this snippet to your loginUserService
+// RIGHT AFTER the password validation check (bcrypt.compare).
+//
+// The query below only hits if the user's role is 'supervisor'.
+// For all other roles it short-circuits and skips.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const checkSupervisorNotBlocked = async (userId: string, role: string): Promise<void> => {
+  if (role !== 'supervisor') return; // only supervisors have is_active flag
+
+  const result = await pool.query(`SELECT is_active FROM supervisors WHERE user_id = $1`, [userId]);
+
+  // No row means the supervisor record was removed — deny access
+  if (!result.rows.length) {
+    throw new AppError(
+      'Your account has been temporarily blocked. Please contact the administrator.',
+      403,
+      'ACCOUNT_BLOCKED'
+    );
+  }
+
+  const row = result.rows[0] as { is_active: boolean };
+  if (row.is_active === false) {
+    throw new AppError(
+      'Your account has been temporarily blocked. Please contact the administrator.',
+      403,
+      'ACCOUNT_BLOCKED'
+    );
+  }
+};
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+const generateOTP = (): string => Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+
+// OTP → SHA-256 (deterministic, needed for WHERE otp_hash = $2 in SQL).
+// bcrypt can't be used here because its random salt means every hash differs —
+// you can't filter in a WHERE clause. SHA-256 is safe for OTPs because they
+// are already protected by short expiry + single-use.
+const hashOTP = (otp: string): string => crypto.createHash('sha256').update(otp).digest('hex');
+
+// resetToken → bcrypt (fetched by user_id first, then bcrypt.compare).
+// Non-determinism is fine here because we never use it in a WHERE clause.
+// bcrypt adds defence-in-depth if the DB is ever breached.
+const hashResetToken = (token: string): Promise<string> => bcrypt.hash(token, SALT_ROUNDS);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 1 — Request OTP
+// ─────────────────────────────────────────────────────────────────────────────
+export const requestPasswordResetService = async (email: string): Promise<void> => {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const { rows } = await pool.query(`SELECT id, full_name, email FROM users WHERE email = $1`, [
+    normalizedEmail,
+  ]);
+
+  if (!rows.length) return; // silent — no email enumeration
+
+  const user = rows[0] as { id: string; full_name: string; email: string };
+  const otp = generateOTP();
+  const otpHash = hashOTP(otp); // SHA-256 for DB lookup
+
+  await pool.query(
+    `INSERT INTO password_resets (user_id, otp_hash, expires_at, used)
+     VALUES ($1, $2, NOW() + INTERVAL '${OTP_EXPIRY_MINUTES} minutes', false)
+     ON CONFLICT (user_id)
+     DO UPDATE SET otp_hash   = EXCLUDED.otp_hash,
+                   expires_at = EXCLUDED.expires_at,
+                   used       = false,
+                   created_at = NOW()`,
+    [user.id, otpHash]
+  );
+
+  await sendMail({
+    type: 'password_reset',
+    to: user.email,
+    full_name: user.full_name,
+    otp,
+    expiryMinutes: OTP_EXPIRY_MINUTES,
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 2 — Verify OTP
+// ─────────────────────────────────────────────────────────────────────────────
+export const verifyOTPService = async (
+  email: string,
+  otp: string
+): Promise<{ resetToken: string }> => {
+  const normalizedEmail = email.toLowerCase().trim();
+  const otpHash = hashOTP(otp); // SHA-256 — used directly in WHERE clause
+
+  const { rows } = await pool.query(
+    `SELECT pr.id, pr.user_id, pr.expires_at, pr.used
+     FROM password_resets pr
+     JOIN users u ON u.id = pr.user_id
+     WHERE u.email = $1 AND pr.otp_hash = $2`,
+    [normalizedEmail, otpHash]
+  );
+
+  if (!rows.length) throw new Error('Invalid OTP');
+
+  const reset = rows[0] as { id: string; user_id: string; expires_at: Date; used: boolean };
+
+  if (reset.used) throw new Error('OTP has already been used');
+  if (new Date() > reset.expires_at) throw new Error('OTP has expired');
+
+  // Generate reset token → hash with bcrypt before storing
+  // Fetched by reset.id later (not by token), so random salt is fine
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const resetTokenHash = await hashResetToken(resetToken); // bcrypt ✓
+
+  await pool.query(
+    `UPDATE password_resets
+     SET reset_token_hash = $1,
+         token_expires_at = NOW() + INTERVAL '10 minutes'
+     WHERE id = $2`,
+    [resetTokenHash, reset.id]
+  );
+
+  return { resetToken };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 3 — Reset Password
+// ─────────────────────────────────────────────────────────────────────────────
+export const resetPasswordService = async (
+  email: string,
+  resetToken: string,
+  newPassword: string
+): Promise<void> => {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Fetch by email (not by token hash — bcrypt is non-deterministic)
+    const { rows } = await client.query(
+      `SELECT pr.id, pr.user_id, pr.reset_token_hash, pr.token_expires_at, pr.used
+       FROM password_resets pr
+       JOIN users u ON u.id = pr.user_id
+       WHERE u.email = $1 AND pr.reset_token_hash IS NOT NULL`,
+      [normalizedEmail]
+    );
+
+    if (!rows.length) throw new Error('Invalid or expired reset token');
+
+    const reset = rows[0] as {
+      id: string;
+      user_id: string;
+      reset_token_hash: string;
+      token_expires_at: Date;
+      used: boolean;
+    };
+
+    // bcrypt.compare — works correctly regardless of random salt
+    const tokenValid = await bcrypt.compare(resetToken, reset.reset_token_hash);
+    if (!tokenValid) throw new Error('Invalid or expired reset token');
+
+    if (reset.used) throw new Error('Reset token already used');
+    if (!reset.token_expires_at || new Date() > reset.token_expires_at)
+      throw new Error('Reset token has expired');
+
+    if (newPassword.length < 8) throw new Error('Password must be at least 8 characters');
+
+    const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // Update password + bump token_version → invalidates ALL existing JWTs
+    await client.query(
+      `UPDATE users
+       SET password      = $1,
+           token_version = token_version + 1,
+           updated_at    = NOW()
+       WHERE id = $2`,
+      [hashed, reset.user_id]
+    );
+
+    // Revoke all refresh tokens for this user
+    await client.query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [reset.user_id]);
+
+    // Mark reset record as used — can never be replayed
+    await client.query(`UPDATE password_resets SET used = true WHERE id = $1`, [reset.id]);
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 };

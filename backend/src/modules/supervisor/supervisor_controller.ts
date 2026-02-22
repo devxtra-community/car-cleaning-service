@@ -1,197 +1,177 @@
-import { Request, Response } from 'express';
-import { AuthRequest } from '../../middlewares/authMiddleware';
+import { RequestHandler } from 'express';
 import {
-  deleteSupervisorService,
+  getAllSupervisorsService,
+  getUnassignedSupervisorsService,
   getSupervisorDetailsService,
-  getSupervisorWorkersService,
-  supervisorReportService,
-  toggleSupervisorStatusService,
   updateSupervisorService,
+  toggleSupervisorStatusService,
+  deleteSupervisorService,
+  getAvailableCleanersService,
+  assignCleanerToSupervisorService,
+  removeCleanerFromSupervisorService,
 } from './supervisor_services';
+import { getAllBuildingsService } from '../buildings/buildings_service';
+import { logger } from 'src/config/logger';
 
-export const getSupervisorWorkers = async (req: AuthRequest, res: Response) => {
-  if (!req.user?.userId) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
+// ── GET /api/supervisors ───────────────────────────────────────────────────────
 
-  const supervisorId = req.user.userId;
-  const workers = await getSupervisorWorkersService(supervisorId);
-
-  return res.json({ success: true, data: workers });
-};
-
-export const supervisorReport = async (req: AuthRequest, res: Response) => {
-  if (!req.user?.userId) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
-
-  const supervisorId = req.user.userId;
-  const period = String(req.query.period || 'month');
-
-  if (!['day', 'week', 'month'].includes(period)) {
-    return res.status(400).json({
-      success: false,
-      message: 'period must be day/week/month',
-    });
-  }
-
-  const report = await supervisorReportService(supervisorId, period);
-  return res.json({ success: true, data: report });
-};
-
-// Get supervisor by ID (your existing code)
-export const getSupervisorById = async (req: Request, res: Response) => {
+export const getAllSupervisors: RequestHandler = async (_req, res, next) => {
   try {
-    const id = req.params.id as string;
-    const supervisor = await getSupervisorDetailsService(id as string);
-
-    if (!supervisor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supervisor not found',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: supervisor,
-    });
-  } catch (error) {
-    console.error('Error fetching supervisor:', error);
-    return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Internal server error',
-    });
+    const data = await getAllSupervisorsService();
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    logger.error('getAllSupervisors error', err);
+    next(err);
   }
 };
 
-// Update supervisor
-export const updateSupervisor = async (req: Request, res: Response) => {
+// ── GET /api/supervisors/unassigned ───────────────────────────────────────────
+
+export const getUnassignedSupervisors: RequestHandler = async (_req, res, next) => {
   try {
-    const id = req.params.id as string;
-    const updateData = req.body;
+    const data = await getUnassignedSupervisorsService();
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    logger.error('getUnassignedSupervisors error', err);
+    next(err);
+  }
+};
 
-    // Validate required fields if needed
-    if (updateData.email && !isValidEmail(updateData.email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid email format',
-      });
+// ── GET /api/supervisors/buildings ────────────────────────────────────────────
+// Simple building list for the edit modal dropdown
+
+export const getBuildingsForDropdown: RequestHandler = async (_req, res, next) => {
+  try {
+    const data = await getAllBuildingsService();
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    logger.error('getBuildingsForDropdown error', err);
+    next(err);
+  }
+};
+
+// ── GET /api/supervisors/:id ──────────────────────────────────────────────────
+
+export const getSupervisorById: RequestHandler = async (req, res, next) => {
+  try {
+    const data = await getSupervisorDetailsService(req.params['id'] as string);
+    if (!data) {
+      res.status(404).json({ success: false, message: 'Supervisor not found' });
+      return;
     }
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    logger.error('getSupervisorById error', err);
+    next(err);
+  }
+};
 
-    const updatedSupervisor = await updateSupervisorService(id, updateData);
+// ── PUT /api/supervisors/:id ──────────────────────────────────────────────────
 
-    if (!updatedSupervisor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supervisor not found',
-      });
+export const updateSupervisor: RequestHandler = async (req, res, next) => {
+  try {
+    const updated = await updateSupervisorService(req.params['id'] as string, req.body);
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'Supervisor not found' });
+      return;
     }
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: 'Supervisor updated successfully',
-      data: updatedSupervisor,
+      data: updated,
     });
-  } catch (error) {
-    console.error('Error updating supervisor:', error);
-
-    // Handle specific errors
-    if (error instanceof Error) {
-      if (error.message.includes('email already exists')) {
-        return res.status(409).json({
-          success: false,
-          message: 'Email already exists',
-        });
-      }
-      if (error.message.includes('building not found')) {
-        return res.status(404).json({
-          success: false,
-          message: 'Building not found',
-        });
-      }
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Internal server error',
-    });
+  } catch (err) {
+    logger.error('updateSupervisor error', err);
+    next(err);
   }
 };
 
-// Toggle supervisor active/inactive status
-export const toggleSupervisorStatus = async (req: Request, res: Response) => {
+// ── PATCH /api/supervisors/:id/toggle-status ──────────────────────────────────
+// Sets is_active. Auth service checks this flag on login and returns 403 if false.
+
+export const toggleSupervisorStatus: RequestHandler = async (req, res, next) => {
   try {
-    const id = req.params.id as string;
-    const { is_active } = req.body;
-
-    if (typeof is_active !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        message: 'is_active must be a boolean value',
-      });
+    const body = req.body as { is_active?: unknown };
+    if (typeof body.is_active !== 'boolean') {
+      res.status(400).json({ success: false, message: 'is_active (boolean) is required' });
+      return;
     }
-
-    const result = await toggleSupervisorStatusService(id, is_active);
-
+    const result = await toggleSupervisorStatusService(req.params['id'] as string, body.is_active);
     if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supervisor not found',
-      });
+      res.status(404).json({ success: false, message: 'Supervisor not found' });
+      return;
     }
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: `Supervisor ${is_active ? 'activated' : 'deactivated'} successfully`,
+      message: `Supervisor ${result.is_active ? 'activated' : 'deactivated'} successfully`,
       data: result,
     });
-  } catch (error) {
-    console.error('Error toggling supervisor status:', error);
-    return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Internal server error',
-    });
+  } catch (err) {
+    logger.error('toggleSupervisorStatus error', err);
+    next(err);
   }
 };
 
-// Delete supervisor
-export const deleteSupervisor = async (req: Request, res: Response) => {
+// ── DELETE /api/supervisors/:id ───────────────────────────────────────────────
+
+export const deleteSupervisor: RequestHandler = async (req, res, next) => {
   try {
-    const id = req.params.id as string;
-
-    const result = await deleteSupervisorService(id);
-
+    const result = await deleteSupervisorService(req.params['id'] as string);
     if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supervisor not found',
-      });
+      res.status(404).json({ success: false, message: 'Supervisor not found' });
+      return;
     }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Supervisor deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting supervisor:', error);
-
-    if (error instanceof Error && error.message.includes('has assigned cleaners')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete supervisor with assigned cleaners. Please reassign cleaners first.',
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Internal server error',
-    });
+    res.status(200).json({ success: true, message: 'Supervisor deleted successfully' });
+  } catch (err) {
+    logger.error('deleteSupervisor error', err);
+    next(err);
   }
 };
 
-// Helper function for email validation
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
+// ── GET /api/supervisors/:id/available-cleaners ───────────────────────────────
+
+export const getAvailableCleaners: RequestHandler = async (_req, res, next) => {
+  try {
+    const data = await getAvailableCleanersService();
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    logger.error('getAvailableCleaners error', err);
+    next(err);
+  }
+};
+
+// ── POST /api/supervisors/:id/assign-cleaner ──────────────────────────────────
+
+export const assignCleanerToSupervisor: RequestHandler = async (req, res, next) => {
+  try {
+    const body = req.body as { cleanerId?: unknown };
+    if (typeof body.cleanerId !== 'string' || !body.cleanerId) {
+      res.status(400).json({ success: false, message: 'cleanerId is required' });
+      return;
+    }
+    const data = await assignCleanerToSupervisorService(req.params['id'] as string, body.cleanerId);
+    res.status(200).json({
+      success: true,
+      message: 'Cleaner assigned successfully',
+      data,
+    });
+  } catch (err) {
+    logger.error('assignCleanerToSupervisor error', err);
+    next(err);
+  }
+};
+
+// ── DELETE /api/supervisors/:id/cleaners/:cleanerId ───────────────────────────
+
+export const removeCleanerFromSupervisor: RequestHandler = async (req, res, next) => {
+  try {
+    await removeCleanerFromSupervisorService(
+      req.params['id'] as string,
+      req.params['cleanerId'] as string
+    );
+    res.status(200).json({ success: true, message: 'Cleaner removed from supervisor' });
+  } catch (err) {
+    logger.error('removeCleanerFromSupervisor error', err);
+    next(err);
+  }
+};

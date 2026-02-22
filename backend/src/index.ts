@@ -18,7 +18,8 @@ import buildingsRoutes from './modules/buildings/buildings_routes';
 import incentiveRoutes from './modules/incentives/incentives_routes';
 import analyticRoutes from './modules/analytics/analytic_routes';
 import supervisorRoute from './modules/supervisor/supervisor_routes';
-import floorRoute from './modules/floors/floorRoutes';
+import Adminaccountantrouter from './modules/AdminAccountant/Adminaccountantrouter';
+// import floorRoute from './modules/floors/floorRoutes';
 import s3Routes from './routes/s3';
 const app = express();
 
@@ -66,11 +67,11 @@ app.use('/api/vehicle', vechicleRoutes);
 app.use('/api/buildings', buildingsRoutes);
 
 app.use('/tasks', taskRoutes);
-app.use('/salary', salaryRoute);
+app.use('/api/salary', salaryRoute);
 app.use('/api/incentives', incentiveRoutes);
 app.use('/analytics', analyticRoutes);
 app.use('/supervisors', supervisorRoute);
-app.use('/api/floors', floorRoute);
+app.use('/api', Adminaccountantrouter);
 
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {

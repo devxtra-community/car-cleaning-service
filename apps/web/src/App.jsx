@@ -27,7 +27,6 @@ const CleanerDetails = lazy(() => import('./components/admin/CleanerDetails'));
 const Accountant = lazy(() => import('./components/accountant/AccDashboard'));
 
 /* Shared pages */
-const AddNewSalary = lazy(() => import('./components/shared/AddNewSalary'));
 const SalaryFinalization = lazy(() => import('./components/shared/SalaryFinalization'));
 const MonthlyReport = lazy(() => import('./components/shared/MonthlyReport'));
 const Reconciliation = lazy(() => import('./components/shared/Reconciliation'));
@@ -41,6 +40,9 @@ const SalaryList = lazy(() => import('./components/shared/SalaryList'));
 const SalarySummary = lazy(() => import('./components/shared/SalarySummary'));
 const BuildingDetailsPage = lazy(() => import('./components/admin/BuildingDetails'));
 const EditBuilding = lazy(() => import('./components/admin/EditBuilding'));
+const AdminListing = lazy(() => import('./components/admin/Admins'));
+const AccountantListing = lazy(() => import('./components/admin/Accountant'));
+
 function App() {
   return (
     <AuthProvider>
@@ -59,7 +61,6 @@ function App() {
             <Route path="dashboard" element={<Accountant />} />
 
             {/* Shared salary pages */}
-            <Route path="addNewSalary" element={<AddNewSalary />} />
             <Route path="salaryFinalization" element={<SalaryFinalization />} />
             <Route path="monthlyReport" element={<MonthlyReport />} />
             <Route path="reconciliation" element={<Reconciliation />} />
@@ -90,7 +91,6 @@ function App() {
             <Route path="buildings/:buildingId" element={<BuildingDetailsPage />} />
             <Route path="buildings/:buildingId/edit" element={<EditBuilding />} />
             {/* Shared salary pages for admin also */}
-            <Route path="addNewSalary" element={<AddNewSalary />} />
             <Route path="salaryFinalization" element={<SalaryFinalization />} />
             <Route path="monthlyReport" element={<MonthlyReport />} />
             <Route path="reconciliation" element={<Reconciliation />} />
@@ -103,6 +103,8 @@ function App() {
             <Route path="salary-summary" element={<SalarySummary />} />
             <Route path="incentives/add" element={<AddIncentiveTarget />} />
             <Route path="incentives/edit/:incentiveId" element={<EditIncentiveTarget />} />
+            <Route path="admins" element={<AdminListing />} />
+            <Route path="accountants" element={<AccountantListing />} />
           </Route>
 
           {/* Catch all */}

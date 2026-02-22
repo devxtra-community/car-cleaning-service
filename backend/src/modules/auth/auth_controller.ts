@@ -15,12 +15,9 @@ import {
   getAllAccountantsService,
   getAllAdminsService,
 } from './auth_service';
+import { sendWelcomeMail } from 'src/config/sendWelcomeMail';
 
 const VALID_CLIENT_TYPES: ClientType[] = ['web', 'mobile'];
-
-// ============================================================
-// REGISTER
-// ============================================================
 
 export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -58,29 +55,44 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
         payload = {
           ...base,
           role: 'supervisor',
-          supervisor: { building_id: req.body.building_id },
+          building_id: req.body.building_id,
         };
         break;
+
       case 'cleaner':
         payload = {
           ...base,
           role: 'cleaner',
-          cleaner: {
-            supervisor_id: req.body.supervisor_id,
-            floor_id: req.body.floor_id || undefined,
-          },
+          building_id: req.body.building_id,
+          floor_id: req.body.floor_id,
+          supervisor_id: req.body.supervisor_id || undefined,
         };
         break;
+
       case 'admin':
       case 'super_admin':
       case 'accountant':
         payload = { ...base, role };
         break;
+
       default:
         throw new AppError('Invalid role provided', 400, 'INVALID_ROLE');
     }
 
     const user = await createUser(payload);
+
+    // ── Send welcome email (fire-and-forget) ──────────────────
+    // Using void intentionally: mail errors are logged but do NOT
+    // cause the registration to fail. Switch to await if you need
+    // guaranteed delivery before responding.
+    void sendWelcomeMail({
+      to: base.email,
+      full_name: base.full_name,
+      password: base.password, // plain-text password, before hashing
+      role,
+    }).catch((mailErr: unknown) => {
+      console.error('[sendWelcomeMail] Failed to send welcome email:', mailErr);
+    });
 
     return res.status(201).json({
       success: true,
@@ -91,13 +103,6 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
     next(err);
   }
 };
-
-// ============================================================
-// LOGIN
-// client_type sent in request body — 'web' or 'mobile'
-// web   → refresh token in httpOnly cookie, access token in body
-// mobile → both tokens in body (untouched for teammates)
-// ============================================================
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {

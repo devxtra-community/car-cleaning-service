@@ -3,6 +3,18 @@ import { AuthRequest } from '../../middlewares/authMiddleware';
 import { pool } from '../../database/connectDatabase';
 import { getCleanerFullDetailsService } from './worker_service';
 import { RequestHandler } from 'express';
+import {
+  getAllCleanersService,
+  getCleanerByIdService,
+  updateCleanerService,
+  toggleCleanerActiveService,
+  deleteCleanerService,
+  getFloorsByBuildingIdService,
+  getSupervisorsByBuildingIdService,
+} from './worker_service';
+import { getAllBuildingsService } from '../buildings/buildings_service';
+import { logger } from 'src/config/logger';
+
 export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
   try {
     const workerId = req.user?.userId;
@@ -69,5 +81,115 @@ export const getCleanerFullDetailsController: RequestHandler = async (req, res) 
       success: false,
       message: 'Internal server error',
     });
+  }
+};
+
+export const getAllCleaners: RequestHandler = async (_req, res, next) => {
+  try {
+    const data = await getAllCleanersService();
+    res.json({ success: true, count: data.length, data });
+  } catch (err) {
+    logger.error('getAllCleaners', err);
+    next(err);
+  }
+};
+
+export const getCleanerById: RequestHandler = async (req, res, next) => {
+  try {
+    const id = req.params['id'] as string;
+    const date = (req.query as { date?: string }).date;
+    const data = await getCleanerByIdService(id, date);
+    if (!data) {
+      res.status(404).json({ success: false, message: 'Cleaner not found' });
+      return;
+    }
+    res.json({ success: true, data });
+  } catch (err) {
+    logger.error('getCleanerById', err);
+    next(err);
+  }
+};
+
+export const updateCleaner: RequestHandler = async (req, res, next) => {
+  try {
+    const id = req.params['id'] as string;
+    const updated = await updateCleanerService(id, req.body);
+    if (!updated) {
+      res.status(404).json({ success: false, message: 'Cleaner not found' });
+      return;
+    }
+    res.json({ success: true, message: 'Cleaner updated successfully', data: updated });
+  } catch (err) {
+    logger.error('updateCleaner', err);
+    next(err);
+  }
+};
+
+export const toggleCleanerStatus: RequestHandler = async (req, res, next) => {
+  try {
+    const id = req.params['id'] as string;
+    const body = req.body as { is_active?: unknown };
+    if (typeof body.is_active !== 'boolean') {
+      res.status(400).json({ success: false, message: 'is_active (boolean) required' });
+      return;
+    }
+    const r = await toggleCleanerActiveService(id, body.is_active);
+    if (!r) {
+      res.status(404).json({ success: false, message: 'Cleaner not found' });
+      return;
+    }
+    res.json({
+      success: true,
+      message: `Cleaner ${r.is_active ? 'activated' : 'deactivated'}`,
+      data: r,
+    });
+  } catch (err) {
+    logger.error('toggleCleanerStatus', err);
+    next(err);
+  }
+};
+
+export const deleteCleaner: RequestHandler = async (req, res, next) => {
+  try {
+    const id = req.params['id'] as string;
+    const r = await deleteCleanerService(id);
+    if (!r) {
+      res.status(404).json({ success: false, message: 'Cleaner not found' });
+      return;
+    }
+    res.json({ success: true, message: 'Cleaner deleted successfully' });
+  } catch (err) {
+    logger.error('deleteCleaner', err);
+    next(err);
+  }
+};
+
+export const getBuildingsDropdown: RequestHandler = async (_req, res, next) => {
+  try {
+    const data = await getAllBuildingsService();
+    res.json({ success: true, data });
+  } catch (err) {
+    logger.error('getBuildingsDropdown', err);
+    next(err);
+  }
+};
+
+export const getFloorsForBuilding: RequestHandler = async (req, res, next) => {
+  try {
+    const data = await getFloorsByBuildingIdService(req.params['buildingId'] as string);
+    res.json({ success: true, data });
+  } catch (err) {
+    logger.error('getFloorsForBuilding', err);
+    next(err);
+  }
+};
+
+export const getSupervisorsForBuilding: RequestHandler = async (req, res, next) => {
+  try {
+    const data = await getSupervisorsByBuildingIdService(req.params['buildingId'] as string);
+    res.json({ success: true, data });
+  } catch (err) {
+    logger.error('getSupervisorsForBuilding', err);
+    next(err);
   }
 };
