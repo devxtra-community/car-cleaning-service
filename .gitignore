@@ -1,3 +1,8 @@
 node_modules/
 .env
 .env.*
+dist/
+backend/dist/
+frontend/dist/
+apps/**/dist/
+*.log

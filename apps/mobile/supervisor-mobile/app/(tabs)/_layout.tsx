@@ -3,6 +3,8 @@ import { Tabs } from 'expo-router';
 import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native';
 import { PieChart, Home, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
+import { getAccessToken } from '../../src/tokenStorage';
 
 const { width } = Dimensions.get('window');
 const PADDING = 4;
@@ -45,6 +47,20 @@ function CustomTabBar({ state, descriptors: _descriptors, navigation }: BottomTa
 }
 
 export default function TabLayout() {
+  const { expoPushToken, sendTokenToBackend } = usePushNotifications();
+
+  useEffect(() => {
+    const registerToken = async () => {
+      if (expoPushToken) {
+        const token = await getAccessToken();
+        if (token) {
+          await sendTokenToBackend(expoPushToken, token);
+        }
+      }
+    };
+    registerToken();
+  }, [expoPushToken]);
+
   return (
     <Tabs
       screenOptions={{

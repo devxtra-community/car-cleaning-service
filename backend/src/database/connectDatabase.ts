@@ -8,15 +8,29 @@ const RECONNECT_INTERVAL_MS = 10000;
 let isDbConnected = false;
 let reconnectInterval: NodeJS.Timeout | null = null;
 
+let poolInstance: Pool | null = null;
 
+export const getPool = () => {
+  if (!poolInstance) {
+    poolInstance = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeoutMillis: 5000,
+    });
+  }
+  return poolInstance;
+};
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeoutMillis: 5000,
-});
+// For backward compatibility, keep the pool export but use a getter if possible
+// instead of a static instance, or just export it as a lazy proxy.
+// But mostly we use pool.query...
+export const pool = {
+  query: (text: string, params?: unknown[]) => getPool().query(text, params),
+  connect: () => getPool().connect(),
+  end: () => poolInstance?.end(),
+} as unknown as Pool;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
