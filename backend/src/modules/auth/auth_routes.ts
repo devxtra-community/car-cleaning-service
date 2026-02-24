@@ -12,6 +12,8 @@ import { protect } from 'src/middlewares/authMiddleware';
 import { allowRoles } from 'src/middlewares/roleMiddleware';
 import { refresh } from './refresh';
 import { getAllFloors, getFloorsByBuilding } from '../floors/floor_controller';
+import { registerPushTokenController } from '../supervisor/supervisor_controller';
+import { authMiddleware } from '../../middlewares/authMiddleware';
 
 const router = Router();
 
@@ -22,6 +24,8 @@ router.post('/login', login);
 router.post('/logout', protect, logout);
 
 router.get('/supervisors', protect, allowRoles('admin'), getAllSupervisors);
+
+router.post('/register-push-token', authMiddleware, registerPushTokenController);
 router.get('/buildings/:buildingId/floors', getFloorsByBuilding);
 router.get('/floors', getAllFloors);
 router.get('/cleaners', protect, allowRoles('admin'), getCleaners);
