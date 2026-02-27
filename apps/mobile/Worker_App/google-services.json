@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "382081817336",
+    "project_id": "car-cleaning-service-e52ba",
+    "storage_bucket": "car-cleaning-service-e52ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:382081817336:android:f70c84bec93290b815390d",
+        "android_client_info": {
+          "package_name": "com.anonymous.Worker_App"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3xQvQilyURo1GLB4tQfwiTlYj23hxP6Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:382081817336:android:9870e0d5ae3021d315390d",
+        "android_client_info": {
+          "package_name": "com.anonymous.supervisormobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3xQvQilyURo1GLB4tQfwiTlYj23hxP6Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

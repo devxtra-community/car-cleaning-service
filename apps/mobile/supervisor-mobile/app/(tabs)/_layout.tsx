@@ -1,6 +1,6 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
-import { View, Text, Pressable, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, Pressable, Animated, Dimensions } from 'react-native';
 import { PieChart, Home, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
@@ -23,23 +23,55 @@ function CustomTabBar({ state, descriptors: _descriptors, navigation }: BottomTa
   }, [index, translateX]);
 
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.container}>
-        <Animated.View style={[styles.slider, { transform: [{ translateX }] }]} />
+    <View className="absolute bottom-4 w-full items-center">
+      <View
+        className="w-[94%] h-[72px] bg-white rounded-[36px] flex-row items-center overflow-hidden"
+        style={{ padding: PADDING }}
+      >
+        <Animated.View
+          className="absolute bg-[#1B86C6] rounded-[32px]"
+          style={{
+            width: TAB_WIDTH,
+            height: 72 - PADDING * 2,
+            top: PADDING,
+            transform: [{ translateX }],
+          }}
+        />
 
-        <Pressable style={styles.tab} onPress={() => navigation.navigate('analytics')}>
+        <Pressable
+          className="flex-1 items-center justify-center gap-1 z-10"
+          onPress={() => navigation.navigate('analytics')}
+        >
           <PieChart size={22} color={index === 0 ? '#fff' : '#9ca3af'} />
-          <Text style={{ color: index === 0 ? '#fff' : '#9ca3af' }}>Analytics</Text>
+          <Text
+            className={`text-[10px] font-antigravity-medium ${index === 0 ? 'text-white' : 'text-[#9ca3af]'}`}
+          >
+            Analytics
+          </Text>
         </Pressable>
 
-        <Pressable style={styles.tab} onPress={() => navigation.navigate('index')}>
+        <Pressable
+          className="flex-1 items-center justify-center gap-1 z-10"
+          onPress={() => navigation.navigate('index')}
+        >
           <Home size={22} color={index === 1 ? '#fff' : '#9ca3af'} />
-          <Text style={{ color: index === 1 ? '#fff' : '#9ca3af' }}>Home</Text>
+          <Text
+            className={`text-[10px] font-antigravity-medium ${index === 1 ? 'text-white' : 'text-[#9ca3af]'}`}
+          >
+            Home
+          </Text>
         </Pressable>
 
-        <Pressable style={styles.tab} onPress={() => navigation.navigate('profile')}>
+        <Pressable
+          className="flex-1 items-center justify-center gap-1 z-10"
+          onPress={() => navigation.navigate('profile')}
+        >
           <User size={22} color={index === 2 ? '#fff' : '#9ca3af'} />
-          <Text style={{ color: index === 2 ? '#fff' : '#9ca3af' }}>Profile</Text>
+          <Text
+            className={`text-[10px] font-antigravity-medium ${index === 2 ? 'text-white' : 'text-[#9ca3af]'}`}
+          >
+            Profile
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -59,7 +91,7 @@ export default function TabLayout() {
       }
     };
     registerToken();
-  }, [expoPushToken]);
+  }, [expoPushToken, sendTokenToBackend]);
 
   return (
     <Tabs
@@ -75,36 +107,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    bottom: 16,
-    width: '100%',
-    alignItems: 'center',
-  },
-  container: {
-    width: '94%',
-    height: 72,
-    backgroundColor: '#fff',
-    borderRadius: 36,
-    flexDirection: 'row',
-    padding: PADDING,
-    overflow: 'hidden',
-  },
-  slider: {
-    position: 'absolute',
-    width: TAB_WIDTH,
-    height: 72 - PADDING * 2,
-    backgroundColor: '#1B86C6',
-    borderRadius: 32,
-    top: PADDING,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    zIndex: 1,
-  },
-});

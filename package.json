@@ -5,7 +5,8 @@
   "version": "1.0.0",
   "description": "Monorepo for Car Cleaning System (Mobile, Admin, Accountant, Backend)",
   "workspaces": [
-    "apps/*",
+    "apps/mobile/*",
+    "apps/web/*",
     "backend",
     "shared"
   ],

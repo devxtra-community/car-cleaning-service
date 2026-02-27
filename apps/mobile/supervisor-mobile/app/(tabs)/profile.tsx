@@ -2,7 +2,6 @@ import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Image,
   Pressable,
   ScrollView,
@@ -10,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import api from '../../src/api/api';
+import { API } from '../../src/api/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
@@ -25,7 +24,7 @@ const TopoPattern = () => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -60,7 +59,7 @@ export default function ProfileView() {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await api.get('/api/users/me');
+      const res = await API.get('/api/users/me');
       if (res.data.success) {
         setUser(res.data.data);
       }
@@ -94,56 +93,67 @@ export default function ProfileView() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View className="flex-1 bg-[#F8FAFB] justify-center items-center">
         <ActivityIndicator size="large" color="#0EA5E9" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-[#F8FAFB]">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* HEADER SECTION */}
-        <View style={styles.headerContainer}>
+        <View className="h-[320px] items-center mb-5">
           <LinearGradient
             colors={['#0EA5E9', '#0284C7']}
-            style={styles.headerGradient}
+            className="absolute top-0 inset-x-0 h-[240px] rounded-b-[60px]"
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
           <TopoPattern />
 
-          <View style={styles.profileInfoClay}>
-            <View style={styles.avatarClayBorder}>
-              <View style={styles.avatarClayContainer}>
+          <View
+            className="mt-20 w-[width-48] bg-white rounded-[32px] p-6 items-center shadow-xl border border-[#F1F5F9]"
+            style={{ width: width - 48 }}
+          >
+            <View className="w-[104px] h-[104px] rounded-full border-4 border-[#F0F9FF] -mt-[70px] bg-white justify-center items-center">
+              <View className="w-[90px] h-[90px] rounded-full bg-[#E0F2FE] justify-center items-center overflow-hidden">
                 {user?.profile_image ? (
-                  <Image source={{ uri: user.profile_image }} style={styles.avatarImage} />
+                  <Image source={{ uri: user.profile_image }} className="w-full h-full" />
                 ) : (
                   <User size={40} color="#0EA5E9" />
                 )}
               </View>
             </View>
 
-            <Text style={styles.nameText}>{user?.full_name || 'Supervisor'}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{user?.role?.toUpperCase() || 'SUPERVISOR'}</Text>
+            <Text className="text-[22px] font-antigravity-bold text-[#1E293B] mt-3">
+              {user?.full_name || 'Supervisor'}
+            </Text>
+            <View className="px-3 py-1 rounded-xl bg-[#F0F9FF] mt-[6px]">
+              <Text className="text-[10px] font-antigravity-bold text-[#0EA5E9] uppercase tracking-widest">
+                {user?.role?.toUpperCase() || 'SUPERVISOR'}
+              </Text>
             </View>
 
             {user?.building_name && (
-              <View style={styles.locationContainer}>
+              <View className="flex-row items-center mt-3 gap-1">
                 <MapPin size={14} color="#64748B" />
-                <Text style={styles.locationText}>{user.building_name}</Text>
+                <Text className="text-[13px] color-[#64748B] font-antigravity-medium">
+                  {user.building_name}
+                </Text>
               </View>
             )}
           </View>
         </View>
 
         {/* MENU SECTION */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionLabel}>ACCOUNT SETTINGS</Text>
+        <View className="px-6 pt-[10px]">
+          <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-4 mt-[10px]">
+            ACCOUNT SETTINGS
+          </Text>
 
           <MenuItem
             onPress={() => router.push('/(tabs)/profile/edit-profile')}
@@ -158,7 +168,9 @@ export default function ProfileView() {
             subtitle="Notifications & Mode"
           />
 
-          <Text style={styles.sectionLabel}>SUPPORT & INFO</Text>
+          <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-4 mt-[10px]">
+            SUPPORT & INFO
+          </Text>
 
           <MenuItem
             icon={<HelpCircle size={20} color="#0EA5E9" />}
@@ -196,157 +208,23 @@ function MenuItem({
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.menuItemClay, pressed && styles.menuItemPressed]}
+      className="flex-row items-center bg-white rounded-[24px] p-4 mb-3 border border-[#F1F5F9] shadow-sm active:scale-[0.98] transition-transform"
       onPress={onPress}
     >
-      <View style={[styles.menuIconContainer, danger && { backgroundColor: '#FEF2F2' }]}>
+      <View
+        className={`w-12 h-12 rounded-2xl bg-[#F0F9FF] justify-center items-center mr-4 ${danger ? 'bg-[#FEF2F2]' : ''}`}
+      >
         {icon}
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.menuTitle, danger && { color: '#EF4444' }]}>{title}</Text>
-        <Text style={styles.menuSubtitle}>{subtitle}</Text>
+      <View className="flex-1">
+        <Text
+          className={`text-base font-antigravity-bold text-[#1E293B] ${danger ? 'text-[#EF4444]' : ''}`}
+        >
+          {title}
+        </Text>
+        <Text className="text-xs text-[#94A3B8] mt-[2px]">{subtitle}</Text>
       </View>
       <ChevronRight size={18} color="#94A3B8" />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFB',
-  },
-  headerContainer: {
-    height: 320,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 240,
-    borderBottomLeftRadius: 60,
-    borderBottomRightRadius: 60,
-  },
-  profileInfoClay: {
-    marginTop: 80,
-    width: width - 48,
-    backgroundColor: '#fff',
-    borderRadius: 32,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  avatarClayBorder: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    borderWidth: 4,
-    borderColor: '#F0F9FF',
-    marginTop: -70,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarClayContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  nameText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginTop: 12,
-  },
-  roleBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#F0F9FF',
-    marginTop: 6,
-  },
-  roleText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#0EA5E9',
-    letterSpacing: 1.2,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  menuSection: {
-    paddingHorizontal: 24,
-    paddingTop: 10,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 1.5,
-    marginBottom: 16,
-    marginTop: 10,
-  },
-  menuItemClay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  menuItemPressed: {
-    transform: [{ scale: 0.98 }],
-    backgroundColor: '#F8FAFB',
-  },
-  menuIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#F0F9FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  menuSubtitle: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-});

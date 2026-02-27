@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   Pressable,
   Dimensions,
   Alert,
@@ -27,7 +26,7 @@ const TopoPattern = () => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -55,7 +54,7 @@ const TopoPattern = () => (
 );
 
 const WavyHeader = () => (
-  <View style={StyleSheet.absoluteFill}>
+  <View className="absolute inset-0">
     <Svg
       height={height * 0.45}
       width={width}
@@ -88,7 +87,7 @@ export default function LoginScreen() {
     try {
       setLoading(true);
 
-      const res = await api.post('/api/auth/login', {
+      const res = await API.post('/api/auth/login', {
         email,
         password,
         client_type: 'mobile',
@@ -114,30 +113,34 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-[#F8FAFB]">
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerArea}>
+        <View className="h-[42%] justify-center items-center">
           <WavyHeader />
 
-          <View style={styles.headerContent}>
-            <View style={styles.logoClay}>
+          <View className="items-center z-10">
+            <View className="w-20 h-20 rounded-3xl bg-white/20 justify-center items-center mb-5 border border-white/30">
               <Mail size={32} color="#fff" />
             </View>
-            <Text style={styles.welcomeText}>Welcome Back</Text>
-            <Text style={styles.subtitleText}>Sign in to manage your team</Text>
+            <Text className="text-[28px] font-antigravity-bold text-white mb-2">Welcome Back</Text>
+            <Text className="text-[15px] text-white/80 font-antigravity-medium border-0">
+              Sign in to manage your team
+            </Text>
           </View>
         </View>
 
-        <View style={styles.loginCardClay}>
+        <View className="mx-6 -mt-[60px] bg-white rounded-[32px] p-6 shadow-xl border border-[#F1F5F9]">
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             {/* EMAIL */}
-            <Text style={styles.inputLabel}>OFFICIAL EMAIL</Text>
-            <View style={styles.clayInput}>
-              <View style={styles.iconContainer}>
+            <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-2.5 ml-1 uppercase">
+              OFFICIAL EMAIL
+            </Text>
+            <View className="flex-row items-center h-14 bg-[#F8FAFB] rounded-2xl px-3 border border-[#F1F5F9]">
+              <View className="w-9 h-9 rounded-xl bg-white justify-center items-center mr-2.5 shadow-sm">
                 <Mail size={18} color="#0EA5E9" />
               </View>
               <TextInput
@@ -145,15 +148,17 @@ export default function LoginScreen() {
                 placeholderTextColor="#94A3B8"
                 value={email}
                 onChangeText={setEmail}
-                style={styles.textInput}
+                className="flex-1 text-sm font-antigravity-bold text-[#1E293B]"
                 autoCapitalize="none"
               />
             </View>
 
             {/* PASSWORD */}
-            <Text style={[styles.inputLabel, { marginTop: 24 }]}>SECURE PASSWORD</Text>
-            <View style={styles.clayInput}>
-              <View style={styles.iconContainer}>
+            <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-2.5 ml-1 mt-6 uppercase">
+              SECURE PASSWORD
+            </Text>
+            <View className="flex-row items-center h-14 bg-[#F8FAFB] rounded-2xl px-3 border border-[#F1F5F9]">
+              <View className="w-9 h-9 rounded-xl bg-white justify-center items-center mr-2.5 shadow-sm">
                 <Lock size={18} color="#0EA5E9" />
               </View>
               <TextInput
@@ -162,9 +167,9 @@ export default function LoginScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                style={styles.textInput}
+                className="flex-1 text-sm font-antigravity-bold text-[#1E293B]"
               />
-              <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2">
                 {showPassword ? (
                   <EyeOff size={20} color="#94A3B8" />
                 ) : (
@@ -174,30 +179,35 @@ export default function LoginScreen() {
             </View>
 
             {/* REMEMBER & FORGOT */}
-            <View style={styles.actionRow}>
-              <View style={styles.rememberRow}>
+            <View className="flex-row justify-between items-center mt-5 mb-8 px-1">
+              <View className="flex-row items-center gap-2">
                 <Checkbox
                   value={remember}
                   onValueChange={setRemember}
                   color={remember ? '#0EA5E9' : '#CBD5E1'}
-                  style={styles.checkbox}
+                  className="rounded-md w-5 h-5"
                 />
-                <Text style={styles.rememberLabel}>Remember me</Text>
+                <Text className="text-[13px] text-[#64748B] font-antigravity-semibold">
+                  Remember me
+                </Text>
               </View>
               <Pressable>
-                <Text style={styles.forgotPass}>Forgot?</Text>
+                <Text className="text-[13px] text-[#0EA5E9] font-antigravity-bold">Forgot?</Text>
               </Pressable>
             </View>
 
             {/* LOGIN BUTTON */}
             <Pressable
-              style={({ pressed }) => [styles.loginBtnClay, pressed && styles.btnPressed]}
+              className={`h-[60px] rounded-[20px] overflow-hidden shadow-lg shadow-[#0EA5E94C]`}
+              style={({ pressed }) => [
+                { transform: [{ scale: pressed ? 0.98 : 1 }], opacity: pressed ? 0.9 : 1 },
+              ]}
               onPress={handleLogin}
               disabled={loading}
             >
               <LinearGradient
                 colors={['#0EA5E9', '#0284C7']}
-                style={styles.btnGradient}
+                className="flex-1 flex-row justify-center items-center gap-2.5"
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
@@ -205,7 +215,9 @@ export default function LoginScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.loginBtnText}>SIGN IN NOW</Text>
+                    <Text className="text-white text-[15px] font-antigravity-bold tracking-[1.5px] uppercase">
+                      SIGN IN NOW
+                    </Text>
                     <ChevronRight size={18} color="#fff" opacity={0.6} />
                   </>
                 )}
@@ -214,179 +226,15 @@ export default function LoginScreen() {
           </KeyboardAvoidingView>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Need an account? </Text>
+        <View className="flex-row justify-center items-center mt-10 pb-10">
+          <Text className="text-sm text-[#64748B] font-antigravity-medium border-0">
+            Need an account?{' '}
+          </Text>
           <Pressable>
-            <Text style={styles.footerLink}>Contact Admin</Text>
+            <Text className="text-sm text-[#0EA5E9] font-antigravity-bold">Contact Admin</Text>
           </Pressable>
         </View>
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFB',
-  },
-  headerArea: {
-    height: height * 0.42,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerContent: {
-    alignItems: 'center',
-    paddingTop: 0,
-    zIndex: 10,
-  },
-  logoClay: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  subtitleText: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '500',
-  },
-  loginCardClay: {
-    marginHorizontal: 24,
-    marginTop: -60,
-    backgroundColor: '#fff',
-    borderRadius: 32,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.1,
-    shadowRadius: 25,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 1.5,
-    marginBottom: 10,
-    marginLeft: 4,
-  },
-  clayInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 56,
-    backgroundColor: '#F8FAFB',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  eyeBtn: {
-    padding: 8,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 32,
-    paddingHorizontal: 4,
-  },
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkbox: {
-    borderRadius: 6,
-    width: 20,
-    height: 20,
-  },
-  rememberLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  forgotPass: {
-    fontSize: 13,
-    color: '#0EA5E9',
-    fontWeight: '700',
-  },
-  loginBtnClay: {
-    height: 60,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#0EA5E9',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  btnGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loginBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  btnPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 40,
-    paddingBottom: 40,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  footerLink: {
-    fontSize: 14,
-    color: '#0EA5E9',
-    fontWeight: '800',
-  },
-});

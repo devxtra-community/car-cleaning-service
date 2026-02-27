@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IndianRupee, AlertCircle, FileText } from 'lucide-react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 
 export default function PenaltyDetailsScreen() {
   const { workerId } = useLocalSearchParams();
@@ -35,7 +27,7 @@ export default function PenaltyDetailsScreen() {
         reason: note ? `${reason} - ${note}` : reason,
       };
 
-      const res = await api.post('/api/supervisor/penalties', payload);
+      const res = await API.post('/api/supervisor/penalties', payload);
 
       if (res.data.success) {
         Alert.alert('Success', 'Penalty added successfully', [
@@ -56,121 +48,62 @@ export default function PenaltyDetailsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Add Penalty</Text>
-        <Text style={styles.subtitle}>Worker ID: {String(workerId).substring(0, 8)}...</Text>
+    <SafeAreaView className="flex-1 bg-[#F9FAFB]">
+      <View className="p-5">
+        <Text className="text-2xl font-antigravity-bold text-[#1E293B] mb-1">Add Penalty</Text>
+        <Text className="text-xs text-[#6B7280] font-antigravity-medium mb-5">
+          Worker ID: {String(workerId).substring(0, 8)}...
+        </Text>
 
         {/* AMOUNT */}
-        <View style={styles.inputRow}>
+        <View className="flex-row items-center bg-white rounded-2xl px-3 py-3 gap-2.5 mb-3 shadow-md border border-white">
           <IndianRupee size={18} color="#6B7280" />
           <TextInput
             placeholder="Penalty amount"
             keyboardType="numeric"
             value={amount}
             onChangeText={setAmount}
-            style={styles.input}
+            className="flex-1 text-sm font-antigravity-medium"
           />
         </View>
 
         {/* REASON */}
-        <View style={styles.inputRow}>
+        <View className="flex-row items-center bg-white rounded-2xl px-3 py-3 gap-2.5 mb-3 shadow-md border border-white">
           <AlertCircle size={18} color="#6B7280" />
           <TextInput
             placeholder="Reason"
             value={reason}
             onChangeText={setReason}
-            style={styles.input}
+            className="flex-1 text-sm font-antigravity-medium"
           />
         </View>
 
         {/* NOTE */}
-        <View style={styles.noteBox}>
+        <View className="flex-row items-start bg-white rounded-2xl p-3 gap-2.5 mb-5 shadow-md border border-white">
           <FileText size={18} color="#6B7280" />
           <TextInput
             placeholder="Optional note"
             value={note}
             onChangeText={setNote}
             multiline
-            style={styles.noteInput}
+            className="flex-1 min-h-[80px] text-sm font-antigravity-medium"
+            textAlignVertical="top"
           />
         </View>
 
         {/* SUBMIT */}
         <Pressable
-          style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+          className={`h-14 rounded-[18px] items-center justify-center bg-[#EF4444] shadow-lg shadow-[#EF44444C] ${submitting ? 'opacity-70' : ''}`}
           onPress={handleSubmit}
           disabled={submitting}
         >
           {submitting ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.submitText}>Add Penalty</Text>
+            <Text className="text-white text-base font-antigravity-bold">Add Penalty</Text>
           )}
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
-
-/* ---------------- STYLES ---------------- */
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  container: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 20,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 10,
-    marginBottom: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-  },
-  noteBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
-    marginBottom: 20,
-  },
-  noteInput: {
-    flex: 1,
-    minHeight: 80,
-    fontSize: 14,
-    textAlignVertical: 'top',
-  },
-  submitButton: {
-    backgroundColor: '#EF4444',
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});

@@ -9,6 +9,7 @@ interface TaskInput {
   car_type: string;
   car_color: string;
   car_image_url: string | null;
+  car_location?: string | null;
   cleaner_id: string;
   task_amount: number;
   latitude?: number;
