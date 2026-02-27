@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { getAccessToken } from '../src/tokenStorage';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import '../global.css';
 
 export default function RootLayout() {
   const [initialRoute, setInitialRoute] = useState<string | null>(null);

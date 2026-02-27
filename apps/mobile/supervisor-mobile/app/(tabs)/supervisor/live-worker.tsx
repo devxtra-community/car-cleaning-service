@@ -2,7 +2,6 @@ import {
   View,
   Text,
   FlatList,
-  StyleSheet,
   ActivityIndicator,
   Pressable,
   Modal,
@@ -11,69 +10,73 @@ import {
   TextInput,
   Alert,
   Image,
+  SafeAreaView,
 } from 'react-native';
-import { useEffect, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
 import {
   User,
+  ChevronDown,
   X,
   Car,
-  Phone,
-  Hash,
-  DollarSign,
   Clock,
-  Camera,
-  ChevronDown,
   MapPin,
-  ImageIcon,
+  Phone,
+  DollarSign,
+  Hash,
+  Image as ImageIcon,
+  Camera,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 
 interface Worker {
   id: string;
-  cleaner_id: string;
   full_name: string;
   email: string;
-  status: 'working' | 'idle';
+  status: 'idle' | 'working';
+  task_started_at?: string;
   current_task_id?: string;
-  owner_name?: string;
-  owner_phone?: string;
   car_number?: string;
   car_model?: string;
   car_type?: string;
-  car_color?: string;
-  task_amount?: string;
-  task_started_at?: string;
   car_image_url?: string;
+  owner_name?: string;
+  owner_phone?: string;
+  task_amount?: string;
   car_location?: string;
+  car_color?: string;
 }
 
-export default function LiveWorkersScreen() {
+interface VehicleType {
+  id: string;
+  type: string;
+}
+
+export default function LiveWorker() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-
-  // Task Form States
   const [isUpdating, setIsUpdating] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [carTypes, setCarTypes] = useState<VehicleType[]>([]);
   const [showTypePicker, setShowTypePicker] = useState(false);
-  const [carTypes, setCarTypes] = useState<{ id: string; type: string }[]>([]);
+
   const [formData, setFormData] = useState({
     owner_name: '',
     owner_phone: '',
     car_number: '',
     car_model: '',
     car_type: '',
-    car_color: '',
-    task_amount: '',
     car_image_url: '',
+    task_amount: '',
     car_location: '',
+    car_color: '',
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadWorkers();
@@ -82,24 +85,62 @@ export default function LiveWorkersScreen() {
 
   const fetchCarTypes = async () => {
     try {
-      const res = await api.get('/api/vehicle');
+      const res = await API.get('/api/vehicle');
       setCarTypes(res.data || []);
     } catch (err) {
       console.error('Failed to fetch car types', err);
     }
   };
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const handleWorkerPress = (worker: Worker) => {
+    setSelectedWorker(worker);
+    if (worker.status === 'working') {
+      setIsUpdating(true);
+      setFormData({
+        owner_name: worker.owner_name || '',
+        owner_phone: worker.owner_phone || '',
+        car_number: worker.car_number || '',
+        car_model: worker.car_model || '',
+        car_type: worker.car_type || '',
+        car_image_url: worker.car_image_url || '',
+        task_amount: worker.task_amount?.toString() || '',
+        car_location: worker.car_location || '',
+        car_color: worker.car_color || '',
+      });
+    } else {
+      setIsUpdating(false);
+      setFormData({
+        owner_name: '',
+        owner_phone: '',
+        car_number: '',
+        car_model: '',
+        car_type: '',
+        car_image_url: '',
+        task_amount: '',
+        car_location: '',
+        car_color: '',
+      });
+    }
+    setModalVisible(true);
+  };
+
+  const showImageOptions = () => {
+    Alert.alert('Upload Photo', 'Choose an option', [
+      { text: 'Camera', onPress: takePhoto },
+      { text: 'Gallery', onPress: pickImage },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need gallery permissions to upload a car photo.');
+      Alert.alert('Permission Denied', 'Camera access is required');
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
       quality: 0.7,
     });
 
@@ -108,16 +149,9 @@ export default function LiveWorkersScreen() {
     }
   };
 
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera permissions to take a car photo.');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
 
@@ -129,56 +163,52 @@ export default function LiveWorkersScreen() {
   const handleImageUpload = async (uri: string) => {
     try {
       setUploadingImage(true);
-      const presignRes = await api.post('/s3/presign', {
+      const presignRes = await API.post('/s3/presign', {
         fileType: 'image/jpeg',
         folder: 'tasks',
       });
-      const { uploadUrl, fileUrl } = presignRes.data;
+
+      const { url, key } = presignRes.data;
 
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      const uploadRes = await fetch(uploadUrl, {
+      await fetch(url, {
         method: 'PUT',
         body: blob,
         headers: { 'Content-Type': 'image/jpeg' },
       });
 
-      if (!uploadRes.ok) throw new Error('Failed to upload image');
-
-      setFormData({ ...formData, car_image_url: fileUrl });
-      Alert.alert('Success', 'Car photo uploaded successfully');
-    } catch (error) {
-      console.error('Image upload error', error);
-      Alert.alert('Error', 'Failed to upload image. Please try again.');
+      setFormData({ ...formData, car_image_url: key });
+    } catch (err) {
+      console.error('Upload failed', err);
+      Alert.alert('Error', 'Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const showImageOptions = () => {
-    Alert.alert('Car Photo', 'Choose an option', [
-      { text: 'Take Photo', onPress: takePhoto },
-      { text: 'Choose from Gallery', onPress: pickImage },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
   const handleSubmit = async () => {
-    if (!selectedWorker) return;
-
-    if (!formData.car_number || !formData.car_model || !formData.car_type) {
-      Alert.alert('Error', 'Please fill in car details');
+    if (
+      !formData.owner_name ||
+      !formData.car_number ||
+      !formData.car_model ||
+      !formData.car_type ||
+      !formData.task_amount
+    ) {
+      Alert.alert('Error', 'Please fill all required fields');
       return;
     }
+
+    if (!selectedWorker) return;
 
     setSubmitting(true);
     try {
       if (isUpdating) {
-        await api.patch(`/api/supervisor/tasks/${selectedWorker.current_task_id}`, formData);
+        await API.patch(`/api/supervisor/tasks/${selectedWorker.current_task_id}`, formData);
         Alert.alert('Success', 'Task updated successfully');
       } else {
-        await api.post('/api/supervisor/tasks', {
+        await API.post('/api/supervisor/tasks', {
           ...formData,
           worker_id: selectedWorker.id,
         });
@@ -187,8 +217,8 @@ export default function LiveWorkersScreen() {
       setModalVisible(false);
       loadWorkers();
     } catch (err) {
-      console.error('Submit error', err);
-      Alert.alert('Error', 'Failed to save task');
+      console.error('Submission failed', err);
+      Alert.alert('Error', 'Failed to process request');
     } finally {
       setSubmitting(false);
     }
@@ -198,87 +228,52 @@ export default function LiveWorkersScreen() {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/api/supervisor/workers');
+      const res = await API.get('/api/supervisor/workers');
 
       if (res.data.success) {
         setWorkers(res.data.data);
       } else {
-        setError(res.data.message || 'Failed to load workers');
+        setError('Failed to fetch workers');
       }
-    } catch (err) {
-      console.error('Failed to load workers', err);
-      setError('Failed to load workers. Please try again.');
+    } catch (_err) {
+      setError('Connection error');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatTime = (dateString: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
-  const handleWorkerPress = (worker: Worker) => {
-    setSelectedWorker(worker);
-    const modifyExisting = worker.status === 'working';
-    setIsUpdating(modifyExisting);
-
-    if (modifyExisting) {
-      setFormData({
-        owner_name: worker.owner_name || '',
-        owner_phone: worker.owner_phone || '',
-        car_number: worker.car_number || '',
-        car_model: worker.car_model || '',
-        car_type: worker.car_type || '',
-        car_color: worker.car_color || '',
-        task_amount: worker.task_amount?.toString() || '',
-        car_image_url: worker.car_image_url || '',
-        car_location: worker.car_location || '',
-      });
-    } else {
-      setFormData({
-        owner_name: '',
-        owner_phone: '',
-        car_number: '',
-        car_model: '',
-        car_type: '',
-        car_color: '',
-        task_amount: '',
-        car_image_url: '',
-        car_location: '',
-      });
-    }
-    setModalVisible(true);
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   if (loading) {
     return (
-      <View style={styles.centered}>
+      <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
         <ActivityIndicator size="large" color="#3DA2CE" />
-        <Text style={styles.loadingText}>Loading workers...</Text>
+        <Text className="mt-3 text-sm text-[#6B7280] font-antigravity-medium border-0">
+          Loading workers...
+        </Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
+        <Text className="text-sm text-[#EF4444] text-center px-5 font-antigravity-medium border-0">
+          {error}
+        </Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.header}>Worker Status</Text>
-        <TouchableOpacity style={styles.refreshBtn} onPress={loadWorkers}>
-          <Text style={styles.refreshText}>Refresh</Text>
+    <SafeAreaView className="flex-1 bg-[#F5F7FA] p-4 text-0">
+      <View className="flex-row justify-between items-center mb-4 text-0">
+        <Text className="text-xl font-antigravity-bold text-[#2C2C2C] border-0">Worker Status</Text>
+        <TouchableOpacity className="px-3 py-1.5 bg-[#E8F4F8] rounded-lg" onPress={loadWorkers}>
+          <Text className="text-[#3DA2CE] text-[13px] font-antigravity-bold border-0">Refresh</Text>
         </TouchableOpacity>
       </View>
 
@@ -286,41 +281,48 @@ export default function LiveWorkersScreen() {
         data={workers}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 40 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>No workers assigned to you</Text>}
+        ListEmptyComponent={
+          <Text className="text-center mt-10 text-[#9CA3AF] font-antigravity-medium border-0">
+            No workers assigned to you
+          </Text>
+        }
         renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => handleWorkerPress(item)}>
-            <View style={styles.avatar}>
+          <Pressable
+            className="flex-row bg-white rounded-2xl p-3.5 mb-3 items-center shadow-sm border border-white"
+            onPress={() => handleWorkerPress(item)}
+          >
+            <View className="w-12 h-12 rounded-full bg-[#E8F4F8] justify-center items-center mr-3">
               <User size={20} color="#3DA2CE" />
             </View>
 
-            <View style={styles.info}>
-              <Text style={styles.name}>{item.full_name}</Text>
-              <Text style={styles.email}>{item.email}</Text>
+            <View className="flex-1">
+              <Text className="text-[15px] font-antigravity-bold text-[#2C2C2C]">
+                {item.full_name}
+              </Text>
+              <Text className="text-xs text-[#6B7280] font-antigravity-medium mt-0.5">
+                {item.email}
+              </Text>
 
-              <View style={styles.statusRow}>
+              <View className="flex-row items-center mt-1.5">
                 <View
-                  style={[
-                    styles.statusDot,
-                    { backgroundColor: item.status === 'working' ? '#16A34A' : '#9CA3AF' },
-                  ]}
+                  className={`w-2 h-2 rounded-full mr-1.5 ${item.status === 'working' ? 'bg-[#16A34A]' : 'bg-[#9CA3AF]'}`}
                 />
                 <Text
-                  style={[
-                    styles.statusText,
-                    { color: item.status === 'working' ? '#16A34A' : '#6B7280' },
-                  ]}
+                  className={`text-[12px] font-antigravity-bold ${item.status === 'working' ? 'text-[#16A34A]' : 'text-[#6B7280]'}`}
                 >
                   {item.status === 'working' ? 'WORKING' : 'IDLE'}
                 </Text>
                 {item.status === 'working' && item.task_started_at && (
-                  <Text style={styles.timer}>• Since {formatTime(item.task_started_at)}</Text>
+                  <Text className="text-xs text-[#6B7280] font-antigravity-medium ml-1.5">
+                    • Since {formatTime(item.task_started_at)}
+                  </Text>
                 )}
               </View>
             </View>
 
             {item.status === 'working' && (
-              <View style={styles.taskBadge}>
-                <Text style={styles.taskBadgeText}>View Task</Text>
+              <View className="bg-[#E8F4F8] px-2 py-1 rounded">
+                <Text className="text-[10px] color-[#3DA2CE] font-antigravity-bold">View Task</Text>
               </View>
             )}
           </Pressable>
@@ -333,35 +335,31 @@ export default function LiveWorkersScreen() {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Worker Details</Text>
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl max-h-[85%] min-h-[40%]">
+            <View className="flex-row justify-between items-center p-5 border-b border-[#F3F4F6]">
+              <Text className="text-lg font-antigravity-bold text-[#2C2C2C]">Worker Details</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <X size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalBody}>
-              <View style={styles.workerProfile}>
-                <View style={styles.largeAvatar}>
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              <View className="items-center mb-6">
+                <View className="w-15 h-15 rounded-full bg-[#E8F4F8] justify-center items-center mb-3">
                   <User size={30} color="#3DA2CE" />
                 </View>
-                <Text style={styles.profileName}>{selectedWorker?.full_name}</Text>
-                <Text style={styles.profileEmail}>{selectedWorker?.email}</Text>
+                <Text className="text-lg font-antigravity-bold text-[#2C2C2C]">
+                  {selectedWorker?.full_name}
+                </Text>
+                <Text className="text-sm text-[#6B7280] font-antigravity-medium mt-0.5">
+                  {selectedWorker?.email}
+                </Text>
                 <View
-                  style={[
-                    styles.profileStatusBadge,
-                    {
-                      backgroundColor: selectedWorker?.status === 'working' ? '#DCFCE7' : '#F3F4F6',
-                    },
-                  ]}
+                  className={`mt-3 px-3 py-1.5 rounded-full ${selectedWorker?.status === 'working' ? 'bg-[#DCFCE7]' : 'bg-[#F3F4F6]'}`}
                 >
                   <Text
-                    style={[
-                      styles.profileStatusText,
-                      { color: selectedWorker?.status === 'working' ? '#16A34A' : '#6B7280' },
-                    ]}
+                    className={`text-[12px] font-antigravity-bold ${selectedWorker?.status === 'working' ? 'text-[#16A34A]' : 'text-[#6B7280]'}`}
                   >
                     {selectedWorker?.status === 'working' ? 'Currently Working' : 'Currently Idle'}
                   </Text>
@@ -369,8 +367,10 @@ export default function LiveWorkersScreen() {
               </View>
 
               {selectedWorker?.status === 'working' ? (
-                <View style={styles.taskSection}>
-                  <Text style={styles.sectionHeading}>Current Task Info</Text>
+                <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-5 shadow-sm border border-[#F3F4F6]">
+                  <Text className="text-[15px] font-antigravity-bold text-[#2C2C2C] mb-4">
+                    Current Task Info
+                  </Text>
 
                   <DetailRow
                     icon={<Car size={18} color="#3DA2CE" />}
@@ -404,102 +404,138 @@ export default function LiveWorkersScreen() {
                   />
                 </View>
               ) : (
-                <View style={styles.emptyTaskSection}>
-                  <Clock size={40} color="#9CA3AF" style={{ marginBottom: 10 }} />
-                  <Text style={styles.emptyTaskText}>No active task at the moment</Text>
+                <View className="items-center py-6">
+                  <Clock size={40} color="#9CA3AF" className="mb-2.5" />
+                  <Text className="text-sm text-[#9CA3AF] font-antigravity-medium border-0">
+                    No active task at the moment
+                  </Text>
                 </View>
               )}
 
               {/* TASK MANAGEMENT FORM */}
-              <View style={styles.formSection}>
-                <Text style={styles.sectionHeading}>
+              <View className="pt-2 px-1 border-t border-[#F3F4F6] mt-2">
+                <Text className="text-[15px] font-antigravity-bold text-[#2C2C2C] mb-4">
                   {isUpdating ? 'Update Task Details' : 'Assign New Task'}
                 </Text>
 
-                <Text style={styles.inputLabel}>Owner Name</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Owner Name
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: John Doe"
                   value={formData.owner_name}
                   onChangeText={(text) => setFormData({ ...formData, owner_name: text })}
                 />
 
-                <Text style={styles.inputLabel}>Owner Phone</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Owner Phone
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: 9876543210"
                   keyboardType="phone-pad"
                   value={formData.owner_phone}
                   onChangeText={(text) => setFormData({ ...formData, owner_phone: text })}
                 />
 
-                <Text style={styles.inputLabel}>Car Number</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Car Number
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: KA 01 AB 1234"
                   autoCapitalize="characters"
                   value={formData.car_number}
                   onChangeText={(text) => setFormData({ ...formData, car_number: text })}
                 />
 
-                <Text style={styles.inputLabel}>Car Model</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Car Model
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: Honda City"
                   value={formData.car_model}
                   onChangeText={(text) => setFormData({ ...formData, car_model: text })}
                 />
 
-                <Text style={styles.inputLabel}>Car Type</Text>
-                <Pressable style={styles.dropdownTrigger} onPress={() => setShowTypePicker(true)}>
-                  <Text style={[styles.dropdownValue, !formData.car_type && { color: '#9CA3AF' }]}>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Car Type
+                </Text>
+                <Pressable
+                  className="flex-row items-center justify-between bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 mb-4"
+                  onPress={() => setShowTypePicker(true)}
+                >
+                  <Text
+                    className={`text-[15px] font-antigravity-medium ${!formData.car_type ? 'text-[#9CA3AF]' : 'text-[#1F2937]'}`}
+                  >
                     {formData.car_type || 'Select Car Type'}
                   </Text>
                   <ChevronDown size={20} color="#6B7280" />
                 </Pressable>
 
-                <Text style={styles.inputLabel}>Car Location (Optional)</Text>
-                <View style={styles.inputWithIcon}>
-                  <MapPin size={18} color="#9CA3AF" style={styles.fieldIcon} />
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Car Location (Optional)
+                </Text>
+                <View className="flex-row items-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 mb-4">
+                  <MapPin size={18} color="#9CA3AF" className="mr-2" />
                   <TextInput
-                    style={[styles.input, { marginBottom: 0, flex: 1, borderWidth: 0 }]}
+                    className="flex-1 py-3 text-[15px] font-antigravity-medium text-[#1F2937]"
                     placeholder="Ex: Parking Level 2, Spot B12"
                     value={formData.car_location}
                     onChangeText={(text) => setFormData({ ...formData, car_location: text })}
                   />
                 </View>
 
-                <Text style={styles.inputLabel}>Car Color</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Car Color
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: White"
                   value={formData.car_color}
                   onChangeText={(text) => setFormData({ ...formData, car_color: text })}
                 />
 
-                <Text style={styles.inputLabel}>Car Photo</Text>
-                <Pressable style={styles.photoUploadButton} onPress={showImageOptions}>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Car Photo
+                </Text>
+                <Pressable
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] border-dashed rounded-xl p-4 mb-4 items-center justify-center min-h-[100px]"
+                  onPress={showImageOptions}
+                >
                   {uploadingImage ? (
                     <ActivityIndicator color="#3DA2CE" />
                   ) : formData.car_image_url ? (
-                    <View style={styles.photoPreviewContainer}>
-                      <Image source={{ uri: formData.car_image_url }} style={styles.photoPreview} />
-                      <View style={styles.photoOverlay}>
-                        <Camera size={20} color="#FFF" />
-                        <Text style={styles.photoOverlayText}>Change Photo</Text>
+                    <View className="w-full relative rounded-lg overflow-hidden">
+                      <Image
+                        source={{ uri: formData.car_image_url }}
+                        className="w-full h-40"
+                        resizeMode="cover"
+                      />
+                      <View className="absolute inset-0 bg-black/30 justify-center items-center">
+                        <Camera size={24} color="#FFF" />
+                        <Text className="text-white text-xs font-antigravity-bold mt-1">
+                          Change Photo
+                        </Text>
                       </View>
                     </View>
                   ) : (
                     <>
-                      <ImageIcon size={24} color="#3DA2CE" />
-                      <Text style={styles.photoUploadText}>Upload Car Photo</Text>
+                      <ImageIcon size={28} color="#3DA2CE" />
+                      <Text className="text-[#3DA2CE] text-sm font-antigravity-bold mt-2 border-0">
+                        Upload Car Photo
+                      </Text>
                     </>
                   )}
                 </Pressable>
 
-                <Text style={styles.inputLabel}>Task Amount (₹)</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                  Task Amount (₹)
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-6"
                   placeholder="Ex: 500"
                   keyboardType="numeric"
                   value={formData.task_amount}
@@ -507,14 +543,14 @@ export default function LiveWorkersScreen() {
                 />
 
                 <TouchableOpacity
-                  style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+                  className={`py-4 rounded-xl items-center shadow-lg shadow-[#3DA2CE4C] bg-[#3DA2CE] ${submitting ? 'opacity-70' : ''}`}
                   onPress={handleSubmit}
                   disabled={submitting}
                 >
                   {submitting ? (
                     <ActivityIndicator color="#FFF" />
                   ) : (
-                    <Text style={styles.submitButtonText}>
+                    <Text className="text-white text-base font-antigravity-bold">
                       {isUpdating ? 'Update Task' : 'Assign Task'}
                     </Text>
                   )}
@@ -532,26 +568,37 @@ export default function LiveWorkersScreen() {
         animationType="fade"
         onRequestClose={() => setShowTypePicker(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowTypePicker(false)}>
-          <View style={styles.pickerContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Car Type</Text>
+        <Pressable
+          className="flex-1 bg-black/50 justify-center items-center p-5"
+          onPress={() => setShowTypePicker(false)}
+        >
+          <View className="bg-white rounded-2xl w-full max-h-[70%]">
+            <View className="flex-row justify-between items-center p-4 border-b border-[#F3F4F6]">
+              <Text className="text-base font-antigravity-bold text-[#1F2937]">
+                Select Car Type
+              </Text>
               <Pressable onPress={() => setShowTypePicker(false)}>
                 <X size={20} color="#6B7280" />
               </Pressable>
             </View>
-            <ScrollView>
+            <ScrollView className="p-2">
               {carTypes.map((type) => (
                 <Pressable
                   key={type.id}
-                  style={styles.pickerItem}
+                  className="flex-row justify-between items-center p-4 rounded-xl mb-1 active:bg-[#F3F4F6]"
                   onPress={() => {
                     setFormData({ ...formData, car_type: type.type });
                     setShowTypePicker(false);
                   }}
                 >
-                  <Text style={styles.pickerItemText}>{type.type}</Text>
-                  {formData.car_type === type.type && <View style={styles.selectedDot} />}
+                  <Text
+                    className={`text-[15px] ${formData.car_type === type.type ? 'font-antigravity-bold text-[#3DA2CE]' : 'font-antigravity-medium text-[#4B5563]'}`}
+                  >
+                    {type.type}
+                  </Text>
+                  {formData.car_type === type.type && (
+                    <View className="w-2 h-2 rounded-full bg-[#3DA2CE]" />
+                  )}
                 </Pressable>
               ))}
             </ScrollView>
@@ -572,383 +619,16 @@ function DetailRow({
   value: string;
 }) {
   return (
-    <View style={styles.detailRow}>
-      <View style={styles.detailIcon}>{icon}</View>
-      <View>
-        <Text style={styles.detailLabel}>{label}</Text>
-        <Text style={styles.detailValue}>{value}</Text>
+    <View className="flex-row items-center mb-4">
+      <View className="w-10 h-10 rounded-xl bg-white justify-center items-center shadow-sm mr-3 border border-[#F1F5F9]">
+        {icon}
+      </View>
+      <View className="flex-1">
+        <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] uppercase tracking-wider">
+          {label}
+        </Text>
+        <Text className="text-sm font-antigravity-bold text-[#1E293B] mt-0.5">{value}</Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    padding: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2C2C2C',
-  },
-  refreshBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#E8F4F8',
-    borderRadius: 8,
-  },
-  refreshText: {
-    color: '#3DA2CE',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#EF4444',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#E8F4F8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  info: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2C2C2C',
-  },
-  email: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  timer: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 6,
-  },
-  taskBadge: {
-    backgroundColor: '#E8F4F8',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  taskBadgeText: {
-    fontSize: 10,
-    color: '#3DA2CE',
-    fontWeight: '700',
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: '#9CA3AF',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-    minHeight: '40%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2C2C2C',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  workerProfile: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  largeAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#E8F4F8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2C2C2C',
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  profileStatusBadge: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  profileStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  taskSection: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  sectionHeading: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2C2C2C',
-    marginBottom: 16,
-  },
-  formSection: {
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    marginTop: 10,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4B5563',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    marginBottom: 16,
-    color: '#1F2937',
-  },
-  dropdownTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-  dropdownValue: {
-    fontSize: 15,
-    color: '#1F2937',
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-  },
-  fieldIcon: {
-    marginRight: 10,
-  },
-  photoUploadButton: {
-    height: 120,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  photoUploadText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#3DA2CE',
-    fontWeight: '600',
-  },
-  photoPreviewContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
-  },
-  photoPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  photoOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 8,
-    gap: 8,
-  },
-  photoOverlayText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  submitButton: {
-    backgroundColor: '#3DA2CE',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  submitButtonText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  // Picker Styles
-  pickerContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '50%',
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  pickerItemText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-  selectedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3DA2CE',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  detailIcon: {
-    width: 36,
-    height: 36,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  detailLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2C2C2C',
-  },
-  emptyTaskSection: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  emptyTaskText: {
-    color: '#9CA3AF',
-    fontSize: 14,
-  },
-});

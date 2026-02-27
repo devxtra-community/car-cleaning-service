@@ -1,17 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 
 interface Worker {
   id: string;
@@ -31,7 +23,7 @@ export default function SelectWorkerScreen() {
 
   const fetchWorkers = async () => {
     try {
-      const res = await api.get('/api/supervisor/workers');
+      const res = await API.get('/api/supervisor/workers');
       if (res.data.success) {
         setWorkers(res.data.data);
       }
@@ -48,24 +40,24 @@ export default function SelectWorkerScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Select Worker</Text>
+    <SafeAreaView className="flex-1 bg-[#F9FAFB]">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        <Text className="text-2xl font-antigravity-bold text-[#1E293B] mb-4">Select Worker</Text>
 
         {/* SEARCH */}
-        <View style={styles.searchBox}>
+        <View className="flex-row items-center bg-white rounded-2xl px-3 py-2.5 mb-4 border border-[#F1F5F9] shadow-sm">
           <Search size={18} color="#6B7280" />
           <TextInput
             placeholder="Search worker"
             value={search}
             onChangeText={setSearch}
-            style={styles.searchInput}
+            className="flex-1 text-sm font-antigravity-medium ml-2"
           />
         </View>
 
         {/* LOADING */}
         {loading ? (
-          <ActivityIndicator size="large" color="#3DA2CE" style={{ marginTop: 20 }} />
+          <ActivityIndicator size="large" color="#3DA2CE" className="mt-5" />
         ) : (
           <>
             {/* WORKER LIST */}
@@ -73,26 +65,35 @@ export default function SelectWorkerScreen() {
               <Pressable
                 key={worker.id}
                 onPress={() => setSelectedWorker(worker.cleaner_id)}
-                style={[
-                  styles.workerCard,
-                  selectedWorker === worker.cleaner_id && styles.workerActive,
-                ]}
+                className={`flex-row items-center bg-white rounded-[18px] p-4 mb-3 border ${
+                  selectedWorker === worker.cleaner_id
+                    ? 'border-[#3DA2CE] border-2 shadow-sm'
+                    : 'border-white shadow-lg shadow-[#0000000D]'
+                }`}
               >
-                <View style={styles.avatar}>
+                <View className="w-9 h-9 rounded-full bg-[#E8F4F8] justify-center items-center mr-3">
                   <User size={18} color="#3DA2CE" />
                 </View>
-                <Text style={styles.workerName}>{worker.full_name}</Text>
+                <Text className="text-base font-antigravity-bold text-[#1E293B]">
+                  {worker.full_name}
+                </Text>
               </Pressable>
             ))}
 
-            {filteredWorkers.length === 0 && <Text style={styles.emptyText}>No workers found</Text>}
+            {filteredWorkers.length === 0 && (
+              <Text className="text-center text-[#9CA3AF] mt-5 font-antigravity-medium">
+                No workers found
+              </Text>
+            )}
           </>
         )}
 
         {/* CONTINUE */}
         <Pressable
           disabled={!selectedWorker}
-          style={[styles.continueButton, !selectedWorker && styles.disabled]}
+          className={`h-14 rounded-[18px] items-center justify-center mt-6 shadow-lg shadow-[#3DA2CE4C] ${
+            !selectedWorker ? 'bg-[#3DA2CE] opacity-40' : 'bg-[#3DA2CE]'
+          }`}
           onPress={() =>
             router.push({
               pathname: '/(tabs)/penalty/confirm-penalty',
@@ -100,86 +101,9 @@ export default function SelectWorkerScreen() {
             })
           }
         >
-          <Text style={styles.continueText}>Continue</Text>
+          <Text className="text-white text-base font-antigravity-bold">Continue</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-/* ---------------- STYLES ---------------- */
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-  },
-  workerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-  },
-  workerActive: {
-    borderWidth: 2,
-    borderColor: '#3DA2CE',
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E8F4F8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  workerName: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  continueButton: {
-    backgroundColor: '#3DA2CE',
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  disabled: {
-    opacity: 0.4,
-  },
-  continueText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    marginTop: 20,
-  },
-});

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertCircle, User } from 'lucide-react-native';
-import { fs } from '@/src/theme/scale';
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 
 type TabType = 'daily' | 'weekly' | 'monthly';
 
@@ -22,7 +21,7 @@ export default function PenaltyHistory() {
   const fetchPenalties = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/supervisor/penalties?period=${activeTab}`);
+      const response = await API.get(`/api/supervisor/penalties?period=${activeTab}`);
 
       if (response.data.success) {
         setPenalties(response.data.data);
@@ -39,11 +38,11 @@ export default function PenaltyHistory() {
   }, [fetchPenalties]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Penalty History</Text>
+    <SafeAreaView className="flex-1 bg-[#F9FAFB] p-4">
+      <Text className="text-xl font-antigravity-bold text-[#1E293B] mb-3">Penalty History</Text>
 
       {/* SEGMENTED TABS */}
-      <View style={styles.segmentContainer}>
+      <View className="flex-row bg-[#E5E7EB] rounded-xl p-1 mb-3">
         <Segment
           label="Daily"
           active={activeTab === 'daily'}
@@ -63,7 +62,7 @@ export default function PenaltyHistory() {
 
       {/* LIST */}
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#3DA2CE" />
         </View>
       ) : (
@@ -71,23 +70,33 @@ export default function PenaltyHistory() {
           data={penalties}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No penalties found</Text>}
+          ListEmptyComponent={
+            <Text className="text-center text-[#9CA3AF] mt-10 text-[13px] font-antigravity-medium">
+              No penalties found
+            </Text>
+          }
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.iconBox}>
+            <View className="flex-row items-center bg-white rounded-[14px] p-3.5 mb-2.5 shadow-sm border border-white">
+              <View className="w-10 h-10 rounded-full bg-[#FEE2E2] justify-center items-center mr-3">
                 <AlertCircle size={18} color="#EF4444" />
               </View>
 
-              <View style={{ flex: 1 }}>
-                <View style={styles.workerRow}>
+              <View className="flex-1">
+                <View className="flex-row items-center gap-1.5">
                   <User size={14} color="#6B7280" />
-                  <Text style={styles.workerName}>{item.workerName}</Text>
+                  <Text className="text-sm font-antigravity-bold text-[#1E293B]">
+                    {item.workerName}
+                  </Text>
                 </View>
 
-                <Text style={styles.penaltyCount}>{item.count} penalties</Text>
+                <Text className="text-xs text-[#6B7280] font-antigravity-medium mt-1">
+                  {item.count} penalties
+                </Text>
               </View>
 
-              <Text style={styles.amount}>₹{item.totalAmount}</Text>
+              <Text className="text-sm font-antigravity-bold text-[#EF4444]">
+                ₹{item.totalAmount}
+              </Text>
             </View>
           )}
         />
@@ -108,102 +117,15 @@ function Segment({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.segment, active && styles.segmentActive]}>
-      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      className={`flex-1 py-2 rounded-lg items-center ${active ? 'bg-white shadow-sm' : ''}`}
+    >
+      <Text
+        className={`text-[13px] font-antigravity-bold ${active ? 'text-[#111827]' : 'text-[#6B7280]'}`}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
-
-/* ---------------- STYLES ---------------- */
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    padding: 16,
-  },
-
-  title: {
-    fontSize: fs(20),
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-
-  segmentContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 12,
-  },
-
-  segment: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-
-  segmentActive: {
-    backgroundColor: '#FFFFFF',
-  },
-
-  segmentText: {
-    fontSize: fs(13),
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-
-  segmentTextActive: {
-    color: '#111827',
-  },
-
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-  },
-
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-
-  workerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-
-  workerName: {
-    fontSize: fs(14),
-    fontWeight: '600',
-  },
-
-  penaltyCount: {
-    fontSize: fs(12),
-    color: '#6B7280',
-    marginTop: 4,
-  },
-
-  amount: {
-    fontSize: fs(14),
-    fontWeight: '700',
-    color: '#EF4444',
-  },
-
-  emptyText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    marginTop: 40,
-    fontSize: fs(13),
-  },
-});

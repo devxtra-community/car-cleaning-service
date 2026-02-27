@@ -102,13 +102,17 @@ export const usePushNotifications = () => {
       setExpoPushToken(token);
     });
 
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      setNotification(notification);
-    });
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (notification: Notifications.Notification) => {
+        setNotification(notification);
+      }
+    );
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('Notification response:', response);
-    });
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response: Notifications.NotificationResponse) => {
+        console.log('Notification response:', response);
+      }
+    );
 
     return () => {
       if (notificationListener.current) {

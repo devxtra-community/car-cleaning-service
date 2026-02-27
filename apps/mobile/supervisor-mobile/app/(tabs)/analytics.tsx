@@ -1,13 +1,4 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  Pressable,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, ScrollView, Dimensions, Pressable, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,14 +13,15 @@ import {
   Clock,
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+// Dimensions available if needed
+// const { width } = Dimensions.get('window');
 
 // Topographic Pattern
 const TopoPattern = () => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -89,79 +81,100 @@ const TopoPattern = () => (
 
 export default function AnalyticsView() {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       {/* HEADER WITH TOPOGRAPHIC BACKGROUND */}
-      <View style={styles.headerContainer}>
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.headerGradient}>
+      <View className="h-[140px] mb-5">
+        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} className="flex-1 pt-3 overflow-hidden">
           <TopoPattern />
-          <View style={styles.header}>
+          <View className="flex-row justify-between items-center px-5 z-10">
             <View>
-              <Text style={styles.headerTitle}>Analytics</Text>
-              <Text style={styles.headerSubtitle}>Track your performance metrics</Text>
+              <Text className="text-[32px] font-antigravity-bold text-white tracking-tighter">
+                Analytics
+              </Text>
+              <Text className="text-sm text-white/90 font-antigravity-medium mt-1">
+                Track your performance metrics
+              </Text>
             </View>
-            <TouchableOpacity style={styles.calendarButton}>
+            <TouchableOpacity className="w-11 h-11 rounded-full bg-white justify-center items-center shadow-md shadow-[#3DA2CE4C]">
               <Calendar size={20} color="#3DA2CE" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
         {/* OVERVIEW CARDS */}
-        <View style={styles.overviewContainer}>
+        <View className="px-5">
           {/* TOTAL EARNINGS */}
           <Pressable
             onPress={() => router.push('/(tabs)/analytics/earnings')}
-            style={styles.largeCard}
+            className="mb-3 rounded-[20px] overflow-hidden shadow-xl shadow-[#3DA2CE4C]"
           >
             <LinearGradient
               colors={['#5AB9E0', '#3DA2CE']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.gradientCard}
+              className="p-5 min-h-[160px]"
             >
-              <View style={styles.cardHeader}>
-                <View style={styles.iconWrapper}>
+              <View className="flex-row justify-between items-center mb-3">
+                <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center">
                   <DollarSign size={24} color="#fff" strokeWidth={2.5} />
                 </View>
-                <View style={styles.trendBadge}>
+                <View className="flex-row items-center bg-white px-2.5 py-1.5 rounded-full">
                   <TrendingUp size={12} color="#10B981" strokeWidth={3} />
-                  <Text style={styles.trendBadgeText}>+12.5%</Text>
+                  <Text className="text-[#10B981] text-[12px] font-antigravity-bold ml-1">
+                    +12.5%
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.cardValue}>₹1,245</Text>
-              <Text style={styles.cardLabel}>Total Earnings</Text>
-              <Text style={styles.cardSubtext}>This month</Text>
-              <ChevronRight size={20} color="#fff" style={styles.chevron} />
+              <Text className="text-4xl font-antigravity-bold text-white mb-1 tracking-tighter">
+                ₹1,245
+              </Text>
+              <Text className="text-base text-white font-antigravity-semibold opacity-95">
+                Total Earnings
+              </Text>
+              <Text className="text-xs text-white opacity-75 mt-0.5">This month</Text>
+              <ChevronRight
+                size={20}
+                color="#fff"
+                className="absolute right-5 bottom-5 opacity-50"
+              />
             </LinearGradient>
           </Pressable>
 
           {/* COMPLETED TASKS CARD - NOW FULL WIDTH */}
           <Pressable
-            style={styles.completedCard}
+            className="mb-3 rounded-2xl overflow-hidden shadow-md shadow-[#3DA2CE26]"
             onPress={() => router.push('/(tabs)/analytics/tasks')}
           >
             <LinearGradient
               colors={['#4FB3D9', '#3DA2CE']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.completedGradient}
+              className="p-[18px] flex-row justify-between items-center"
             >
-              <View style={styles.completedLeft}>
-                <View style={styles.completedIconWrapper}>
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-3.5">
                   <CheckCircle size={24} color="#fff" strokeWidth={2.5} />
                 </View>
-                <View style={styles.completedInfo}>
-                  <Text style={styles.completedValue}>67</Text>
-                  <Text style={styles.completedLabel}>Tasks Completed</Text>
+                <View className="flex-1">
+                  <Text className="text-[28px] font-antigravity-bold text-white mb-0.5">67</Text>
+                  <Text className="text-[13px] text-white font-antigravity-semibold opacity-90">
+                    Tasks Completed
+                  </Text>
                 </View>
               </View>
-              <View style={styles.completedRight}>
-                <View style={styles.completedTrendBadge}>
+              <View className="flex-row items-center gap-2">
+                <View className="flex-row items-center bg-white px-2 py-1.5 rounded-xl">
                   <TrendingUp size={10} color="#10B981" />
-                  <Text style={styles.completedTrendText}>+8.3%</Text>
+                  <Text className="text-[#10B981] text-[11px] font-antigravity-bold ml-1">
+                    +8.3%
+                  </Text>
                 </View>
-                <ChevronRight size={20} color="#fff" style={{ opacity: 0.7 }} />
+                <ChevronRight size={20} color="#fff" className="opacity-70" />
               </View>
             </LinearGradient>
           </Pressable>
@@ -169,21 +182,27 @@ export default function AnalyticsView() {
           {/* PENALTY CARD */}
           <Pressable
             onPress={() => router.push('/(tabs)/penalty/penalty-history')}
-            style={styles.penaltyCard}
+            className="bg-white rounded-2xl p-4 border-l-4 border-l-[#EF4444] shadow-sm"
           >
-            <View style={styles.penaltyContent}>
-              <View style={styles.penaltyLeft}>
-                <View style={styles.penaltyIconWrapper}>
+            <View className="flex-row justify-between items-center">
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 rounded-full bg-[#FEE2E2] justify-center items-center mr-3">
                   <AlertCircle size={20} color="#EF4444" strokeWidth={2.5} />
                 </View>
-                <View style={styles.penaltyInfo}>
-                  <Text style={styles.penaltyValue}>3 Penalties</Text>
-                  <Text style={styles.penaltyLabel}>Review required</Text>
+                <View className="mt-0.5">
+                  <Text className="text-base font-antigravity-bold text-[#111827]">
+                    3 Penalties
+                  </Text>
+                  <Text className="text-xs text-[#6B7280] font-antigravity-medium mt-0.5">
+                    Review required
+                  </Text>
                 </View>
               </View>
-              <View style={styles.penaltyRight}>
-                <View style={styles.penaltyTrendBadge}>
-                  <Text style={styles.penaltyTrendText}>-15%</Text>
+              <View className="flex-row items-center">
+                <View className="flex-row items-center bg-[#FEE2E2] px-2 py-1 rounded-xl mr-2">
+                  <Text className="text-[#EF4444] text-[11px] font-antigravity-bold ml-1">
+                    -15%
+                  </Text>
                 </View>
                 <ChevronRight size={18} color="#EF4444" />
               </View>
@@ -192,22 +211,24 @@ export default function AnalyticsView() {
         </View>
 
         {/* WEEKLY PERFORMANCE */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Weekly Performance</Text>
+        <View className="mt-6 px-5">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-xl font-antigravity-bold text-[#111827]">Weekly Performance</Text>
             <TouchableOpacity>
-              <Text style={styles.viewAll}>View All</Text>
+              <Text className="text-sm font-antigravity-semibold text-[#3DA2CE]">View All</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.chartCard}>
-            <View style={styles.chartHeader}>
-              <View style={styles.chartLegend}>
-                <View style={styles.legendDot} />
-                <Text style={styles.legendText}>Tasks Completed</Text>
+          <View className="bg-white rounded-[20px] p-5 shadow-sm">
+            <View className="flex-row justify-between items-center mb-5">
+              <View className="flex-row items-center">
+                <View className="w-2 h-2 rounded-full bg-[#3DA2CE] mr-2" />
+                <Text className="text-[13px] text-[#6B7280] font-antigravity-medium border-0">
+                  Tasks Completed
+                </Text>
               </View>
-              <Text style={styles.chartAverage}>Avg: 9.5/day</Text>
+              <Text className="text-xs text-[#6B7280] font-antigravity-semibold">Avg: 9.5/day</Text>
             </View>
-            <View style={styles.barChart}>
+            <View className="flex-row justify-between items-end h-[180px]">
               {[
                 { day: 'Mon', value: 40, tasks: 8 },
                 { day: 'Tue', value: 55, tasks: 11 },
@@ -217,19 +238,27 @@ export default function AnalyticsView() {
                 { day: 'Sat', value: 82, tasks: 16 },
                 { day: 'Sun', value: 68, tasks: 13 },
               ].map((item, i) => (
-                <TouchableOpacity key={item.day} style={styles.barColumn} activeOpacity={0.7}>
-                  <Text style={styles.barValue}>{item.tasks}</Text>
+                <TouchableOpacity
+                  key={item.day}
+                  className="flex-1 items-center justify-end mx-1"
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-[11px] font-antigravity-bold text-[#3DA2CE] mb-1">
+                    {item.tasks}
+                  </Text>
                   <LinearGradient
                     colors={['#5AB9E0', '#3DA2CE']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 0, y: 1 }}
-                    style={[styles.bar, { height: `${item.value}%` }]}
+                    className="w-full max-w-[32px] rounded-lg shadow-sm shadow-[#3DA2CE33]"
+                    style={{ height: `${item.value}%` }}
                   />
                   <Text
-                    style={[
-                      styles.barLabel,
-                      i === new Date().getDay() - 1 && styles.barLabelActive,
-                    ]}
+                    className={`text-[11px] mt-2 font-antigravity-semibold ${
+                      i === new Date().getDay() - 1
+                        ? 'text-[#3DA2CE] font-antigravity-bold'
+                        : 'text-[#9CA3AF]'
+                    }`}
                   >
                     {item.day}
                   </Text>
@@ -240,14 +269,14 @@ export default function AnalyticsView() {
         </View>
 
         {/* TASK BREAKDOWN */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Task Breakdown</Text>
+        <View className="mt-6 px-5">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-xl font-antigravity-bold text-[#111827]">Task Breakdown</Text>
             <TouchableOpacity>
-              <Text style={styles.viewAll}>Details</Text>
+              <Text className="text-sm font-antigravity-semibold text-[#3DA2CE]">Details</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.breakdownCard}>
+          <View className="bg-white rounded-[20px] p-5 shadow-sm">
             <Breakdown label="Completed" value="67" total={78} color="#10B981" />
             <Breakdown label="In Progress" value="8" total={78} color="#F59E0B" />
             <Breakdown label="Pending" value="3" total={78} color="#6B7280" />
@@ -293,430 +322,32 @@ function Breakdown({
   };
 
   return (
-    <View style={styles.breakdownRow}>
-      <View style={styles.breakdownLeft}>
-        <View style={[styles.breakdownIconWrapper, { backgroundColor: getBackgroundColor() }]}>
+    <View className="flex-row justify-between items-center mb-4">
+      <View className="flex-row items-center flex-1">
+        <View
+          className="w-9 h-9 rounded-full justify-center items-center mr-3"
+          style={{ backgroundColor: getBackgroundColor() }}
+        >
           {getIcon()}
         </View>
-        <View style={styles.breakdownInfo}>
-          <Text style={styles.breakdownLabel}>{label}</Text>
-          <View style={styles.progressBar}>
+        <View className="flex-1">
+          <Text className="text-sm font-antigravity-semibold text-[#111827] mb-1.5">{label}</Text>
+          <View className="h-1.5 bg-[#F3F4F6] rounded-full overflow-hidden">
             <View
-              style={[styles.progressFill, { width: `${percentage}%`, backgroundColor: color }]}
+              className="h-full rounded-full"
+              style={{ width: `${percentage}%`, backgroundColor: color }}
             />
           </View>
         </View>
       </View>
-      <View style={styles.breakdownRight}>
-        <Text style={styles.breakdownValue}>{value}</Text>
-        <Text style={styles.breakdownPercentage}>{percentage.toFixed(0)}%</Text>
+      <View className="items-end ml-3">
+        <Text className="text-lg font-antigravity-bold text-[#111827]">{value}</Text>
+        <Text className="text-[11px] text-[#6B7280] font-antigravity-semibold mt-0.5">
+          {percentage.toFixed(0)}%
+        </Text>
       </View>
     </View>
   );
 }
 
 /* ---------------- STYLES ---------------- */
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  headerContainer: {
-    height: 140,
-    marginBottom: 20,
-  },
-  headerGradient: {
-    flex: 1,
-    paddingTop: 12,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    zIndex: 10,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 4,
-  },
-  calendarButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  overviewContainer: {
-    paddingHorizontal: 20,
-  },
-  largeCard: {
-    marginBottom: 12,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  gradientCard: {
-    padding: 20,
-    minHeight: 160,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  trendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  trendBadgeText: {
-    color: '#10B981',
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 4,
-  },
-  cardValue: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-    letterSpacing: -1,
-  },
-  cardLabel: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    opacity: 0.95,
-  },
-  cardSubtext: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.75,
-    marginTop: 2,
-  },
-  chevron: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    opacity: 0.5,
-  },
-  completedCard: {
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  completedGradient: {
-    padding: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  completedLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  completedIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  completedInfo: {
-    flex: 1,
-  },
-  completedValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  completedLabel: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '600',
-    opacity: 0.9,
-  },
-  completedRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  completedTrendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  completedTrendText: {
-    color: '#10B981',
-    fontSize: 11,
-    fontWeight: '700',
-    marginLeft: 3,
-  },
-  penaltyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#EF4444',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  penaltyContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  penaltyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  penaltyIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FEE2E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  penaltyInfo: {
-    marginTop: 2,
-  },
-  penaltyValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  penaltyLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  penaltyRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  penaltyTrendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  penaltyTrendText: {
-    color: '#EF4444',
-    fontSize: 11,
-    fontWeight: '700',
-    marginLeft: 3,
-  },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  viewAll: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3DA2CE',
-  },
-  chartCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  chartLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3DA2CE',
-    marginRight: 8,
-  },
-  legendText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  chartAverage: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
-  },
-  barChart: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 180,
-  },
-  barColumn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginHorizontal: 4,
-  },
-  barValue: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#3DA2CE',
-    marginBottom: 4,
-  },
-  bar: {
-    width: '100%',
-    maxWidth: 32,
-    borderRadius: 8,
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  barLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 8,
-    fontWeight: '600',
-  },
-  barLabelActive: {
-    color: '#3DA2CE',
-    fontWeight: '700',
-  },
-  breakdownCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  breakdownLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  breakdownIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  breakdownInfo: {
-    flex: 1,
-  },
-  breakdownLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  breakdownRight: {
-    alignItems: 'flex-end',
-    marginLeft: 12,
-  },
-  breakdownValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  breakdownPercentage: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-});

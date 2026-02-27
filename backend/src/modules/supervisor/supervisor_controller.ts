@@ -244,7 +244,7 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
       car_image_url: car_image_url || null,
       car_location: car_location || null,
       cleaner_id: realCleanerId,
-      amount_charged: task_amount ? parseFloat(task_amount) : 0,
+      task_amount: task_amount ? parseFloat(task_amount) : 0,
     });
 
     // Send push notification

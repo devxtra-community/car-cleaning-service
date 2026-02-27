@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
+import { View, Text, Pressable, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DollarSign, TrendingUp } from 'lucide-react-native';
 
@@ -45,19 +45,21 @@ export default function EarningsScreen() {
   const current = DATA[tab];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-[#F9FAFB] p-5">
       {/* HEADER */}
-      <Text style={styles.title}>Earnings</Text>
+      <Text className="text-2xl font-antigravity-bold mb-4 text-[#1E3A8A]">Earnings</Text>
 
       {/* SEGMENTED BAR */}
-      <View style={styles.segment}>
+      <View className="flex-row bg-[#E5E7EB] rounded-2xl p-1 mb-5">
         {(['daily', 'weekly', 'monthly'] as TabType[]).map((item) => (
           <Pressable
             key={item}
             onPress={() => setTab(item)}
-            style={[styles.segmentItem, tab === item && styles.segmentActive]}
+            className={`flex-1 py-2.5 rounded-xl items-center ${tab === item ? 'bg-white shadow-sm' : ''}`}
           >
-            <Text style={[styles.segmentText, tab === item && styles.segmentTextActive]}>
+            <Text
+              className={`text-sm font-antigravity-bold ${tab === item ? 'text-[#1D4ED8]' : 'text-[#6B7280]'}`}
+            >
               {item.charAt(0).toUpperCase() + item.slice(1)}
             </Text>
           </Pressable>
@@ -65,42 +67,54 @@ export default function EarningsScreen() {
       </View>
 
       {/* TOTAL EARNINGS CARD */}
-      <View style={styles.totalCard}>
-        <View style={styles.totalIcon}>
+      <View className="bg-white rounded-3xl p-6 items-center mb-7 shadow-sm border border-white">
+        <View className="w-11 h-11 rounded-full bg-[#E0F2FE] justify-center items-center mb-2">
           <DollarSign size={22} color="#2563EB" />
         </View>
 
-        <Text style={styles.totalLabel}>Total Earnings</Text>
-        <Text style={styles.totalValue}>₹{current.total.toLocaleString()}</Text>
+        <Text className="text-xs text-[#6B7280] mb-1.5 font-antigravity-medium border-0">
+          Total Earnings
+        </Text>
+        <Text className="text-4xl font-antigravity-bold text-[#2563EB] mb-2">
+          ₹{current.total.toLocaleString()}
+        </Text>
 
         {/* TREND INDICATOR */}
-        <View style={styles.trendContainer}>
+        <View className="flex-row items-center gap-1 bg-[#D1FAE5] px-2.5 py-1 rounded-xl">
           <TrendingUp size={14} color="#10B981" />
-          <Text style={styles.trendText}>
+          <Text className="text-xs font-antigravity-bold text-[#10B981]">
             {tab === 'daily' ? '+12.5%' : tab === 'weekly' ? '+8.3%' : '+15.7%'}
           </Text>
         </View>
       </View>
 
       {/* SERVICE BREAKDOWN */}
-      <Text style={styles.sectionTitle}>Service Breakdown</Text>
+      <Text className="text-lg font-antigravity-bold mb-3.5 text-[#111827] border-0">
+        Service Breakdown
+      </Text>
 
       <FlatList
         data={current.services}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={styles.serviceCard}>
-            <View style={styles.iconWrap}>
-              <Text style={styles.serviceIcon}>{item.icon}</Text>
+          <View className="flex-row items-center bg-white rounded-2xl p-4.5 mb-3.5 shadow-sm border border-white">
+            <View className="w-11 h-11 rounded-full bg-[#E0F2FE] justify-center items-center mr-3.5">
+              <Text className="text-xl">{item.icon}</Text>
             </View>
 
-            <View style={styles.serviceInfo}>
-              <Text style={styles.serviceText}>{item.type} Cleaned</Text>
-              <Text style={styles.serviceCount}>{item.count} cars</Text>
+            <View className="flex-1">
+              <Text className="text-base font-antigravity-bold text-[#1F2937] mb-0.5">
+                {item.type} Cleaned
+              </Text>
+              <Text className="text-xs font-antigravity-medium text-[#6B7280] border-0">
+                {item.count} cars
+              </Text>
             </View>
 
-            <View style={styles.amountBadge}>
-              <Text style={styles.amountText}>₹{item.amount.toLocaleString()}</Text>
+            <View className="bg-[#DBEAFE] px-3.5 py-2 rounded-full">
+              <Text className="text-base font-antigravity-bold text-[#2563EB]">
+                ₹{item.amount.toLocaleString()}
+              </Text>
             </View>
           </View>
         )}
@@ -108,156 +122,3 @@ export default function EarningsScreen() {
     </SafeAreaView>
   );
 }
-
-/* ---------------- STYLES ---------------- */
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    padding: 20,
-  },
-
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 16,
-    color: '#1E3A8A',
-  },
-
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 20,
-  },
-
-  segmentItem: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-
-  segmentActive: {
-    backgroundColor: '#FFFFFF',
-  },
-
-  segmentText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-
-  segmentTextActive: {
-    color: '#1D4ED8',
-  },
-
-  totalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-
-  totalIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  totalLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 6,
-  },
-
-  totalValue: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#2563EB',
-    marginBottom: 8,
-  },
-
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-
-  trendText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#10B981',
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 14,
-    color: '#111827',
-  },
-
-  serviceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-  },
-
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-
-  serviceIcon: {
-    fontSize: 22,
-  },
-
-  serviceInfo: {
-    flex: 1,
-  },
-
-  serviceText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-
-  serviceCount: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-
-  amountBadge: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-
-  amountText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#2563EB',
-  },
-});

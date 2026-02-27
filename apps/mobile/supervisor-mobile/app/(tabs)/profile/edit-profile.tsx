@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Image,
   Pressable,
   TextInput,
@@ -16,14 +15,14 @@ import { Camera, ArrowLeft, Save, Mail, User, Phone, MapPin } from 'lucide-react
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path, Circle } from 'react-native-svg';
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 
 // Topographic Pattern
 const TopoPattern = () => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 200"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -59,7 +58,7 @@ export default function MyAccountScreen() {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await api.get('/api/users/me');
+      const res = await API.get('/api/users/me');
       if (res.data.success) {
         const user = res.data.data;
         setName(user.full_name || '');
@@ -142,7 +141,7 @@ export default function MyAccountScreen() {
         console.log('Uploading image to S3...');
 
         // 1. Get presigned URL
-        const presignRes = await api.post('/s3/presign', {
+        const presignRes = await API.post('/s3/presign', {
           fileType: 'image/jpeg',
           folder: 'profiles',
         });
@@ -167,7 +166,7 @@ export default function MyAccountScreen() {
         profileImageUrl = fileUrl;
       }
 
-      const res = await api.patch('/api/supervisor/profile', {
+      const res = await API.patch('/api/supervisor/profile', {
         full_name: name,
         profile_image: profileImageUrl,
       });
@@ -188,72 +187,80 @@ export default function MyAccountScreen() {
 
   if (initialLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#F5F7FA',
-        }}
-      >
+      <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
         <ActivityIndicator size="large" color="#4FB3D9" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       {/* HEADER */}
-      <View style={styles.headerContainer}>
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.header}>
+      <View className="h-[100px]">
+        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} className="flex-1 overflow-hidden">
           <TopoPattern />
-          <View style={styles.headerContent}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <View className="flex-row items-center justify-between px-5 pt-3 z-10">
+            <Pressable
+              onPress={() => router.back()}
+              className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
+            >
               <ArrowLeft size={24} color="#fff" />
             </Pressable>
-            <Text style={styles.headerTitle}>My Account</Text>
-            <View style={{ width: 40 }} />
+            <Text className="text-xl font-antigravity-bold text-white">My Account</Text>
+            <View className="w-10" />
           </View>
         </LinearGradient>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         {/* PROFILE PHOTO */}
-        <View style={styles.photoSection}>
-          <View style={styles.avatarContainer}>
-            <Image source={{ uri: profileImage }} style={styles.avatar} />
-            <Pressable style={styles.cameraButton} onPress={showImageOptions}>
+        <View className="items-center py-8">
+          <View className="relative">
+            <Image
+              source={{ uri: profileImage }}
+              className="w-[120px] h-[120px] rounded-full border-4 border-white shadow-lg"
+            />
+            <Pressable
+              className="absolute right-0 bottom-0 w-10 h-10 rounded-full bg-[#3DA2CE] justify-center items-center border-[3px] border-white shadow shadow-[#3DA2CE4C]"
+              onPress={showImageOptions}
+            >
               <Camera size={18} color="#fff" />
             </Pressable>
           </View>
-          <Text style={styles.photoText}>Tap to change photo</Text>
+          <Text className="mt-3 text-[13px] text-[#6B7280] font-antigravity-medium border-0">
+            Tap to change photo
+          </Text>
         </View>
 
         {/* FORM */}
-        <View style={styles.form}>
+        <View className="px-5">
           {/* NAME */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <View style={styles.inputContainer}>
-              <User size={18} color="#A0A0A0" style={styles.inputIcon} />
+          <View className="mb-5">
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
+              Full Name
+            </Text>
+            <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
+              <User size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
                 value={name}
                 onChangeText={setName}
                 placeholder="Enter your name"
                 placeholderTextColor="#B0B0B0"
-                style={styles.input}
+                className="flex-1 text-[15px] font-antigravity-medium text-[#2C2C2C] py-3"
               />
             </View>
           </View>
 
           {/* EMAIL */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
+          <View className="mb-5">
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
               Email Address{' '}
-              <Text style={{ color: '#9CA3AF', fontSize: 11 }}>(cannot be changed)</Text>
+              <Text className="text-[#9CA3AF] text-[11px] font-antigravity-medium border-0">
+                (cannot be changed)
+              </Text>
             </Text>
-            <View style={[styles.inputContainer, styles.inputDisabled]}>
-              <Mail size={18} color="#A0A0A0" style={styles.inputIcon} />
+            <View className="flex-row items-center bg-[#F3F4F6] rounded-xl px-4 py-1 border border-[#E5E7EB]">
+              <Mail size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
                 value={email}
                 placeholder="Enter your email"
@@ -261,48 +268,52 @@ export default function MyAccountScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={false}
-                style={[styles.input, styles.inputTextDisabled]}
+                className="flex-1 text-[15px] font-antigravity-medium text-[#9CA3AF] py-3"
               />
             </View>
           </View>
 
           {/* PHONE */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number</Text>
-            <View style={styles.inputContainer}>
-              <Phone size={18} color="#A0A0A0" style={styles.inputIcon} />
+          <View className="mb-5">
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
+              Phone Number
+            </Text>
+            <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
+              <Phone size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="Enter your phone"
                 placeholderTextColor="#B0B0B0"
                 keyboardType="phone-pad"
-                style={styles.input}
+                className="flex-1 text-[15px] font-antigravity-medium text-[#2C2C2C] py-3"
               />
             </View>
           </View>
 
           {/* ADDRESS */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Address</Text>
-            <View style={styles.inputContainer}>
-              <MapPin size={18} color="#A0A0A0" style={styles.inputIcon} />
+          <View className="mb-5">
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
+              Address
+            </Text>
+            <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
+              <MapPin size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
                 value={address}
                 onChangeText={setAddress}
                 placeholder="Enter your address"
                 placeholderTextColor="#B0B0B0"
                 multiline
-                style={[styles.input, { minHeight: 44 }]}
+                className="flex-1 text-[15px] font-antigravity-medium text-[#2C2C2C] py-3 min-h-[44px]"
               />
             </View>
           </View>
         </View>
 
         {/* SAVE BUTTON */}
-        <View style={styles.buttonContainer}>
+        <View className="px-5 mt-3">
           <Pressable
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            className={`flex-row items-center justify-center py-4 rounded-xl gap-2 shadow-lg shadow-[#3DA2CE4C] ${loading ? 'bg-[#4FB3D9] opacity-60' : 'bg-[#4FB3D9]'}`}
             onPress={handleSave}
             disabled={loading}
           >
@@ -311,187 +322,14 @@ export default function MyAccountScreen() {
             ) : (
               <>
                 <Save size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text className="text-white text-base font-antigravity-bold">Save Changes</Text>
               </>
             )}
           </Pressable>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View className="h-10" />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-
-  headerContainer: {
-    height: 100,
-  },
-
-  header: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    zIndex: 10,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
-
-  scrollView: {
-    flex: 1,
-  },
-
-  photoSection: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-
-  avatarContainer: {
-    position: 'relative',
-  },
-
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-
-  cameraButton: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#3DA2CE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-
-  photoText: {
-    marginTop: 12,
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-
-  form: {
-    paddingHorizontal: 20,
-  },
-
-  inputGroup: {
-    marginBottom: 20,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4A4A4A',
-    marginBottom: 8,
-  },
-
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-
-  inputIcon: {
-    marginRight: 12,
-  },
-
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#2C2C2C',
-    paddingVertical: 12,
-  },
-
-  inputDisabled: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-  },
-
-  inputTextDisabled: {
-    color: '#9CA3AF',
-  },
-
-  buttonContainer: {
-    paddingHorizontal: 20,
-    marginTop: 12,
-  },
-
-  saveButton: {
-    backgroundColor: '#4FB3D9',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});

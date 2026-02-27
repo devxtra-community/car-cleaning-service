@@ -1,8 +1,8 @@
+import React from 'react';
 import {
   View,
   Text,
   FlatList,
-  StyleSheet,
   ActivityIndicator,
   Pressable,
   Modal,
@@ -22,14 +22,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
-import api from '@/src/api/api';
+import { API } from '@/src/api/api';
 
 // Topographic Pattern for Headers
 const TopoPattern = ({ color = 'rgba(14, 165, 233, 0.08)' }: { color?: string }) => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -83,12 +83,16 @@ const InputField = ({
   keyboard?: 'default' | 'phone-pad' | 'numeric' | 'email-address';
 }) => {
   return (
-    <View style={styles.inputFieldContainer}>
-      <Text style={styles.inputFieldLabel}>{label}</Text>
-      <View style={styles.clayInputCard}>
-        <View style={styles.inputIconWrapper}>{icon}</View>
+    <View className="mb-6">
+      <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] uppercase tracking-widest mb-2 ml-1">
+        {label}
+      </Text>
+      <View className="flex-row items-center bg-white rounded-[20px] px-4 h-14 border border-[#F1F5F9] shadow-sm">
+        <View className="w-10 h-10 rounded-xl bg-[#F0F9FF] items-center justify-center mr-3">
+          {icon}
+        </View>
         <TextInput
-          style={styles.textInput}
+          className="flex-1 text-base font-antigravity-bold text-[#1E293B]"
           placeholder={placeholder}
           placeholderTextColor="#94A3B8"
           value={value}
@@ -135,7 +139,7 @@ export default function AddTaskScreen() {
 
   const fetchCarTypes = async () => {
     try {
-      const res = await api.get('/api/vehicle');
+      const res = await API.get('/api/vehicle');
       setCarTypes(res.data || []);
     } catch (err) {
       console.error('Failed to fetch car types', err);
@@ -184,7 +188,7 @@ export default function AddTaskScreen() {
       setUploadingImage(true);
 
       // 1. Get presigned URL
-      const presignRes = await api.post('/s3/presign', {
+      const presignRes = await API.post('/s3/presign', {
         fileType: 'image/jpeg',
         folder: 'tasks',
       });
@@ -224,7 +228,7 @@ export default function AddTaskScreen() {
 
   const loadWorkers = async () => {
     try {
-      const res = await api.get('/api/supervisor/workers');
+      const res = await API.get('/api/supervisor/workers');
 
       if (res.data.success) {
         setWorkers(res.data.data);
@@ -279,10 +283,10 @@ export default function AddTaskScreen() {
     setSubmitting(true);
     try {
       if (isUpdating) {
-        await api.patch(`/api/supervisor/tasks/${selectedWorker.current_task_id}`, formData);
+        await API.patch(`/api/supervisor/tasks/${selectedWorker.current_task_id}`, formData);
         Alert.alert('Success', 'Task updated successfully');
       } else {
-        await api.post('/api/supervisor/tasks', {
+        await API.post('/api/supervisor/tasks', {
           ...formData,
           worker_id: selectedWorker.id,
         });
@@ -300,61 +304,68 @@ export default function AddTaskScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <LinearGradient
-          colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-          style={StyleSheet.absoluteFill}
-        />
+      <View className="flex-1 justify-center items-center">
+        <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} className="absolute inset-0" />
         <TopoPattern />
         <ActivityIndicator size="large" color="#0EA5E9" />
-        <Text style={styles.loadingText}>Loading workers...</Text>
+        <Text className="mt-3 text-sm text-[#64748B] z-10 font-antigravity-medium">
+          Loading workers...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+    <View className="flex-1">
+      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} className="absolute inset-0" />
       <TopoPattern />
 
       {/* HEADER SECTION */}
-      <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.headerFlex}>
-          <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
+      <View
+        className="px-6 pb-5 bg-white/80 rounded-b-[40px] shadow-sm z-10"
+        style={{ paddingTop: insets.top + 10 }}
+      >
+        <View className="flex-row items-center justify-between">
+          <Pressable
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-xl items-center justify-center bg-white border border-[#F1F5F9]"
+          >
             <ArrowLeft size={22} color="#1E293B" />
           </Pressable>
-          <Text style={styles.headerTitleText}>ASSIGN TASKS</Text>
-          <View style={{ width: 40 }} />
+          <Text className="text-lg font-antigravity-bold text-[#1E293B] tracking-tighter">
+            ASSIGN TASKS
+          </Text>
+          <View className="w-10" />
         </View>
       </View>
 
       <FlatList
         data={workers}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
-        ListEmptyComponent={<Text style={styles.emptyText}>No workers assigned to you</Text>}
+        contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+        ListEmptyComponent={
+          <Text className="text-center mt-15 text-base text-[#94A3B8] font-antigravity-medium">
+            No workers assigned to you
+          </Text>
+        }
         onRefresh={loadWorkers}
         refreshing={loading}
         renderItem={({ item }) => (
-          <View style={styles.workerClayCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.avatarClayContainer}>
+          <View className="bg-white/90 rounded-[28px] p-4 mb-4 border border-white shadow-xl">
+            <View className="flex-row items-center mb-4">
+              <View className="w-14 h-14 rounded-full bg-[#E0F2FE] items-center justify-center mr-4">
                 <User size={24} color="#0EA5E9" />
               </View>
-              <View style={styles.workerBasicInfo}>
-                <Text style={styles.workerName}>{item.full_name}</Text>
-                <View style={styles.statusBadgeContainer}>
+              <View className="flex-1">
+                <Text className="text-base font-antigravity-bold text-[#1E293B]">
+                  {item.full_name}
+                </Text>
+                <View className="flex-row items-center mt-1">
                   <View
-                    style={[
-                      styles.statusDot,
-                      { backgroundColor: item.status === 'working' ? '#10B981' : '#94A3B8' },
-                    ]}
+                    className={`w-2 h-2 rounded-full mr-[6px] ${item.status === 'working' ? 'bg-[#10B981]' : 'bg-[#94A3B8]'}`}
                   />
                   <Text
-                    style={[
-                      styles.statusText,
-                      { color: item.status === 'working' ? '#10B981' : '#64748B' },
-                    ]}
+                    className={`text-[13px] font-antigravity-semibold ${item.status === 'working' ? 'text-[#10B981]' : 'text-[#64748B]'}`}
                   >
                     {item.status === 'working' ? 'Working' : 'Idle'}
                   </Text>
@@ -363,39 +374,54 @@ export default function AddTaskScreen() {
             </View>
 
             {item.status === 'working' && (
-              <BlurView intensity={20} style={styles.taskInfoGlassContainer}>
-                <View style={styles.taskDetailHeader}>
+              <BlurView
+                intensity={20}
+                className="bg-white/50 rounded-[24px] p-4 mb-4 overflow-hidden border border-white/50"
+              >
+                <View className="flex-row items-center gap-2 mb-3">
                   <Car size={16} color="#0EA5E9" />
-                  <Text style={styles.taskDetailTitle}>Current Task</Text>
+                  <Text className="text-xs font-antigravity-bold text-[#0EA5E9] uppercase tracking-widest">
+                    Current Task
+                  </Text>
                 </View>
 
-                <View style={styles.taskGrid}>
-                  <View style={styles.taskGridItem}>
-                    <Text style={styles.taskLabel}>Vehicle</Text>
-                    <Text style={styles.taskValue}>{item.car_model}</Text>
-                    <Text style={styles.taskSubValue}>{item.car_number}</Text>
+                <View className="flex-row justify-between">
+                  <View className="flex-1">
+                    <Text className="text-[10px] text-[#94A3B8] uppercase font-antigravity-bold mb-1">
+                      Vehicle
+                    </Text>
+                    <Text className="text-sm font-antigravity-bold text-[#1E293B]">
+                      {item.car_model}
+                    </Text>
+                    <Text className="text-xs text-[#64748B] font-antigravity-medium">
+                      {item.car_number}
+                    </Text>
                   </View>
-                  <View style={styles.taskGridItem}>
-                    <Text style={styles.taskLabel}>Owner</Text>
-                    <Text style={styles.taskValue}>{item.owner_name || 'N/A'}</Text>
+                  <View className="flex-1">
+                    <Text className="text-[10px] text-[#94A3B8] uppercase font-antigravity-bold mb-1">
+                      Owner
+                    </Text>
+                    <Text className="text-sm font-antigravity-bold text-[#1E293B]">
+                      {item.owner_name || 'N/A'}
+                    </Text>
                   </View>
                 </View>
               </BlurView>
             )}
 
-            <View style={styles.cardActions}>
+            <View className="flex-row">
               <Pressable
-                style={[
-                  styles.clayActionButton,
-                  item.status === 'working' ? styles.updateBtnStyle : styles.assignBtnStyle,
-                ]}
+                className={`flex-1 h-12 rounded-2xl items-center justify-center ${
+                  item.status === 'working'
+                    ? 'bg-white border border-[#0EA5E9]'
+                    : 'bg-[#0EA5E9] shadow-lg shadow-[#0EA5E94C]'
+                }`}
                 onPress={() => handleOpenModal(item, item.status === 'working')}
               >
                 <Text
-                  style={[
-                    styles.clayActionBtnText,
-                    item.status === 'working' ? { color: '#0EA5E9' } : { color: '#fff' },
-                  ]}
+                  className={`text-sm font-antigravity-bold ${
+                    item.status === 'working' ? 'text-[#0EA5E9]' : 'text-white'
+                  }`}
                 >
                   {item.status === 'working' ? 'Update Task' : 'Assign Task'}
                 </Text>
@@ -411,14 +437,17 @@ export default function AddTaskScreen() {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View className="flex-1 justify-end bg-black/30">
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1, justifyContent: 'flex-end' }}
+            className="flex-1 justify-end"
           >
-            <View style={[styles.modalContentRedesign, { paddingBottom: insets.bottom + 20 }]}>
-              <View style={styles.modalHeaderRedesign}>
-                <Text style={styles.modalTitleRedesign}>
+            <View
+              className="bg-white/95 rounded-t-[32px] p-5"
+              style={{ paddingBottom: insets.bottom + 20 }}
+            >
+              <View className="flex-row items-center justify-between mb-6">
+                <Text className="text-xl font-antigravity-bold text-[#1E293B]">
                   {isUpdating ? 'Update Task' : 'New Job Entry'}
                 </Text>
                 <Pressable onPress={() => setModalVisible(false)}>
@@ -430,21 +459,23 @@ export default function AddTaskScreen() {
                 showsVerticalScrollIndicator={false}
                 style={{ maxHeight: Dimensions.get('window').height * 0.7 }}
               >
-                <View style={styles.formGap}>
-                  <Pressable onPress={showImageOptions} style={styles.imageUploadClayContainer}>
+                <View className="gap-1">
+                  <Pressable
+                    onPress={showImageOptions}
+                    className="h-[200px] rounded-[32px] border-2 border-[#0EA5E933] border-dashed bg-white/50 items-center justify-center overflow-hidden mb-6"
+                  >
                     {uploadingImage ? (
                       <ActivityIndicator size="large" color="#0EA5E9" />
                     ) : formData.car_image_url ? (
-                      <Image
-                        source={{ uri: formData.car_image_url }}
-                        style={styles.imagePreviewFull}
-                      />
+                      <Image source={{ uri: formData.car_image_url }} className="w-full h-full" />
                     ) : (
-                      <View style={{ alignItems: 'center' }}>
-                        <View style={styles.cameraIconCircle}>
+                      <View className="items-center">
+                        <View className="w-20 h-20 rounded-full bg-[#E0F2FE] items-center justify-center mb-3">
                           <Camera size={40} color="#0EA5E9" />
                         </View>
-                        <Text style={styles.uploadTextCaps}>Take Vehicle Photo</Text>
+                        <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] uppercase tracking-widest">
+                          Take Vehicle Photo
+                        </Text>
                       </View>
                     )}
                   </Pressable>
@@ -474,8 +505,8 @@ export default function AddTaskScreen() {
                     onChange={(txt) => setFormData({ ...formData, car_number: txt })}
                   />
 
-                  <View style={styles.rowFlexGap}>
-                    <View style={{ flex: 1.2 }}>
+                  <View className="flex-row gap-4">
+                    <View className="flex-[1.2]">
                       <InputField
                         icon={<Info size={18} color="#0EA5E9" />}
                         label="Model/Color"
@@ -499,17 +530,16 @@ export default function AddTaskScreen() {
                         }}
                       />
                     </View>
-                    <View style={{ flex: 1, marginBottom: 24 }}>
-                      <Text style={styles.inputFieldLabel}>Car Type</Text>
+                    <View className="flex-1 mb-6">
+                      <Text className="text-[10px] font-antigravity-bold color-[#94A3B8CC] uppercase tracking-widest mb-1.5 ml-1">
+                        Car Type
+                      </Text>
                       <Pressable
                         onPress={() => setShowTypePicker(true)}
-                        style={styles.clayPickerTrigger}
+                        className="h-[52px] bg-white rounded-2xl justify-center px-3 border border-[#F1F5F9]"
                       >
                         <Text
-                          style={[
-                            styles.pickerValueText,
-                            !formData.car_type && { color: '#94A3B8' },
-                          ]}
+                          className={`text-sm font-antigravity-semibold text-[#1E293B] ${!formData.car_type ? 'text-[#94A3B8]' : ''}`}
                         >
                           {formData.car_type || 'Select Type'}
                         </Text>
@@ -530,12 +560,12 @@ export default function AddTaskScreen() {
               <Pressable
                 onPress={handleSubmit}
                 disabled={submitting}
-                style={[styles.claySubmitButton, submitting && { opacity: 0.7 }]}
+                className={`h-14 bg-[#0EA5E9] rounded-[20px] items-center justify-center mt-3 shadow-lg shadow-[#0EA5E94C] ${submitting ? 'opacity-70' : ''}`}
               >
                 {submitting ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text style={styles.claySubmitButtonText}>
+                  <Text className="text-white text-sm font-antigravity-bold uppercase tracking-widest">
                     {isUpdating ? 'Update Task' : 'Submit Job'}
                   </Text>
                 )}
@@ -552,10 +582,15 @@ export default function AddTaskScreen() {
         animationType="fade"
         onRequestClose={() => setShowTypePicker(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowTypePicker(false)}>
-          <View style={styles.pickerContent}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Car Type</Text>
+        <Pressable
+          className="flex-1 justify-end bg-black/30"
+          onPress={() => setShowTypePicker(false)}
+        >
+          <View className="bg-white mx-5 rounded-[20px] p-5 max-h-[60%]">
+            <View className="flex-row justify-between items-center mb-4 pb-[10px] border-b border-[#F3F4F6]">
+              <Text className="text-base font-antigravity-bold text-[#1F2937]">
+                Select Car Type
+              </Text>
               <Pressable onPress={() => setShowTypePicker(false)}>
                 <X size={20} color="#6B7280" />
               </Pressable>
@@ -564,14 +599,18 @@ export default function AddTaskScreen() {
               {carTypes.map((type) => (
                 <Pressable
                   key={type.id}
-                  style={styles.pickerItem}
+                  className="flex-row justify-between items-center py-[14px] border-b border-[#F9FAFB]"
                   onPress={() => {
                     setFormData({ ...formData, car_type: type.type });
                     setShowTypePicker(false);
                   }}
                 >
-                  <Text style={styles.pickerItemText}>{type.type}</Text>
-                  {formData.car_type === type.type && <View style={styles.selectedDot} />}
+                  <Text className="text-[15px] text-[#4B5563] font-antigravity-medium">
+                    {type.type}
+                  </Text>
+                  {formData.car_type === type.type && (
+                    <View className="w-2 h-2 rounded-full bg-[#0EA5E9]" />
+                  )}
                 </Pressable>
               ))}
             </ScrollView>
@@ -581,354 +620,3 @@ export default function AddTaskScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#64748B',
-    zIndex: 1,
-  },
-  headerContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-    zIndex: 10,
-  },
-  headerFlex: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerBackButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  headerTitleText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-    letterSpacing: -0.5,
-  },
-  listContent: {
-    padding: 24,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 60,
-    fontSize: 16,
-    color: '#94A3B8',
-  },
-  workerClayCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 28,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarClayContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#E0F2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  workerBasicInfo: {
-    flex: 1,
-  },
-  workerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  statusBadgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  taskInfoGlassContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  taskDetailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  taskDetailTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0EA5E9',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  taskGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  taskGridItem: {
-    flex: 1,
-  },
-  taskLabel: {
-    fontSize: 10,
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  taskValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  taskSubValue: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  cardActions: {
-    flexDirection: 'row',
-  },
-  clayActionButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  assignBtnStyle: {
-    backgroundColor: '#0EA5E9',
-    shadowColor: '#0EA5E9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  updateBtnStyle: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#0EA5E9',
-  },
-  clayActionBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  // Modal Style Redesign
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  modalContentRedesign: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    padding: 20,
-  },
-  modalHeaderRedesign: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  modalTitleRedesign: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  imageUploadClayContainer: {
-    height: 200,
-    borderRadius: 32,
-    borderWidth: 2,
-    borderColor: 'rgba(14, 165, 233, 0.2)',
-    borderStyle: 'dashed',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  imagePreviewFull: {
-    width: '100%',
-    height: '100%',
-  },
-  cameraIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E0F2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  uploadTextCaps: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  formGap: {
-    gap: 4,
-  },
-  inputFieldContainer: {
-    marginBottom: 24,
-  },
-  inputFieldLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: 'rgba(148, 163, 184, 0.8)',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 6,
-    marginLeft: 4,
-  },
-  clayInputCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  inputIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    backgroundColor: '#E0F2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  rowFlexGap: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  clayPickerTrigger: {
-    height: 52,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  pickerValueText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  claySubmitButton: {
-    height: 56,
-    backgroundColor: '#0EA5E9',
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: '#0EA5E9',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  claySubmitButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  pickerContent: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
-    borderRadius: 20,
-    padding: 20,
-    maxHeight: '60%',
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F9FAFB',
-  },
-  pickerItemText: {
-    fontSize: 15,
-    color: '#4B5563',
-  },
-  selectedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0EA5E9',
-  },
-});

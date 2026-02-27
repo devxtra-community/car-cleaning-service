@@ -1,15 +1,6 @@
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  Image,
-  Dimensions,
-} from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   User,
@@ -23,14 +14,14 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
-import api from '../../src/api/api';
+import { API } from '../../src/api/api';
 
 /* -------------------- DECORATIVE PATTERN -------------------- */
 const TopoPattern = () => (
   <Svg
     height="100%"
     width="100%"
-    style={StyleSheet.absoluteFillObject}
+    className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
   >
@@ -78,12 +69,14 @@ const ActionCard = ({
   onPress?: () => void;
 }) => (
   <Pressable
-    style={({ pressed }) => [styles.actionItemClay, pressed && styles.actionItemPressed]}
+    className="w-[165px] bg-white rounded-[24px] p-4 items-center border border-[#F1F5F9] shadow-sm active:scale-95 transition-transform"
     onPress={onPress}
   >
-    <View style={styles.actionIconClayContainer}>{icon}</View>
-    <Text style={styles.actionItemTitle}>{title}</Text>
-    <Text style={styles.actionItemSubtitle}>{subtitle}</Text>
+    <View className="w-[52px] h-[52px] rounded-[20px] bg-[#E0F2FE] justify-center items-center mb-[10px]">
+      {icon}
+    </View>
+    <Text className="text-sm font-antigravity-bold text-[#1E293B] mb-[2px]">{title}</Text>
+    <Text className="text-[11px] text-[#94A3B8] font-antigravity-medium">{subtitle}</Text>
   </Pressable>
 );
 
@@ -98,7 +91,7 @@ export default function HomePage() {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await api.get('/api/users/me');
+      const res = await API.get('/api/users/me');
       if (res.data.success) {
         setUser(res.data.data);
       }
@@ -112,112 +105,123 @@ export default function HomePage() {
   }, []);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} className="absolute inset-0" />
       <TopoPattern />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+        contentContainerStyle={{ paddingBottom: 140, paddingHorizontal: 20 }}
+        style={{ paddingTop: insets.top + 20 }}
       >
         {/* PROFILE HEADER */}
-        <View style={styles.profileSection}>
+        <View className="flex-row items-center mb-6">
           <View
-            style={[
-              styles.avatarClayContainer,
-              user?.profile_image && { padding: 0, overflow: 'hidden' },
-            ]}
+            className={`w-[60px] h-[60px] rounded-full bg-white justify-center items-center mr-4 shadow-md border-2 border-[#E0F2FE] ${
+              user?.profile_image ? 'p-0 overflow-hidden' : ''
+            }`}
           >
             {user?.profile_image ? (
-              <Image
-                source={{ uri: user.profile_image }}
-                style={{ width: '100%', height: '100%' }}
-              />
+              <Image source={{ uri: user.profile_image }} className="w-full h-full" />
             ) : (
               <User size={30} color="#0EA5E9" />
             )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greetingText}>Welcome back,</Text>
-            <Text style={styles.userNameText}>{user?.full_name || 'Supervisor'}</Text>
+          <View className="flex-1">
+            <Text className="text-sm text-[#64748B] font-antigravity-medium">Welcome back,</Text>
+            <Text className="text-xl font-antigravity-bold text-[#1E293B]">
+              {user?.full_name || 'Supervisor'}
+            </Text>
           </View>
-          <Pressable style={styles.notificationClayBtn}>
+          <Pressable className="w-12 h-12 rounded-full bg-white justify-center items-center border border-[#F1F5F9]">
             <LayoutGrid size={22} color="#0EA5E9" />
           </Pressable>
         </View>
 
         {/* EARNINGS CARD CLAY SECTION */}
-        <View style={styles.earningsClayCard}>
-          <View style={styles.earningsHeader}>
+        <View className="clay-card p-6 mb-6 bg-white border border-[#F1F5F9] shadow-xl">
+          <View className="flex-row items-center gap-2 mb-3">
             <TrendingUp size={14} color="#0EA5E9" />
-            <Text style={styles.earningsLabel}>Daily Performance</Text>
+            <Text className="text-[11px] font-antigravity-bold color-[#0EA5E9] uppercase tracking-widest">
+              Daily Performance
+            </Text>
           </View>
 
-          <View style={styles.earningsMain}>
-            <Text style={styles.currencySymbol}>₹</Text>
-            <Text style={styles.earningsAmountText}>5,580</Text>
-            <View style={styles.earningsTrendBadge}>
-              <Text style={styles.trendText}>+12%</Text>
+          <View className="flex-row items-baseline mb-4">
+            <Text className="text-xl text-[#1E293B] font-antigravity-semibold mr-1">₹</Text>
+            <Text className="text-[38px] font-antigravity-bold text-[#1E293B] tracking-tighter">
+              5,580
+            </Text>
+            <View className="bg-[#10B9811A] px-[10px] py-[4px] rounded-xl ml-3">
+              <Text className="text-xs font-antigravity-bold text-[#059669]">+12%</Text>
             </View>
           </View>
 
-          <View style={styles.statsDivider} />
+          <View className="h-[1px] bg-[#94A3B41A] mb-4" />
 
-          <View style={styles.statsFooter}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>30</Text>
-              <Text style={styles.statLabel}>Jobs Done</Text>
+          <View className="flex-row justify-between">
+            <View className="items-center">
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">30</Text>
+              <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
+                Jobs Done
+              </Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>04</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+            <View className="items-center">
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">04</Text>
+              <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
+                Pending
+              </Text>
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>98%</Text>
-              <Text style={styles.statLabel}>Rating</Text>
+            <View className="items-center">
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">98%</Text>
+              <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
+                Rating
+              </Text>
             </View>
           </View>
         </View>
 
         {/* ACTION BUTTONS REDESIGN */}
-        <View style={styles.topActionRow}>
+        <View className="flex-row gap-3 mb-6">
           <Pressable
-            style={styles.primaryClayBtn}
+            className="flex-[1.6] h-[60px] rounded-[20px] overflow-hidden shadow-lg shadow-[#0EA5E94C]"
             onPress={() => router.push('/(tabs)/supervisor/add-task')}
           >
             <LinearGradient
               colors={['#0EA5E9', '#0284C7']}
-              style={styles.btnGradient}
+              className="flex-1 flex-row items-center px-5 justify-between"
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
               <UserCog size={22} color="#FFF" />
-              <Text style={styles.primaryBtnText}>Add Tasks</Text>
+              <Text className="text-white text-base font-antigravity-bold flex-1 ml-3">
+                Add Tasks
+              </Text>
               <ChevronRight size={18} color="#FFF" opacity={0.6} />
             </LinearGradient>
           </Pressable>
 
           <Pressable
-            style={styles.secondaryClayBtn}
+            className="flex-1 h-[60px] bg-white rounded-[20px] flex-row items-center px-4 border border-[#FEE2E2] gap-[10px]"
             onPress={() => router.push('/(tabs)/penalty/add-penalties')}
           >
-            <View style={styles.alertIconCircle}>
+            <View className="w-10 h-10 rounded-full bg-[#FEF2F2] justify-center items-center">
               <AlertCircle size={22} color="#EF4444" strokeWidth={2.5} />
             </View>
-            <Text style={styles.secondaryBtnText}>Penalties</Text>
+            <Text className="text-sm font-antigravity-bold text-[#1E293B]">Penalties</Text>
           </Pressable>
         </View>
 
         {/* QUICK ACTIONS SECTION */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Dashboard</Text>
+        <View className="flex-row justify-between items-center mb-5 px-1">
+          <Text className="text-xl font-antigravity-bold text-[#1E293B]">Dashboard</Text>
           <Pressable>
-            <Text style={styles.seeAllText}>Manage</Text>
+            <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">Manage</Text>
           </Pressable>
         </View>
 
-        <View style={styles.actionsGridRedesign}>
+        <View className="flex-row flex-wrap gap-4">
           <ActionCard
             icon={<UserCog size={24} color="#0EA5E9" />}
             title="Live Workers"
@@ -248,244 +252,3 @@ export default function HomePage() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 140,
-  },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  avatarClayContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-    borderWidth: 2,
-    borderColor: '#E0F2FE',
-  },
-  greetingText: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  userNameText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  notificationClayBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  earningsClayCard: {
-    backgroundColor: '#fff',
-    borderRadius: 32,
-    padding: 24,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  earningsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  earningsLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#0EA5E9',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  earningsMain: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 16,
-  },
-  currencySymbol: {
-    fontSize: 20,
-    color: '#1E293B',
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  earningsAmountText: {
-    fontSize: 38,
-    fontWeight: '900',
-    color: '#1E293B',
-    letterSpacing: -1,
-  },
-  earningsTrendBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 12,
-  },
-  trendText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#059669',
-  },
-  statsDivider: {
-    height: 1,
-    backgroundColor: 'rgba(148, 163, 184, 0.1)',
-    marginBottom: 16,
-  },
-  statsFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  statLabel: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  topActionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  primaryClayBtn: {
-    flex: 1.6,
-    height: 60,
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#0EA5E9',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  btnGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
-  },
-  primaryBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-    flex: 1,
-    marginLeft: 12,
-  },
-  secondaryClayBtn: {
-    flex: 1,
-    height: 60,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    gap: 10,
-  },
-  alertIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FEF2F2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 4,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0EA5E9',
-  },
-  actionsGridRedesign: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  actionItemClay: {
-    width: (Dimensions.get('window').width - 40 - 16) / 2,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  actionItemPressed: {
-    transform: [{ scale: 0.96 }],
-    backgroundColor: '#F8FAFB',
-  },
-  actionIconClayContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 20,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionItemTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 2,
-  },
-  actionItemSubtitle: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-});
