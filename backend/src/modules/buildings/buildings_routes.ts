@@ -9,8 +9,8 @@ import {
   getBuildingDetails,
   updateBuilding,
 } from './buildings_controller';
-import { protect } from 'src/middlewares/authMiddleware';
-import { allowRoles } from 'src/middlewares/roleMiddleware';
+import { protect } from '../../middlewares/authMiddleware';
+import { allowRoles } from '../../middlewares/roleMiddleware';
 
 const router = Router();
 

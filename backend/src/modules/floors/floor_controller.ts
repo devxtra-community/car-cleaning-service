@@ -4,7 +4,7 @@
 // ============================================
 
 import { Request, Response } from 'express';
-import { pool } from 'src/database/connectDatabase';
+import { pool } from '../../database/connectDatabase';
 
 /**
  * Get all floors for a specific building

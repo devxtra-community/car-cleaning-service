@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { logAuditAction } from '../../utils/auditLogger';
 import { logger } from '../../config/logger';
-import { AppError } from 'src/middlewares/error-handler';
+import { AppError } from '../../middlewares/error-handler';
 import { ClientType, verifyRefreshToken } from '../../config/jwt';
 import { uploadToS3 } from '../../middlewares/uploadMiddleware';
 import {

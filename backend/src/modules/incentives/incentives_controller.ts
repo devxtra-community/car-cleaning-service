@@ -20,7 +20,7 @@ import {
   getMonthlyIncentiveSummary,
 } from './incentives_service';
 import { pool } from '../../database/connectDatabase';
-import { AuthRequest } from 'src/middlewares/authMiddleware';
+import { AuthRequest } from '../../middlewares/authMiddleware';
 
 const getParamString = (value: string | string[]): string =>
   Array.isArray(value) ? value[0] : value;
