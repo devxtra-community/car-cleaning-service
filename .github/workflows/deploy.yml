@@ -1,4 +1,4 @@
-# CD - Deploy to EC2 (Yasir branch test)
+# CD - Deploy to EC2 (Verified for ec2-user)
 name: CD - Deploy to EC2
 
 on:
