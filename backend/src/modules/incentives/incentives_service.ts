@@ -1,5 +1,5 @@
 // src/services/incentives_service.ts
-import { pool } from 'src/database/connectDatabase';
+import { pool } from '../../database/connectDatabase';
 
 /* ===================== TYPES ===================== */
 

@@ -1,4 +1,4 @@
-import { pool } from 'src/database/connectDatabase';
+import { pool } from '../../database/connectDatabase';
 
 export const getBuildingReconciliation = async (cycleId: string) => {
   const cycleRes = await pool.query(

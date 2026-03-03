@@ -7,7 +7,7 @@ import {
   hashToken,
 } from '../../config/jwt';
 import { v4 as uuidv4 } from 'uuid';
-import { pool } from 'src/database/connectDatabase';
+import { pool } from '../../database/connectDatabase';
 
 export const refresh = async (req: Request, res: Response) => {
   const client = await pool.connect();

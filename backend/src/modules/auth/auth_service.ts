@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { pool } from '../../database/connectDatabase';
-import { AppError } from 'src/middlewares/error-handler';
+import { AppError } from '../../middlewares/error-handler';
 import { generateAccessToken, generateRefreshToken, hashToken, ClientType } from '../../config/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { getLatestOpenCycle, generateSalaryForUser } from '../salary/salary_service';

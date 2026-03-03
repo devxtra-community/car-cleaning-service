@@ -8,8 +8,8 @@ import {
   getAllSupervisors,
 } from './auth_controller';
 import { uploadDocumentToS3, handleMulterError } from '../../middlewares/uploadMiddleware';
-import { protect } from 'src/middlewares/authMiddleware';
-import { allowRoles } from 'src/middlewares/roleMiddleware';
+import { protect } from '../../middlewares/authMiddleware';
+import { allowRoles } from '../../middlewares/roleMiddleware';
 import { refresh } from './refresh';
 import { getAllFloors, getFloorsByBuilding } from '../floors/floor_controller';
 import { registerPushTokenController } from '../supervisor/supervisor_controller';
