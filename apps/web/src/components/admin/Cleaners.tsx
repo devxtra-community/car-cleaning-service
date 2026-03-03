@@ -691,154 +691,153 @@ const Cleaners: React.FC = () => {
                         <span className="text-xs text-slate-400">({c.total_reviews || 0})</span>
                       </span>
                     </td>
-
                     {/* Earning */}
-                  </span>
+                    <td className="px-5 py-4 text-center">
+                      <span className="font-bold text-slate-700">
+                        ₹{Number(c.total_earning || 0).toLocaleString()}
+                      </span>
                     </td>
 
-              {/* Status */}
-              <td className="px-5 py-4 text-center">
-                <button
-                  onClick={() => handleToggleStatus(c)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
+                    {/* Status */}
+                    <td className="px-5 py-4 text-center">
+                      <button
+                        onClick={() => handleToggleStatus(c)}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
                           ${c.is_active
-                      ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                      : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-                >
-                  {c.is_active ? 'Active' : 'Disabled'}
-                </button>
-              </td>
-
-              {/* Actions */}
-              <td className="px-5 py-4">
-                <div className="flex items-center justify-center gap-2">
-                  {/* View */}
-                  <Link
-                    to={`/admin/cleaner/${c.cleaner_id}`}
-                    title="View details"
-                    className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
-                            hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-all"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8-10-8-10-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </Link>
-
-                  {/* Edit */}
-                  <button
-                    onClick={() => setEditTarget(c)}
-                    title="Edit cleaner"
-                    className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
-                            hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-
-                </svg>
-              </button>
-
-              {/* Reset Password */}
-              <button
-                onClick={() => handleResetPassword(c)}
-                title="Reset Password"
-                className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
-                            hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600 transition-all"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-              </button>
-
-              {/* Delete */}
-              <button
-                onClick={() => setDeleteTarget(c)}
-                title="Delete cleaner"
-                className="w-8 h-8 rounded-lg border border-red-100 flex items-center justify-center text-red-400
-                            hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-          </div>
+                            ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                            : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                      >
+                        {c.is_active ? 'Active' : 'Disabled'}
+                      </button>
                     </td>
-    </tr>
-  ))
-}
-              </tbody >
-            </table >
-          </div >
+
+                    {/* Actions */}
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        {/* View */}
+                        <Link
+                          to={`/admin/cleaner/${c.cleaner_id}`}
+                          title="View details"
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
+                            hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8-10-8-10-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </Link>
+
+                        {/* Edit */}
+                        <button
+                          onClick={() => setEditTarget(c)}
+                          title="Edit cleaner"
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
+                            hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+
+
+                        {/* Reset Password */}
+                        <button
+                          onClick={() => handleResetPassword(c)}
+                          title="Reset Password"
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
+                            hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                          </svg>
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          onClick={() => setDeleteTarget(c)}
+                          title="Delete cleaner"
+                          className="w-8 h-8 rounded-lg border border-red-100 flex items-center justify-center text-red-400
+                            hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div >
-
-  {/* ── Pagination ───────────────────────────────────────────────────────── */ }
-{
-  !loading && totalPages > 1 && (
-    <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
-      <button
-        disabled={page === 1}
-        onClick={() => setPage((p) => Math.max(1, p - 1))}
-        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
-              hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-      >
-        ← Previous
-      </button>
-
-      <div className="flex gap-1.5">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            onClick={() => setPage(n)}
-            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all
-                  ${page === n
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'border border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
-              }`}
-          >
-            {n}
-          </button>
-        ))}
       </div>
 
-      <button
-        disabled={page === totalPages}
-        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
+      {/* ── Pagination ───────────────────────────────────────────────────────── */}
+      {
+        !loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
               hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-      >
-        Next →
-      </button>
+            >
+              ← Previous
+            </button>
+
+            <div className="flex gap-1.5">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all
+                  ${page === n
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'border border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
+                    }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
+              hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              Next →
+            </button>
+          </div>
+        )
+      }
     </div>
-  )
-}
-    </div >
   );
 };
 
