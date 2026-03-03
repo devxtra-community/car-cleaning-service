@@ -12,20 +12,20 @@ interface AuthRequest extends express.Request {
 
 const router = express.Router();
 
-router.post('/register-token', protect, async (req: AuthRequest, res: Response) => {
+router.post('/register', protect, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { token } = req.body;
+    const { expoPushToken } = req.body;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (!token) {
+    if (!expoPushToken) {
       return res.status(400).json({ success: false, message: 'Token required' });
     }
 
-    const success = await registerPushToken(userId, token);
+    const success = await registerPushToken(userId, expoPushToken);
 
     if (success) {
       return res.json({ success: true, message: 'Token registered' });

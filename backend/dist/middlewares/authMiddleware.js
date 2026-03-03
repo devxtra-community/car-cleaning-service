@@ -3,9 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.protect = void 0;
+exports.protect = exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const protect = (req, res, next) => {
+const authMiddleware = (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -17,7 +17,6 @@ const protect = (req, res, next) => {
         const token = authHeader.split(' ')[1];
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_ACCESS_SECRET_KEY);
         req.user = decoded;
-        // ✅ LOG AFTER ASSIGN
         console.log('USER FROM TOKEN:', req.user);
         next();
     }
@@ -29,4 +28,6 @@ const protect = (req, res, next) => {
         });
     }
 };
-exports.protect = protect;
+exports.authMiddleware = authMiddleware;
+// Keep the old export for backward compatibility
+exports.protect = exports.authMiddleware;

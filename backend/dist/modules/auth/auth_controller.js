@@ -1,73 +1,28 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logout = exports.getCleanersBySupervisor = exports.login = exports.getSupervisorsByBuilding = exports.getAllSupervisors = exports.getCleaners = exports.registerUser = void 0;
-const bcrypt_1 = __importDefault(require("bcrypt"));
+exports.getAllAdminsController = exports.getAllAccountantsController = exports.getSupervisorsByBuilding = exports.getAllSupervisors = exports.getCleanersBySupervisor = exports.getCleaners = exports.logout = exports.login = exports.registerUser = void 0;
 const logger_1 = require("../../config/logger");
-const connectDatabase_1 = require("../../database/connectDatabase");
+const error_handler_1 = require("src/middlewares/error-handler");
+const jwt_1 = require("../../config/jwt");
+const uploadMiddleware_1 = require("../../middlewares/uploadMiddleware");
 const auth_service_1 = require("./auth_service");
-const uploadMiddleware_1 = require("src/middlewares/uploadMiddleware");
-const registerUser = async (req, res) => {
+const VALID_CLIENT_TYPES = ['web', 'mobile'];
+// ============================================================
+// REGISTER
+// ============================================================
+const registerUser = async (req, res, next) => {
     try {
         const files = req.files;
         const documentFile = files?.document?.[0];
         const profilePhotoFile = files?.profile_image?.[0];
         if (!documentFile) {
-            return res.status(400).json({
-                success: false,
-                message: 'Document file is required',
-            });
+            throw new error_handler_1.AppError('Document file is required', 400, 'DOCUMENT_FILE_REQUIRED');
         }
-        // Upload files
         const documentUrl = await (0, uploadMiddleware_1.uploadToS3)(documentFile);
-        let profilePhotoUrl;
-        if (profilePhotoFile) {
-            profilePhotoUrl = await (0, uploadMiddleware_1.uploadToS3)(profilePhotoFile);
-        }
-        // Normalize role
+        const profilePhotoUrl = profilePhotoFile ? await (0, uploadMiddleware_1.uploadToS3)(profilePhotoFile) : undefined;
         const role = req.body.role?.toLowerCase();
-        if (!role) {
-            return res.status(400).json({
-                success: false,
-                message: 'Role is required',
-            });
-        }
-        // Base payload - matching your table structure
+        if (!role)
+            throw new error_handler_1.AppError('Role is required', 400, 'ROLE_REQUIRED');
         const base = {
             email: req.body.email?.trim(),
             password: req.body.password,
@@ -86,9 +41,7 @@ const registerUser = async (req, res) => {
                 payload = {
                     ...base,
                     role: 'supervisor',
-                    supervisor: {
-                        building_id: req.body.building_id,
-                    },
+                    supervisor: { building_id: req.body.building_id },
                 };
                 break;
             case 'cleaner':
@@ -104,16 +57,10 @@ const registerUser = async (req, res) => {
             case 'admin':
             case 'super_admin':
             case 'accountant':
-                payload = {
-                    ...base,
-                    role,
-                };
+                payload = { ...base, role };
                 break;
             default:
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid role provided',
-                });
+                throw new error_handler_1.AppError('Invalid role provided', 400, 'INVALID_ROLE');
         }
         const user = await (0, auth_service_1.createUser)(payload);
         return res.status(201).json({
@@ -122,339 +69,170 @@ const registerUser = async (req, res) => {
             data: user,
         });
     }
-    catch (error) {
-        logger_1.logger.error('Registration failed', { err: error });
-        let statusCode = 500;
-        let message = 'Failed to register user';
-        let errorMessage;
-        if (error instanceof Error) {
-            errorMessage = error.message;
-            const errorMap = {
-                USER_ALREADY_EXISTS: { code: 409, msg: 'User already exists' },
-                EMAIL_REQUIRED: { code: 400, msg: 'Email is required' },
-                PASSWORD_REQUIRED: { code: 400, msg: 'Password is required' },
-                FULL_NAME_REQUIRED: { code: 400, msg: 'Full name is required' },
-                DOCUMENT_REQUIRED: { code: 400, msg: 'Document is required' },
-                DOCUMENT_ID_REQUIRED: { code: 400, msg: 'Document ID is required' },
-                AGE_REQUIRED: { code: 400, msg: 'Age is required' },
-                NATIONALITY_REQUIRED: { code: 400, msg: 'Nationality is required' },
-                BUILDING_ID_REQUIRED_FOR_SUPERVISOR: {
-                    code: 400,
-                    msg: 'Building ID required for supervisor',
-                },
-                SUPERVISOR_ID_REQUIRED_FOR_CLEANER: {
-                    code: 400,
-                    msg: 'Supervisor ID required for cleaner',
-                },
-                BUILDING_NOT_FOUND: { code: 404, msg: 'Building not found' },
-                SUPERVISOR_NOT_FOUND: { code: 404, msg: 'Supervisor not found' },
-            };
-            if (errorMap[error.message]) {
-                statusCode = errorMap[error.message].code;
-                message = errorMap[error.message].msg;
-            }
-        }
-        return res.status(statusCode).json({
-            success: false,
-            message,
-            error: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-        });
+    catch (err) {
+        next(err);
     }
 };
 exports.registerUser = registerUser;
-const getCleaners = async (req, res) => {
-    try {
-        const result = await connectDatabase_1.pool.query(`
-      SELECT 
-        c.id AS cleaner_id,
-        c.user_id,
-        c.building_id,
-        c.floor_id,
-        c.supervisor_id,
-        c.total_tasks,
-        c.total_earning,
-        c.created_at,
-
-        u.full_name,
-        u.email,
-        u.phone,
-        u.age,
-        u.nationality,
-        u.document,
-        u.document_id,
-        u.profile_image,
-        u.base_salary,
-
-        b.building_name,
-
-        s_u.full_name AS supervisor_name,
-
-        COALESCE(AVG(r.rating), 0) AS average_rating,
-        COUNT(r.id) AS total_reviews
-
-      FROM cleaners c
-      JOIN users u ON c.user_id = u.id
-      LEFT JOIN buildings b ON c.building_id = b.id
-      LEFT JOIN supervisors s ON c.supervisor_id = s.id
-      LEFT JOIN users s_u ON s.user_id = s_u.id
-      LEFT JOIN reviews r ON c.id = r.cleaner_id
-
-      WHERE u.role = 'cleaner'
-      GROUP BY c.id, u.id, b.id, s.id, s_u.id
-      ORDER BY u.full_name ASC
-      `);
-        return res.status(200).json({
-            success: true,
-            data: result.rows,
-            count: result.rows.length,
-        });
-    }
-    catch (error) {
-        logger_1.logger.error('Failed to fetch cleaners', { err: error });
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch cleaners',
-        });
-    }
-};
-exports.getCleaners = getCleaners;
-const getAllSupervisors = async (req, res) => {
-    try {
-        const result = await connectDatabase_1.pool.query(`
-      SELECT 
-        s.id AS supervisor_id,
-        s.user_id,
-        s.building_id,
-        s.location_id,
-        s.created_at,
-
-        u.full_name,
-        u.email,
-        u.phone,
-        u.age,
-        u.nationality,
-        u.document,
-        u.document_id,
-        u.profile_image,
-        u.base_salary,
-
-        b.building_name
-
-      FROM supervisors s
-      JOIN users u ON s.user_id = u.id
-      LEFT JOIN buildings b ON s.building_id = b.id
-      WHERE u.role = 'supervisor'
-      ORDER BY u.full_name ASC
-      `);
-        return res.status(200).json({
-            success: true,
-            data: result.rows,
-            count: result.rows.length,
-        });
-    }
-    catch (error) {
-        console.error('Error fetching supervisors:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch supervisors',
-            error: process.env.NODE_ENV === 'development' ? error : undefined,
-        });
-    }
-};
-exports.getAllSupervisors = getAllSupervisors;
-const getSupervisorsByBuilding = async (req, res) => {
-    try {
-        const { buildingId } = req.params;
-        const result = await connectDatabase_1.pool.query(`
-      SELECT 
-        s.id,
-        s.user_id,
-        s.building_id,
-        s.full_name,
-        u.email,
-        u.phone
-      FROM supervisors s
-      JOIN users u ON s.user_id = u.id
-      WHERE s.building_id = $1
-      AND u.role = 'supervisor'
-      ORDER BY s.full_name ASC
-      `, [buildingId]);
-        return res.status(200).json({
-            success: true,
-            data: result.rows,
-            count: result.rows.length,
-        });
-    }
-    catch (error) {
-        console.error('Error fetching supervisors:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch supervisors',
-            error: process.env.NODE_ENV === 'development' ? error : undefined,
-        });
-    }
-};
-exports.getSupervisorsByBuilding = getSupervisorsByBuilding;
-const login = async (req, res) => {
-    const client = await connectDatabase_1.pool.connect();
+// ============================================================
+// LOGIN
+// client_type sent in request body — 'web' or 'mobile'
+// web   → refresh token in httpOnly cookie, access token in body
+// mobile → both tokens in body (untouched for teammates)
+// ============================================================
+const login = async (req, res, next) => {
     try {
         const { email, password, client_type = 'web' } = req.body;
         if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email and password are required',
-            });
+            throw new error_handler_1.AppError('Email and password are required', 400, 'CREDENTIALS_REQUIRED');
         }
-        await client.query('BEGIN');
-        const result = await client.query('SELECT * FROM users WHERE email = $1', [
-            email.toLowerCase().trim(),
-        ]);
-        if (!result.rows.length) {
-            await client.query('ROLLBACK');
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials',
-            });
+        if (!client_type || !VALID_CLIENT_TYPES.includes(client_type)) {
+            throw new error_handler_1.AppError(`client_type is required and must be one of: ${VALID_CLIENT_TYPES.join(', ')}`, 400, 'INVALID_CLIENT_TYPE');
         }
-        const user = result.rows[0];
-        const validPassword = await bcrypt_1.default.compare(password, user.password);
-        if (!validPassword) {
-            await client.query('ROLLBACK');
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid credentials',
-            });
-        }
-        // Import JWT utilities
-        const { generateAccessToken, generateRefreshToken, hashToken } = await Promise.resolve().then(() => __importStar(require('../../config/jwt')));
-        const { v4: uuidv4 } = await Promise.resolve().then(() => __importStar(require('uuid')));
-        // Generate tokens
-        const tokenId = uuidv4();
-        const tokenVersion = user.token_version || 0;
-        const accessToken = generateAccessToken({
-            userId: user.id,
-            role: user.role,
-            tokenVersion,
-        }, client_type);
-        const refreshToken = generateRefreshToken({
-            userId: user.id,
-            tokenId,
-            tokenVersion,
-            clientType: client_type,
-        }, client_type);
-        // Store refresh token in database
-        const expiresSeconds = client_type === 'web' ? 7 * 86400 : 90 * 86400;
-        await client.query(`
-      INSERT INTO refresh_tokens (
-        user_id,
-        token_id,
-        token_hash,
-        client_type,
-        expires_at
-      )
-      VALUES ($1, $2, $3, $4, NOW() + ($5 * INTERVAL '1 second'))
-      `, [user.id, tokenId, hashToken(refreshToken), client_type, expiresSeconds]);
-        await client.query('COMMIT');
-        // Set httpOnly cookie for web clients
-        if (client_type === 'web') {
+        const clientType = client_type;
+        const { user, accessToken, refreshToken } = await (0, auth_service_1.loginService)(email, password, clientType);
+        // Web — set refresh token in httpOnly cookie
+        if (clientType === 'web') {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
+                sameSite: 'lax', // kept same as your original
                 path: '/api/auth/refresh',
-                maxAge: 7 * 86400000,
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             });
         }
-        // Remove password from response
-        delete user.password;
         return res.status(200).json({
             success: true,
             message: 'Login successful',
             accessToken,
-            ...(client_type === 'mobile' && { refreshToken }),
+            // mobile gets refresh token in body — web does not
+            ...(clientType === 'mobile' && { refreshToken }),
             data: user,
         });
     }
-    catch (error) {
-        await client.query('ROLLBACK');
-        logger_1.logger.error('Login failed', { err: error });
-        return res.status(500).json({
-            success: false,
-            message: 'Login failed',
-        });
-    }
-    finally {
-        client.release();
+    catch (err) {
+        next(err);
     }
 };
 exports.login = login;
-const getCleanersBySupervisor = async (req, res) => {
+// ============================================================
+// LOGOUT
+// Reads refresh token from cookie to delete that specific session
+// logoutAll=true in body deletes all sessions for the user
+// ============================================================
+const logout = async (req, res, next) => {
     try {
-        const { supervisorId } = req.params;
-        if (!supervisorId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Supervisor ID is required',
-            });
+        const rawRefreshToken = req.cookies?.refreshToken;
+        const logoutAll = req.body?.logoutAll === true;
+        // Get userId from auth middleware (your existing middleware sets req.user)
+        const userId = req.user?.userId;
+        if (!userId) {
+            throw new error_handler_1.AppError('Unauthorized', 401, 'UNAUTHORIZED');
         }
-        const result = await connectDatabase_1.pool.query(`
-      SELECT 
-        c.id as cleaner_id,
-        u.id as user_id,
-        u.full_name,
-        u.email,
-        u.document_id,
-        u.age,
-        u.nationality,
-        u.document,
-        u.profile_image,
-        u.phone,
-        c.floor_id,
-        c.total_tasks,
-        c.total_earning,
-        b.building_name,
-        b.id as building_id,
-        s.id as supervisor_id,
-        s_u.full_name as supervisor_name
-      FROM cleaners c
-      JOIN users u ON c.user_id = u.id
-      LEFT JOIN buildings b ON c.building_id = b.id
-      LEFT JOIN supervisors s ON c.supervisor_id = s.id
-      LEFT JOIN users s_u ON s.user_id = s_u.id
-      WHERE c.supervisor_id = $1
-      ORDER BY u.full_name ASC
-      `, [supervisorId]);
-        return res.status(200).json({
-            success: true,
-            data: result.rows,
-        });
-    }
-    catch (error) {
-        logger_1.logger.error('Failed to fetch cleaners by supervisor', { err: error });
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch cleaners',
-        });
-    }
-};
-exports.getCleanersBySupervisor = getCleanersBySupervisor;
-const logout = async (req, res) => {
-    try {
-        // Clear refresh token cookie
+        let tokenId;
+        // Extract tokenId from cookie to delete only this session
+        if (rawRefreshToken && !logoutAll) {
+            try {
+                const payload = (0, jwt_1.verifyRefreshToken)(rawRefreshToken);
+                tokenId = payload.tokenId;
+            }
+            catch {
+                // Token already invalid or expired — still proceed with logout
+                logger_1.logger.warn('Could not verify refresh token during logout, clearing cookie anyway');
+            }
+        }
+        await (0, auth_service_1.logoutService)(userId, logoutAll ? undefined : tokenId);
+        // Always clear the cookie
         res.clearCookie('refreshToken', {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
             path: '/api/auth/refresh',
         });
         return res.status(200).json({
             success: true,
-            message: 'Logout successful',
+            message: logoutAll ? 'Logged out from all devices' : 'Logout successful',
         });
     }
-    catch (error) {
-        logger_1.logger.error('Logout failed', { err: error });
-        return res.status(500).json({
-            success: false,
-            message: 'Logout failed',
-        });
+    catch (err) {
+        next(err);
     }
 };
 exports.logout = logout;
+// ============================================================
+// CLEANERS
+// ============================================================
+const getCleaners = async (req, res, next) => {
+    try {
+        const data = await (0, auth_service_1.getAllCleanersService)();
+        return res.status(200).json({ success: true, count: data.length, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getCleaners = getCleaners;
+const getCleanersBySupervisor = async (req, res, next) => {
+    try {
+        const supervisorId = req.params.supervisorId;
+        if (!supervisorId) {
+            throw new error_handler_1.AppError('Supervisor ID is required', 400, 'SUPERVISOR_ID_REQUIRED');
+        }
+        const data = await (0, auth_service_1.getCleanersBySupervisorService)(supervisorId);
+        return res.status(200).json({ success: true, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getCleanersBySupervisor = getCleanersBySupervisor;
+// ============================================================
+// SUPERVISORS
+// ============================================================
+const getAllSupervisors = async (req, res, next) => {
+    try {
+        const data = await (0, auth_service_1.getAllSupervisorsService)();
+        return res.status(200).json({ success: true, count: data.length, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getAllSupervisors = getAllSupervisors;
+const getSupervisorsByBuilding = async (req, res, next) => {
+    try {
+        const buildingId = req.params.buildingId;
+        if (!buildingId) {
+            throw new error_handler_1.AppError('Building ID is required', 400, 'BUILDING_ID_REQUIRED');
+        }
+        const data = await (0, auth_service_1.getSupervisorsByBuildingService)(buildingId);
+        return res.status(200).json({ success: true, count: data.length, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getSupervisorsByBuilding = getSupervisorsByBuilding;
+// ============================================================
+// ACCOUNTANTS & ADMINS
+// ============================================================
+const getAllAccountantsController = async (req, res, next) => {
+    try {
+        const data = await (0, auth_service_1.getAllAccountantsService)();
+        return res.status(200).json({ success: true, count: data.length, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getAllAccountantsController = getAllAccountantsController;
+const getAllAdminsController = async (req, res, next) => {
+    try {
+        const data = await (0, auth_service_1.getAllAdminsService)();
+        return res.status(200).json({ success: true, count: data.length, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.getAllAdminsController = getAllAdminsController;

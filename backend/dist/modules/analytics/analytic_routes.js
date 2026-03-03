@@ -6,4 +6,6 @@ const router = (0, express_1.Router)();
 router.get('/daily', analytics_controller_1.dailyProgressController);
 router.get('/weekly', analytics_controller_1.weeklyProgressController);
 router.get('/monthly', analytics_controller_1.monthlyProgressController);
+router.get('/cleaner-performance', analytics_controller_1.cleanerPerformanceController);
+router.get('/collections-reconciliation', analytics_controller_1.collectionsReconciliationController);
 exports.default = router;

@@ -22,8 +22,12 @@ const buildings_routes_1 = __importDefault(require("./modules/buildings/building
 const incentives_routes_1 = __importDefault(require("./modules/incentives/incentives_routes"));
 const analytic_routes_1 = __importDefault(require("./modules/analytics/analytic_routes"));
 const review_routes_1 = __importDefault(require("./modules/feedback/review_routes"));
+const supervisor_routes_1 = __importDefault(require("./modules/supervisor/supervisor_routes"));
+const floorRoutes_1 = __importDefault(require("./modules/floors/floorRoutes"));
 const s3_1 = __importDefault(require("./routes/s3"));
 const penalties_routes_1 = __importDefault(require("./modules/penalties/penalties_routes"));
+const fraud_routes_1 = __importDefault(require("./modules/fraud/fraud_routes"));
+const notification_routes_1 = __importDefault(require("./modules/notifications/notification_routes"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((req, res, next) => {
@@ -60,7 +64,11 @@ app.use('/api/incentives', incentives_routes_1.default);
 app.use('/penalties', penalties_routes_1.default);
 console.log('Penalties route registered at /penalties (NORMAL FLOW)');
 app.use('/analytics', analytic_routes_1.default);
-app.use('/api/reviews', review_routes_1.default);
+app.use('/feedback', review_routes_1.default);
+app.use('/supervisors', supervisor_routes_1.default);
+app.use('/api/floors', floorRoutes_1.default);
+app.use('/fraud', fraud_routes_1.default);
+app.use('/api/notifications', notification_routes_1.default);
 app.use(error_handler_1.globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
     console.log('Backend running on port 3033 - LATEST UPDATE');

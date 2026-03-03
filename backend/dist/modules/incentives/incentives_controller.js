@@ -1,140 +1,437 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteIncentiveController = exports.updateIncentiveController = exports.getAllIncentivesController = exports.getActiveIncentiveController = exports.createIncentiveController = void 0;
+exports.getMonthlyIncentiveSummaryController = exports.getDailyWorkRecordsController = exports.recordDailyWorkController = exports.deleteIncentiveRuleController = exports.updateIncentiveRuleController = exports.getActiveIncentiveRulesController = exports.getIncentiveRulesByTypeController = exports.getAllIncentiveRulesController = exports.createIncentiveRuleController = exports.deleteIncentiveTypeController = exports.updateIncentiveTypeController = exports.getActiveIncentiveTypesController = exports.getAllIncentiveTypesController = exports.createIncentiveTypeController = exports.deleteIncentiveTargetController = exports.updateIncentiveTargetController = exports.createIncentiveTargetController = exports.getAllIncentiveTargetsController = void 0;
 const incentives_service_1 = require("./incentives_service");
-/* ================= HELPERS ================= */
-// const getQueryString = (value: unknown): string | undefined => {
-//   if (!value) return undefined;
-//   if (typeof value === 'string') return value;
-//   if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
-//   return undefined;
-// };
+const connectDatabase_1 = require("../../database/connectDatabase");
 const getParamString = (value) => Array.isArray(value) ? value[0] : value;
-/* ================= INCENTIVE TARGET ================= */
-const createIncentiveController = async (req, res) => {
+/* ================= INCENTIVE TARGETS (simple task-count targets) ================= */
+const getAllIncentiveTargetsController = async (_, res) => {
+    try {
+        const result = await connectDatabase_1.pool.query(`SELECT id, reason, target_tasks, incentive_amount, active, created_at, updated_at
+       FROM incentive_targets
+       ORDER BY created_at DESC`);
+        return res.json({ success: true, data: result.rows });
+    }
+    catch (err) {
+        console.error('GET TARGETS ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch targets' });
+    }
+};
+exports.getAllIncentiveTargetsController = getAllIncentiveTargetsController;
+const createIncentiveTargetController = async (req, res) => {
     try {
         const { target_tasks, reason, incentive_amount } = req.body;
-        if (!target_tasks || !reason || !incentive_amount) {
+        if (!reason || target_tasks === undefined || incentive_amount === undefined) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        const result = await connectDatabase_1.pool.query(`INSERT INTO incentive_targets (reason, target_tasks, incentive_amount, active)
+       VALUES ($1, $2, $3, true) RETURNING *`, [reason, Number(target_tasks), Number(incentive_amount)]);
+        return res.status(201).json({ success: true, data: result.rows[0] });
+    }
+    catch (err) {
+        console.error('CREATE TARGET ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to create target' });
+    }
+};
+exports.createIncentiveTargetController = createIncentiveTargetController;
+const updateIncentiveTargetController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { target_tasks, reason, incentive_amount } = req.body;
+        const result = await connectDatabase_1.pool.query(`UPDATE incentive_targets
+       SET reason = COALESCE($1, reason),
+           target_tasks = COALESCE($2, target_tasks),
+           incentive_amount = COALESCE($3, incentive_amount),
+           updated_at = NOW()
+       WHERE id = $4 RETURNING *`, [reason, target_tasks ? Number(target_tasks) : undefined, incentive_amount ? Number(incentive_amount) : undefined, id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'Target not found' });
+        }
+        return res.json({ success: true, data: result.rows[0] });
+    }
+    catch (err) {
+        console.error('UPDATE TARGET ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to update target' });
+    }
+};
+exports.updateIncentiveTargetController = updateIncentiveTargetController;
+const deleteIncentiveTargetController = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await connectDatabase_1.pool.query('DELETE FROM incentive_targets WHERE id = $1', [id]);
+        return res.json({ success: true, message: 'Target deleted' });
+    }
+    catch (err) {
+        console.error('DELETE TARGET ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to delete target' });
+    }
+};
+exports.deleteIncentiveTargetController = deleteIncentiveTargetController;
+/* ================= INCENTIVE TYPES ================= */
+const createIncentiveTypeController = async (req, res) => {
+    try {
+        const { name, category, calculation_type, description } = req.body;
+        if (!name || !category || !calculation_type) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields: target_tasks, reason, incentive_amount',
+                message: 'Missing required fields: name, category, calculation_type',
             });
         }
-        if (Number(target_tasks) <= 0 || Number(incentive_amount) <= 0) {
+        const validCategories = ['performance', 'attendance', 'quality', 'overtime', 'milestone'];
+        if (!validCategories.includes(category)) {
             return res.status(400).json({
                 success: false,
-                message: 'target_tasks and incentive_amount must be positive numbers',
+                message: `Invalid category. Must be one of: ${validCategories.join(', ')}`,
             });
         }
-        const incentive = await (0, incentives_service_1.createIncentiveTarget)({
-            target_tasks: Number(target_tasks),
-            reason: String(reason),
-            incentive_amount: Number(incentive_amount),
+        const validCalculationTypes = ['fixed', 'percentage', 'tiered', 'per_unit'];
+        if (!validCalculationTypes.includes(calculation_type)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid calculation_type. Must be one of: ${validCalculationTypes.join(', ')}`,
+            });
+        }
+        const incentiveType = await (0, incentives_service_1.createIncentiveType)({
+            name,
+            category,
+            calculation_type,
+            description,
         });
         return res.status(201).json({
             success: true,
-            data: incentive,
-            message: 'Incentive target created successfully',
+            data: incentiveType,
+            message: 'Incentive type created successfully',
         });
     }
     catch (error) {
-        console.error('CREATE INCENTIVE ERROR:', error);
+        console.error('CREATE INCENTIVE TYPE ERROR:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to create incentive target',
+            message: 'Failed to create incentive type',
         });
     }
 };
-exports.createIncentiveController = createIncentiveController;
-const getActiveIncentiveController = async (_, res) => {
+exports.createIncentiveTypeController = createIncentiveTypeController;
+const getAllIncentiveTypesController = async (_, res) => {
     try {
-        const incentive = await (0, incentives_service_1.getActiveIncentive)();
+        const incentiveTypes = await (0, incentives_service_1.getAllIncentiveTypes)();
         return res.json({
             success: true,
-            data: incentive,
+            data: incentiveTypes,
+            count: incentiveTypes.length,
         });
     }
     catch (error) {
-        console.error('GET ACTIVE INCENTIVE ERROR:', error);
+        console.error('GET ALL INCENTIVE TYPES ERROR:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to fetch active incentive',
+            message: 'Failed to fetch incentive types',
         });
     }
 };
-exports.getActiveIncentiveController = getActiveIncentiveController;
-const getAllIncentivesController = async (_, res) => {
+exports.getAllIncentiveTypesController = getAllIncentiveTypesController;
+const getActiveIncentiveTypesController = async (_, res) => {
     try {
-        const incentives = await (0, incentives_service_1.getAllIncentives)(); // ✅ FIXED
+        const incentiveTypes = await (0, incentives_service_1.getActiveIncentiveTypes)();
         return res.json({
             success: true,
-            data: incentives,
-            count: incentives.length,
+            data: incentiveTypes,
+            count: incentiveTypes.length,
         });
     }
     catch (error) {
-        console.error('GET ALL INCENTIVES ERROR:', error);
+        console.error('GET ACTIVE INCENTIVE TYPES ERROR:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to fetch incentives',
+            message: 'Failed to fetch active incentive types',
         });
     }
 };
-exports.getAllIncentivesController = getAllIncentivesController;
-const updateIncentiveController = async (req, res) => {
+exports.getActiveIncentiveTypesController = getActiveIncentiveTypesController;
+const updateIncentiveTypeController = async (req, res) => {
     try {
         const id = getParamString(req.params.id);
-        const { target_tasks, reason, incentive_amount } = req.body;
-        const updateData = {};
-        if (target_tasks !== undefined)
-            updateData.target_tasks = Number(target_tasks);
-        if (reason !== undefined)
-            updateData.reason = String(reason);
-        if (incentive_amount !== undefined)
-            updateData.incentive_amount = Number(incentive_amount);
-        const incentive = await (0, incentives_service_1.updateIncentiveTarget)(id, updateData);
+        const { name, category, calculation_type, description, active } = req.body;
+        const incentiveType = await (0, incentives_service_1.updateIncentiveType)(id, {
+            name,
+            category,
+            calculation_type,
+            description,
+            active,
+        });
         return res.json({
             success: true,
-            data: incentive,
-            message: 'Incentive target updated successfully',
+            data: incentiveType,
+            message: 'Incentive type updated successfully',
         });
     }
     catch (error) {
-        console.error('UPDATE INCENTIVE ERROR:', error);
-        if (error instanceof Error && error.message === 'INCENTIVE_TARGET_NOT_FOUND') {
+        console.error('UPDATE INCENTIVE RULE ERROR:', error);
+        if (error instanceof Error && error.message === 'INCENTIVE_RULE_NOT_FOUND') {
             return res.status(404).json({
                 success: false,
-                message: 'Incentive target not found',
+                message: 'Incentive rule not found',
             });
         }
         return res.status(500).json({
             success: false,
-            message: 'Failed to update incentive target',
+            message: 'Failed to update incentive rule',
         });
     }
 };
-exports.updateIncentiveController = updateIncentiveController;
-const deleteIncentiveController = async (req, res) => {
+exports.updateIncentiveTypeController = updateIncentiveTypeController;
+const deleteIncentiveTypeController = async (req, res) => {
     try {
         const id = getParamString(req.params.id);
-        await (0, incentives_service_1.deleteIncentiveTarget)(id);
+        await (0, incentives_service_1.deleteIncentiveType)(id);
         return res.json({
             success: true,
-            message: 'Incentive target deleted successfully',
+            message: 'Incentive type deleted successfully',
         });
     }
     catch (error) {
-        console.error('DELETE INCENTIVE ERROR:', error);
-        if (error instanceof Error && error.message === 'INCENTIVE_TARGET_NOT_FOUND') {
+        console.error('DELETE INCENTIVE TYPE ERROR:', error);
+        if (error instanceof Error && error.message === 'INCENTIVE_TYPE_NOT_FOUND') {
             return res.status(404).json({
                 success: false,
-                message: 'Incentive target not found',
+                message: 'Incentive type not found',
             });
         }
         return res.status(500).json({
             success: false,
-            message: 'Failed to delete incentive target',
+            message: 'Failed to delete incentive type',
         });
     }
 };
-exports.deleteIncentiveController = deleteIncentiveController;
+exports.deleteIncentiveTypeController = deleteIncentiveTypeController;
+/* ================= INCENTIVE RULES ================= */
+const createIncentiveRuleController = async (req, res) => {
+    try {
+        const { incentive_type_id, rule_name, base_amount, criteria, priority, active } = req.body;
+        if (!incentive_type_id || !rule_name || base_amount === undefined || !criteria) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        const sanitizedCriteria = { ...criteria };
+        Object.keys(sanitizedCriteria).forEach((key) => {
+            const value = sanitizedCriteria[key];
+            if (typeof value === 'string' && !isNaN(Number(value)) && value.trim() !== '') {
+                sanitizedCriteria[key] = Number(value);
+            }
+        });
+        const rule = await (0, incentives_service_1.createIncentiveRule)({
+            incentive_type_id,
+            rule_name,
+            base_amount: Number(base_amount),
+            criteria: sanitizedCriteria,
+            priority: priority !== undefined ? Number(priority) : 0,
+        });
+        if (active !== undefined) {
+            await (0, incentives_service_1.updateIncentiveRule)(rule.id, { active });
+        }
+        return res.status(201).json({ success: true, data: rule });
+    }
+    catch (err) {
+        console.error('CREATE RULE ERROR:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to create incentive rule',
+        });
+    }
+};
+exports.createIncentiveRuleController = createIncentiveRuleController;
+const getAllIncentiveRulesController = async (_, res) => {
+    try {
+        const incentiveRules = await (0, incentives_service_1.getAllIncentiveRules)();
+        return res.json({
+            success: true,
+            data: incentiveRules,
+            count: incentiveRules.length,
+        });
+    }
+    catch (error) {
+        console.error('GET ALL INCENTIVE RULES ERROR:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch incentive rules',
+        });
+    }
+};
+exports.getAllIncentiveRulesController = getAllIncentiveRulesController;
+const getIncentiveRulesByTypeController = async (req, res) => {
+    try {
+        const typeId = getParamString(req.params.typeId);
+        const rules = await (0, incentives_service_1.getIncentiveRulesByType)(typeId);
+        return res.json({
+            success: true,
+            data: rules,
+            count: rules.length,
+        });
+    }
+    catch (error) {
+        console.error('GET RULES BY TYPE ERROR:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch incentive rules',
+        });
+    }
+};
+exports.getIncentiveRulesByTypeController = getIncentiveRulesByTypeController;
+const getActiveIncentiveRulesController = async (_, res) => {
+    try {
+        const rules = await (0, incentives_service_1.getActiveIncentiveRules)();
+        return res.json({
+            success: true,
+            data: rules,
+            count: rules.length,
+        });
+    }
+    catch (error) {
+        console.error('GET ACTIVE RULES ERROR:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch active incentive rules',
+        });
+    }
+};
+exports.getActiveIncentiveRulesController = getActiveIncentiveRulesController;
+const updateIncentiveRuleController = async (req, res) => {
+    try {
+        const id = getParamString(req.params.id);
+        const { rule_name, base_amount, criteria, priority, active } = req.body;
+        const incentiveRule = await (0, incentives_service_1.updateIncentiveRule)(id, {
+            rule_name,
+            base_amount: base_amount !== undefined ? Number(base_amount) : undefined,
+            criteria,
+            priority: priority !== undefined ? Number(priority) : undefined,
+            active,
+        });
+        return res.json({
+            success: true,
+            data: incentiveRule,
+            message: 'Incentive rule updated successfully',
+        });
+    }
+    catch (error) {
+        console.error('UPDATE INCENTIVE RULE ERROR:', error);
+        if (error instanceof Error && error.message === 'INCENTIVE_RULE_NOT_FOUND') {
+            return res.status(404).json({
+                success: false,
+                message: 'Incentive rule not found',
+            });
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update incentive rule',
+        });
+    }
+};
+exports.updateIncentiveRuleController = updateIncentiveRuleController;
+const deleteIncentiveRuleController = async (req, res) => {
+    try {
+        const id = getParamString(req.params.id);
+        await (0, incentives_service_1.deleteIncentiveRule)(id);
+        return res.json({
+            success: true,
+            message: 'Incentive rule deleted successfully',
+        });
+    }
+    catch (error) {
+        console.error('DELETE INCENTIVE RULE ERROR:', error);
+        if (error instanceof Error && error.message === 'INCENTIVE_RULE_NOT_FOUND') {
+            return res.status(404).json({
+                success: false,
+                message: 'Incentive rule not found',
+            });
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to delete incentive rule',
+        });
+    }
+};
+exports.deleteIncentiveRuleController = deleteIncentiveRuleController;
+/* ================= DAILY WORK ================= */
+const recordDailyWorkController = async (req, res) => {
+    try {
+        const { cleaner_id, date, tasks_completed, hours_worked, is_overtime, is_weekend, customer_rating, hourly_rate, notes, } = req.body;
+        if (!cleaner_id || !date || tasks_completed === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: cleaner_id, date, tasks_completed',
+            });
+        }
+        const result = await (0, incentives_service_1.recordDailyWork)({
+            cleaner_id,
+            date,
+            tasks_completed: Number(tasks_completed),
+            hours_worked: hours_worked ? Number(hours_worked) : undefined,
+            is_overtime,
+            is_weekend,
+            customer_rating: customer_rating ? Number(customer_rating) : undefined,
+            hourly_rate: hourly_rate ? Number(hourly_rate) : undefined,
+            notes,
+        });
+        return res.status(201).json({
+            success: true,
+            data: result,
+            message: 'Daily work recorded successfully',
+        });
+    }
+    catch (error) {
+        console.error('RECORD DAILY WORK ERROR:', error);
+        if (error instanceof Error && error.message === 'NO_ACTIVE_INCENTIVE_TARGET') {
+            return res.status(404).json({
+                success: false,
+                message: 'No active incentive rules found',
+            });
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to record daily work',
+        });
+    }
+};
+exports.recordDailyWorkController = recordDailyWorkController;
+const getDailyWorkRecordsController = async (req, res) => {
+    try {
+        const cleanerId = getParamString(req.params.cleanerId);
+        const { startDate, endDate, month } = req.query;
+        const records = await (0, incentives_service_1.getDailyWorkRecordsWithIncentives)(cleanerId, {
+            startDate: startDate,
+            endDate: endDate,
+            month: month,
+        });
+        return res.json({
+            success: true,
+            data: records,
+            count: records.length,
+        });
+    }
+    catch (error) {
+        console.error('GET DAILY WORK RECORDS ERROR:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch daily work records',
+        });
+    }
+};
+exports.getDailyWorkRecordsController = getDailyWorkRecordsController;
+const getMonthlyIncentiveSummaryController = async (req, res) => {
+    try {
+        const cleanerId = getParamString(req.params.cleanerId);
+        const month = getParamString(req.params.month); // Format: YYYY-MM
+        const summary = await (0, incentives_service_1.getMonthlyIncentiveSummary)(cleanerId, month);
+        return res.json({
+            success: true,
+            data: summary,
+        });
+    }
+    catch (error) {
+        console.error('GET MONTHLY SUMMARY ERROR:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch monthly incentive summary',
+        });
+    }
+};
+exports.getMonthlyIncentiveSummaryController = getMonthlyIncentiveSummaryController;

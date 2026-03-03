@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.monthlyProgressController = exports.weeklyProgressController = exports.dailyProgressController = void 0;
+exports.collectionsReconciliationController = exports.cleanerPerformanceController = exports.monthlyProgressController = exports.weeklyProgressController = exports.dailyProgressController = void 0;
 const analytics_service_1 = require("./analytics_service");
 const dailyProgressController = async (req, res) => {
     try {
@@ -35,3 +35,25 @@ const monthlyProgressController = async (req, res) => {
     }
 };
 exports.monthlyProgressController = monthlyProgressController;
+const cleanerPerformanceController = async (req, res) => {
+    try {
+        const { period } = req.query;
+        const data = await (0, analytics_service_1.getCleanerPerformance)(period);
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch cleaner performance' });
+    }
+};
+exports.cleanerPerformanceController = cleanerPerformanceController;
+const collectionsReconciliationController = async (req, res) => {
+    try {
+        const { month } = req.query;
+        const data = await (0, analytics_service_1.getCollectionsReconciliation)(month);
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch collections reconciliation' });
+    }
+};
+exports.collectionsReconciliationController = collectionsReconciliationController;

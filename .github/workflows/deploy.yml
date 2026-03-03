@@ -2,7 +2,7 @@ name: CD - Deploy to EC2
 
 on:
   push:
-    branches: ["main"]
+    branches: ["yasir"]
 
 jobs:
   deploy:
@@ -19,16 +19,21 @@ jobs:
           script: |
             set -e
             cd /var/www/car-cleaning/car-cleaning-service
-            git pull origin main
+            git pull origin yasir
 
-            # Install root dependencies (for workspaces)
-            npm install
+            # Install pnpm if missing
+            if ! command -v pnpm &> /dev/null; then
+              npm install -g pnpm
+            fi
+
+            # Install dependencies via pnpm (scales better)
+            pnpm install
 
             cd backend
-            npm install
-            npm run build
+            pnpm run build
 
-            # Check if process exists to decide between start or reload
+            # Pass production env vars (assuming they are in .env or system)
+            # Restart or reload using pm2
             if pm2 describe car-cleaning-api > /dev/null; then
               pm2 reload car-cleaning-api
             else

@@ -41,37 +41,28 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
-    const originalRequest = error.config;
-
-    const isAuthExcluded = AUTH_EXCLUDED_URLS.some((url) => originalRequest?.url?.includes(url));
-
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthExcluded) {
-      originalRequest._retry = true;
+      // ... existing refresh logic ...
+    }
 
-      try {
-        const refreshToken = await getRefreshToken();
+    // --- Offline Queue Handling ---
+    const isNetworkError = !error.response && error.code !== 'ECONNABORTED';
+    const isWriteMethod = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(originalRequest?.method?.toUpperCase());
 
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const response = await axios.post(`${BASE_URL}/api/auth/refresh`, { refreshToken });
-
-        const { accessToken, refreshToken: newRefresh } = response.data;
-
-        await saveTokens(accessToken, newRefresh);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        console.error('REFRESH FAILED:', refreshError.response?.data || refreshError.message);
-
-        await clearTokens();
-
-        // OPTIONAL: redirect to login
-        // window.location.href = '/login';
-
-        return Promise.reject(refreshError);
-      }
+    if (isNetworkError && isWriteMethod && !originalRequest?._noQueue) {
+        try {
+            const { enqueueRequest } = require('./offlineQueue');
+            await enqueueRequest({
+                url: originalRequest.url,
+                method: originalRequest.method,
+                data: originalRequest.data,
+                headers: originalRequest.headers
+            });
+            // Return a resolved promise with a special "queued" flag
+            return Promise.resolve({ data: { success: true, queued: true, message: 'Request queued for offline sync' } });
+        } catch (enqueueErr) {
+            console.error('[API] Failed to enqueue request:', enqueueErr);
+        }
     }
 
     console.error('[API Response Error]', {

@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Get floors by building ID
 // Route: GET /api/buildings/:buildingId/floors
-router.get('/buildings/:buildingId/floors', getFloorsByBuilding);
+router.get('/buildings/:buildingId', getFloorsByBuilding);
 
 // Alternative: Get all floors with optional filter
 // Route: GET /api/floors?building_id=xxx

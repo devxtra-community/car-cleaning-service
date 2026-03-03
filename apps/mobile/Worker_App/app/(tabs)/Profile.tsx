@@ -15,6 +15,7 @@ import {
   Globe,
   MapPin,
   User,
+  Star,
 } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
@@ -150,14 +151,13 @@ export default function Profile() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="mb-6 relative">
           <LinearGradient
             colors={['#0EA5E9', '#0284C7']}
-            className="absolute w-full h-64 rounded-b-[48px]"
-            style={{ paddingTop: insets.top }}
+            style={{ position: 'absolute', width: '100%', height: 256, borderBottomLeftRadius: 48, borderBottomRightRadius: 48, paddingTop: insets.top }}
           />
           <View className="items-center mt-28 pb-4 px-6">
             <View className="p-1.5 rounded-[40px] shadow-xl bg-white shadow-blue-900/20">
@@ -196,12 +196,18 @@ export default function Profile() {
             />
             <ProfileRow
               icon={<User size={18} color="#0EA5E9" />}
-              label={t('supervisor')}
+              label={t('profile.supervisor')}
               value={user.supervisor}
             />
             <ProfileRow
+              icon={<Star size={18} color="#F59E0B" />}
+              label={t('tabs.ratings')}
+              value={t('ratings.subtitle')}
+              onPress={() => router.push('/MyRatings')}
+            />
+            <ProfileRow
               icon={<MapPin size={18} color="#0EA5E9" />}
-              label={t('location')}
+              label={t('profile.location')}
               value={user.location}
               isLast
             />

@@ -50,19 +50,32 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     }
 
     // Get worker info (cleaner_id, building_id, supervisor_id)
-    const workerInfo = await attendanceService.getWorkerInfo(userId);
+    let workerInfo = await attendanceService.getWorkerInfo(userId);
+
+    if (!workerInfo) {
+      // Auto-create a cleaners record for this user so next steps can proceed
+      try {
+        await pool.query(
+          `INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+          [userId]
+        );
+        workerInfo = await attendanceService.getWorkerInfo(userId);
+      } catch (_e) {
+        // if insert fails (e.g. unique constraint not on user_id), just leave as null
+      }
+    }
 
     if (!workerInfo) {
       return res.status(404).json({
         success: false,
-        message: 'Worker profile not found',
+        message: 'Worker profile not found. Please contact your admin.',
       });
     }
 
     if (!workerInfo.building_id) {
       return res.status(400).json({
         success: false,
-        message: 'No building assigned to worker',
+        message: 'No building is assigned to your profile yet. Please contact your supervisor or admin to assign a building.',
       });
     }
 

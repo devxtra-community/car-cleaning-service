@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronLeft, Calendar as CalendarIcon, CheckCircle, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/api/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type AttendanceDay = {
@@ -22,6 +23,7 @@ export default function Attendance() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [totalDays, setTotalDays] = useState(0);
+  const { t } = useLanguage();
 
   const fetchCalendar = useCallback(async () => {
     try {
@@ -132,9 +134,8 @@ export default function Attendance() {
       days.push(
         <View key={day} className="w-[14.28%] aspect-square p-1">
           <View
-            className={`flex-1 rounded-xl items-center justify-center border ${
-              isToday ? 'border-[#0EA5E9] border-2' : 'border-white/50'
-            }`}
+            className={`flex-1 rounded-xl items-center justify-center border ${isToday ? 'border-[#0EA5E9] border-2' : 'border-white/50'
+              }`}
             style={{
               backgroundColor: marked
                 ? '#10B981' // Success Green
@@ -174,7 +175,7 @@ export default function Attendance() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       <View
@@ -190,7 +191,7 @@ export default function Attendance() {
           >
             <ChevronLeft size={24} color="#1E293B" />
           </Pressable>
-          <Text className="text-xl font-heading tracking-tight text-clay-text">Attendance</Text>
+          <Text className="text-xl font-heading tracking-tight text-clay-text">{t('attendance.title')}</Text>
           <View className="w-10" />
         </View>
 
@@ -240,19 +241,19 @@ export default function Attendance() {
                 <View className="flex-row items-center gap-2">
                   <View className="w-3 h-3 rounded-full bg-[#10B981] shadow-sm" />
                   <Text className="text-[11px] font-label uppercase tracking-wide text-clay-secondary">
-                    Present
+                    {t('attendance.present')}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-2">
                   <View className="w-3 h-3 rounded-full bg-[#EF4444] shadow-sm" />
                   <Text className="text-[11px] font-label uppercase tracking-wide text-clay-secondary">
-                    Absent
+                    {t('attendance.absent')}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-2">
                   <View className="w-3 h-3 rounded-full bg-[#F0F9FF] border border-gray-200" />
                   <Text className="text-[11px] font-label uppercase tracking-wide text-clay-secondary">
-                    Upcoming
+                    {t('attendance.upcoming')}
                   </Text>
                 </View>
               </View>
@@ -275,12 +276,12 @@ export default function Attendance() {
               {/* Stats */}
               <View className="clay-card p-6 bg-white">
                 <Text className="text-[11px] font-label uppercase tracking-widest mb-5 text-clay-secondary">
-                  This Month
+                  {t('attendance.thisMonth')}
                 </Text>
                 <View className="flex-row gap-4 mb-6">
                   <View className="flex-1 p-4 rounded-3xl bg-[#ECFDF5] items-center justify-center border border-[#10B981]/20">
                     <Text className="text-[10px] font-label uppercase tracking-wide mb-1 text-[#10B981]">
-                      Present
+                      {t('attendance.present')}
                     </Text>
                     <Text className="text-3xl font-heading text-[#10B981]">{calendar.length}</Text>
                   </View>
@@ -295,16 +296,17 @@ export default function Attendance() {
                 <View className="pt-5 border-t border-gray-100">
                   <View className="flex-row items-center justify-between mb-2">
                     <Text className="text-[10px] font-label uppercase tracking-widest text-clay-secondary">
-                      TOTAL ALL TIME
+                      {t('attendance.totalAllTime')}
                     </Text>
                     <Text className="text-lg font-heading text-[#0EA5E9]">{totalDays} days</Text>
                   </View>
                   {createdAt && (
                     <Text className="text-[10px] font-body text-clay-secondary/60 text-right">
-                      Worker since{' '}
-                      {new Date(createdAt).toLocaleDateString('en-IN', {
-                        month: 'short',
-                        year: 'numeric',
+                      {t('attendance.workerSince', {
+                        date: new Date(createdAt).toLocaleDateString('en-IN', {
+                          month: 'short',
+                          year: 'numeric',
+                        }),
                       })}
                     </Text>
                   )}

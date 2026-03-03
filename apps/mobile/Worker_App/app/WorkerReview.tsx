@@ -97,7 +97,7 @@ export default function WorkerReview() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
       <View
         className="pb-6 rounded-b-[40px] shadow-sm z-10"
@@ -211,9 +211,8 @@ export default function WorkerReview() {
 
         {/* SUBMIT BUTTON */}
         <Pressable
-          className={`h-[64px] rounded-[24px] justify-center items-center mb-10 shadow-lg shadow-blue-200 clay-button ${
-            loading || submitted ? 'bg-gray-300 opacity-70' : 'bg-[#0EA5E9]'
-          }`}
+          className={`h-[64px] rounded-[24px] justify-center items-center mb-10 shadow-lg shadow-blue-200 clay-button ${loading || submitted ? 'bg-gray-300 opacity-70' : 'bg-[#0EA5E9]'
+            }`}
           disabled={loading || submitted}
           onPress={handleSubmit}
         >
