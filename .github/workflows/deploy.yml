@@ -25,7 +25,7 @@ jobs:
 
             # Install pnpm if missing
             if ! command -v pnpm &> /dev/null; then
-              npm install -g pnpm
+              sudo npm install -g pnpm
             fi
 
             # Install dependencies via pnpm (scales better)
