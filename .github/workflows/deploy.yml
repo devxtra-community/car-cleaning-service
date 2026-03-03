@@ -23,15 +23,11 @@ jobs:
             git fetch origin yasir
             git reset --hard origin/yasir
 
-            # Enable corepack to manage pnpm
-            sudo corepack enable
-            sudo corepack prepare pnpm@latest --activate
-
-            # Install dependencies via pnpm (scales better)
-            pnpm install
+            # Use npx pnpm to avoid PATH issues
+            npx pnpm install
 
             cd backend
-            pnpm run build
+            npx pnpm run build
 
             # Pass production env vars (assuming they are in .env or system)
             # Restart or reload using pm2
