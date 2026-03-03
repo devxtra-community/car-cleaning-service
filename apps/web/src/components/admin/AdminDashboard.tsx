@@ -12,6 +12,9 @@ import {
   ExclamationCircleIcon,
   StarIcon,
   ArrowPathIcon,
+  ExclamationTriangleIcon,
+  ComputerDesktopIcon,
+  ServerIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../services/commonAPI';
 
@@ -49,6 +52,15 @@ interface IncentiveType {
   label: string;
 }
 
+interface SystemHealth {
+  status: 'ok' | 'degraded';
+  uptime: number;
+  services: {
+    database: { status: string };
+    redis: { status: string };
+  };
+}
+
 interface DashboardData {
   buildings: Building[];
   vehicles: Vehicle[];
@@ -56,6 +68,10 @@ interface DashboardData {
   salarySummary: SalarySummary | null;
   incentiveTypes: IncentiveType[];
   incentiveRules: IncentiveRule[];
+  systemStatus: {
+    health: SystemHealth | null;
+    isMaintenance: boolean;
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -457,6 +473,10 @@ const AdminDashboard: React.FC = () => {
     salarySummary: null,
     incentiveTypes: [],
     incentiveRules: [],
+    systemStatus: {
+      health: null,
+      isMaintenance: false,
+    },
   });
   const [loading, setLoading] = useState(true);
   const [chartView, setChartView] = useState<'1M' | '1Y'>('1Y');
@@ -472,6 +492,8 @@ const AdminDashboard: React.FC = () => {
         salaryRes,
         incentiveTypesRes,
         incentiveRulesRes,
+        healthRes,
+        maintRes,
       ] = await Promise.allSettled([
         api.get('/api/buildings'),
         api.get('/api/vehicle'),
@@ -479,6 +501,8 @@ const AdminDashboard: React.FC = () => {
         api.get('/salary/summary/monthly'),
         api.get('/api/incentives/types'),
         api.get('/api/incentives/rules'),
+        api.get('/health'),
+        api.get('/api/admin/system/maintenance/status'),
       ]);
 
       setData({
@@ -495,6 +519,12 @@ const AdminDashboard: React.FC = () => {
           incentiveRulesRes.status === 'fulfilled'
             ? (incentiveRulesRes.value.data?.data ?? [])
             : [],
+        systemStatus: {
+          health:
+            healthRes.status === 'fulfilled' ? (healthRes.value.data as SystemHealth) : null,
+          isMaintenance:
+            maintRes.status === 'fulfilled' ? !!maintRes.value.data?.active : false,
+        },
       });
       setLastUpdated(new Date());
     } catch (err) {
@@ -503,6 +533,22 @@ const AdminDashboard: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  const toggleMaintenance = async (active: boolean) => {
+    try {
+      if (!window.confirm(`Are you sure you want to ${active ? 'ENABLE' : 'DISABLE'} Maintenance Mode? This will block all users.`)) return;
+
+      const res = await api.post('/api/admin/system/maintenance/toggle', { active });
+      if (res.data?.success) {
+        setData(prev => ({
+          ...prev,
+          systemStatus: { ...prev.systemStatus, isMaintenance: active }
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle maintenance:', err);
+    }
+  };
 
   useEffect(() => {
     fetchAll();
@@ -733,11 +779,10 @@ const AdminDashboard: React.FC = () => {
                     <button
                       key={v}
                       onClick={() => setChartView(v)}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                        chartView === v
-                          ? 'bg-sky-500 text-white border-sky-500'
-                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                      }`}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${chartView === v
+                        ? 'bg-sky-500 text-white border-sky-500'
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                        }`}
                     >
                       {v}
                     </button>
@@ -828,15 +873,14 @@ const AdminDashboard: React.FC = () => {
                   className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0
-                        ? 'bg-amber-400 text-white'
-                        : i === 1
-                          ? 'bg-slate-300 text-slate-700'
-                          : i === 2
-                            ? 'bg-orange-300 text-orange-800'
-                            : 'bg-slate-100 text-slate-400'
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0
+                      ? 'bg-amber-400 text-white'
+                      : i === 1
+                        ? 'bg-slate-300 text-slate-700'
+                        : i === 2
+                          ? 'bg-orange-300 text-orange-800'
+                          : 'bg-slate-100 text-slate-400'
+                      }`}
                   >
                     {i + 1}
                   </div>
@@ -907,6 +951,74 @@ const AdminDashboard: React.FC = () => {
               })}
             </SectionCard>
           </div>
+        </div>
+
+        {/* ── Row 5: System Management ──────────────────────────────── */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <SectionCard title="System Control & Health" icon={ComputerDesktopIcon} iconClass="text-slate-500">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              {/* Maintenance Control */}
+              <div className="flex-1 w-full bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <ExclamationTriangleIcon className={`w-5 h-5 ${data.systemStatus.isMaintenance ? 'text-amber-500' : 'text-slate-400'}`} />
+                      <h3 className="text-lg font-bold text-slate-800">Maintenance Mode</h3>
+                    </div>
+                    <p className="text-sm text-slate-500 max-w-md">
+                      When enabled, all mobile and web app users will be blocked. Use this for safe system updates.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleMaintenance(!data.systemStatus.isMaintenance)}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${data.systemStatus.isMaintenance ? 'bg-amber-500' : 'bg-slate-300'}`}
+                  >
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${data.systemStatus.isMaintenance ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Service Health */}
+              <div className="flex-1 w-full grid grid-cols-2 gap-4">
+                {[
+                  {
+                    label: 'Database (PG)',
+                    status: data.systemStatus.health?.services.database.status ?? 'unknown',
+                    icon: ServerIcon,
+                    color: data.systemStatus.health?.services.database.status === 'connected' ? 'emerald' : 'rose'
+                  },
+                  {
+                    label: 'Cache (Redis)',
+                    status: data.systemStatus.health?.services.redis.status ?? 'unknown',
+                    icon: ArrowPathIcon,
+                    color: data.systemStatus.health?.services.redis.status === 'ready' ? 'violet' : 'rose'
+                  }
+                ].map((srv) => (
+                  <div key={srv.label} className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                    <div className={`p-2 rounded-lg bg-${srv.color}-50`}>
+                      <srv.icon className={`w-5 h-5 text-${srv.color}-500`} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">{srv.label}</div>
+                      <div className={`text-sm font-bold capitalize flex items-center gap-1.5 text-${srv.color}-600`}>
+                        <span className={`w-1.5 h-1.5 rounded-full bg-${srv.color}-500`} />
+                        {srv.status}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Server Uptime */}
+              <div className="flex-none bg-white border border-slate-100 rounded-xl p-4 shadow-sm min-w-[150px]">
+                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight mb-1">Server Uptime</div>
+                <div className="text-lg font-mono font-bold text-slate-700">
+                  {data.systemStatus.health ? (Math.floor(data.systemStatus.health.uptime / 3600) + 'h ' + Math.floor((data.systemStatus.health.uptime % 3600) / 60) + 'm') : '—'}
+                </div>
+                <div className="text-[10px] text-emerald-500 font-bold mt-1">Status: Operational</div>
+              </div>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>
