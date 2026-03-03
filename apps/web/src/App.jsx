@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
 /* Public */
-const Login = lazy(() => import('./pages/Login'));
+const Login = lazy(() => import('./pages/LoginPage'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
 /* Portals */
