@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteSupervisorService = exports.toggleSupervisorStatusService = exports.updateSupervisorService = exports.getSupervisorDetailsService = exports.supervisorReportService = exports.getSupervisorWorkersService = void 0;
+exports.deleteSupervisorService = exports.toggleSupervisorStatusService = exports.updateSupervisorService = exports.getSupervisorDetailsService = exports.supervisorReportService = exports.updateWorkerAssignmentService = exports.getSupervisorWorkersAttendanceService = exports.getSupervisorWorkersService = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const getSupervisorWorkersService = async (supervisorId) => {
@@ -40,6 +40,30 @@ const getSupervisorWorkersService = async (supervisorId) => {
     return result.rows;
 };
 exports.getSupervisorWorkersService = getSupervisorWorkersService;
+const getSupervisorWorkersAttendanceService = async (supervisorId) => {
+    const result = await connectDatabase_1.pool.query(`
+    SELECT 
+      u.id, 
+      u.full_name,
+      a.id AS attendance_id,
+      a.date,
+      a.created_at AS check_in_time,
+      CASE WHEN a.id IS NOT NULL THEN 'present' ELSE 'absent' END AS attendance_status
+    FROM cleaners c
+    JOIN users u ON u.id = c.user_id
+    JOIN supervisors s ON c.supervisor_id = s.id
+    LEFT JOIN attendance a ON a.worker_id = u.id AND a.date = CURRENT_DATE
+    WHERE s.user_id = $1
+    ORDER BY u.full_name ASC
+    `, [supervisorId]);
+    return result.rows;
+};
+exports.getSupervisorWorkersAttendanceService = getSupervisorWorkersAttendanceService;
+const updateWorkerAssignmentService = async (cleanerId, floorId) => {
+    const result = await connectDatabase_1.pool.query(`UPDATE cleaners SET floor_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *`, [floorId, cleanerId]);
+    return result.rows[0];
+};
+exports.updateWorkerAssignmentService = updateWorkerAssignmentService;
 const supervisorReportService = async (supervisorId, period) => {
     let filter = '';
     if (period === 'day')

@@ -28,6 +28,11 @@ const s3_1 = __importDefault(require("./routes/s3"));
 const penalties_routes_1 = __importDefault(require("./modules/penalties/penalties_routes"));
 const fraud_routes_1 = __importDefault(require("./modules/fraud/fraud_routes"));
 const notification_routes_1 = __importDefault(require("./modules/notifications/notification_routes"));
+const system_routes_1 = __importDefault(require("./modules/system/system_routes"));
+const maintenance_1 = require("./middlewares/maintenance");
+const redis_1 = __importDefault(require("./config/redis"));
+const connectDatabase_2 = require("./database/connectDatabase");
+const os_1 = __importDefault(require("os"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((req, res, next) => {
@@ -40,16 +45,35 @@ app.use((0, cors_1.default)({
     origin: true, // Reflects the request origin, required for credentials: true
     credentials: true,
 }));
+// Register maintenance middleware early
+app.use(maintenance_1.maintenanceMiddleware);
 const PORT = 3033;
 (0, connectDatabase_1.connectDatabase)();
 app.use('/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
     logger_1.logger.info('Health check requested');
-    res.status(200).json({
-        status: 'ok',
+    const dbConnected = (0, connectDatabase_2.isDatabaseConnected)();
+    const redisStatus = redis_1.default.status;
+    const healthData = {
+        status: dbConnected && redisStatus === 'ready' ? 'ok' : 'degraded',
         uptime: process.uptime(),
-        timestamp: new Date().toString(),
-    });
+        timestamp: new Date().toISOString(),
+        services: {
+            database: { status: dbConnected ? 'connected' : 'disconnected' },
+            redis: { status: redisStatus },
+        },
+        resources: {
+            memory: {
+                total: (os_1.default.totalmem() / 1024 / 1024 / 1024).toFixed(2) + ' GB',
+                free: (os_1.default.freemem() / 1024 / 1024 / 1024).toFixed(2) + ' GB',
+                usage: ((1 - os_1.default.freemem() / os_1.default.totalmem()) * 100).toFixed(2) + '%',
+            },
+            cpu: {
+                load: os_1.default.loadavg()[0].toFixed(2),
+            }
+        }
+    };
+    res.status(healthData.status === 'ok' ? 200 : 503).json(healthData);
 });
 app.use('/api/auth', auth_routes_1.default);
 app.use('/attendance', attendance_routes_1.default);
@@ -69,6 +93,7 @@ app.use('/supervisors', supervisor_routes_1.default);
 app.use('/api/floors', floorRoutes_1.default);
 app.use('/fraud', fraud_routes_1.default);
 app.use('/api/notifications', notification_routes_1.default);
+app.use('/api/admin/system', system_routes_1.default);
 app.use(error_handler_1.globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
     console.log('Backend running on port 3033 - LATEST UPDATE');
@@ -76,3 +101,4 @@ app.listen(PORT, '0.0.0.0', () => {
 app.get('/test', (req, res) => {
     res.json({ message: 'Backend reachable' });
 });
+// restart

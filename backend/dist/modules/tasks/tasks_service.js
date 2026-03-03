@@ -11,9 +11,10 @@ const createTaskService = async (data) => {
         const query = `
       INSERT INTO tasks (
         owner_name, owner_phone, car_number, car_model, car_type, car_color, 
-        car_image_url, cleaner_id, task_amount, amount_charged, status
+        car_image_url, cleaner_id, task_amount, amount_charged, status,
+        latitude, longitude
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11, $12)
       RETURNING *;
     `;
         const values = [
@@ -27,6 +28,8 @@ const createTaskService = async (data) => {
             data.cleaner_id,
             data.task_amount || 0,
             data.amount_charged || data.task_amount || 0, // Fallback to task_amount if amount_charged is missing
+            data.latitude || null,
+            data.longitude || null,
         ];
         const result = await client.query(query, values);
         await client.query('COMMIT');

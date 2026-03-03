@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllAdminsController = exports.getAllAccountantsController = exports.getSupervisorsByBuilding = exports.getAllSupervisors = exports.getCleanersBySupervisor = exports.getCleaners = exports.logout = exports.login = exports.registerUser = void 0;
+exports.resetUserPasswordController = exports.toggleUserStatusController = exports.getAllAdminsController = exports.getAllAccountantsController = exports.getSupervisorsByBuilding = exports.getAllSupervisors = exports.getCleanersBySupervisor = exports.getCleaners = exports.logout = exports.login = exports.registerUser = void 0;
+const auditLogger_1 = require("../../utils/auditLogger");
 const logger_1 = require("../../config/logger");
 const error_handler_1 = require("src/middlewares/error-handler");
 const jwt_1 = require("../../config/jwt");
@@ -236,3 +237,44 @@ const getAllAdminsController = async (req, res, next) => {
     }
 };
 exports.getAllAdminsController = getAllAdminsController;
+// ============================================================
+// ADMIN MANAGEMENT
+// ============================================================
+const toggleUserStatusController = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { is_active } = req.body;
+        const adminId = req.user?.userId;
+        if (is_active === undefined) {
+            throw new error_handler_1.AppError('is_active is required', 400, 'IS_ACTIVE_REQUIRED');
+        }
+        const data = await (0, auth_service_1.toggleUserStatusService)(id, is_active);
+        if (adminId) {
+            await (0, auditLogger_1.logAuditAction)(adminId, 'TOGGLE_USER_STATUS', { target_user_id: id, is_active });
+        }
+        return res.status(200).json({ success: true, message: `User status updated to ${is_active ? 'active' : 'inactive'}`, data });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.toggleUserStatusController = toggleUserStatusController;
+const resetUserPasswordController = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { new_password } = req.body;
+        const adminId = req.user?.userId;
+        if (!new_password) {
+            throw new error_handler_1.AppError('new_password is required', 400, 'PASSWORD_REQUIRED');
+        }
+        const data = await (0, auth_service_1.resetUserPasswordService)(id, new_password);
+        if (adminId) {
+            await (0, auditLogger_1.logAuditAction)(adminId, 'RESET_USER_PASSWORD', { target_user_id: id });
+        }
+        return res.status(200).json({ success: true, message: 'Password reset successfully' });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.resetUserPasswordController = resetUserPasswordController;

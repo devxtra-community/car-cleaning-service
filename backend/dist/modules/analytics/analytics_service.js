@@ -1,38 +1,58 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCollectionsReconciliation = exports.getCleanerPerformance = exports.getMonthlyProgress = exports.getWeeklyProgress = exports.getDailyProgress = void 0;
+exports.getFraudTrendsService = exports.getCustomerRatingSummaryService = exports.getBuildingComparisonService = exports.getPeakActivity = exports.getCollectionsReconciliation = exports.getCleanerPerformance = exports.getMonthlyProgress = exports.getWeeklyProgress = exports.getDailyProgress = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
+const redis_1 = require("../../config/redis");
 const getDailyProgress = async (date) => {
+    const cacheKey = `analytics:daily:${date || 'all'}`;
+    const cached = await (0, redis_1.getCache)(cacheKey);
+    if (cached)
+        return cached;
     const res = await connectDatabase_1.pool.query(`
     SELECT *
     FROM daily_progress_view
     WHERE ($1::date IS NULL OR date = $1)
     ORDER BY date DESC
     `, [date || null]);
+    await (0, redis_1.setCache)(cacheKey, res.rows, 300); // 5 min cache
     return res.rows;
 };
 exports.getDailyProgress = getDailyProgress;
 const getWeeklyProgress = async (weekStart) => {
+    const cacheKey = `analytics:weekly:${weekStart || 'all'}`;
+    const cached = await (0, redis_1.getCache)(cacheKey);
+    if (cached)
+        return cached;
     const res = await connectDatabase_1.pool.query(`
     SELECT *
     FROM weekly_progress_view
     WHERE ($1::date IS NULL OR week_start = $1)
     ORDER BY week_start DESC
     `, [weekStart || null]);
+    await (0, redis_1.setCache)(cacheKey, res.rows, 1800); // 30 min cache
     return res.rows;
 };
 exports.getWeeklyProgress = getWeeklyProgress;
 const getMonthlyProgress = async (month) => {
+    const cacheKey = `analytics:monthly:${month || 'all'}`;
+    const cached = await (0, redis_1.getCache)(cacheKey);
+    if (cached)
+        return cached;
     const res = await connectDatabase_1.pool.query(`
     SELECT *
     FROM monthly_progress_view
     WHERE ($1::date IS NULL OR month = DATE_TRUNC('month', $1::date))
     ORDER BY month DESC
     `, [month || null]);
+    await (0, redis_1.setCache)(cacheKey, res.rows, 3600); // 1 hour cache
     return res.rows;
 };
 exports.getMonthlyProgress = getMonthlyProgress;
 const getCleanerPerformance = async (period) => {
+    const cacheKey = `analytics:cleaner_perf:${period || 'all'}`;
+    const cached = await (0, redis_1.getCache)(cacheKey);
+    if (cached)
+        return cached;
     // period can be 'daily', 'weekly', 'monthly' or null for all time
     let dateFilter = '';
     if (period === 'daily')
@@ -53,6 +73,7 @@ const getCleanerPerformance = async (period) => {
      LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${dateFilter}
      GROUP BY c.id, u.full_name, b.building_name
      ORDER BY completed_tasks DESC`);
+    await (0, redis_1.setCache)(cacheKey, res.rows, 600); // 10 min cache
     return res.rows;
 };
 exports.getCleanerPerformance = getCleanerPerformance;
@@ -78,3 +99,74 @@ const getCollectionsReconciliation = async (month) => {
     return res.rows;
 };
 exports.getCollectionsReconciliation = getCollectionsReconciliation;
+const getPeakActivity = async (period = 'monthly') => {
+    let interval = '1 month';
+    if (period === 'daily')
+        interval = '1 day';
+    else if (period === 'weekly')
+        interval = '1 week';
+    const res = await connectDatabase_1.pool.query(`SELECT 
+      EXTRACT(HOUR FROM completed_at) as hour,
+      COUNT(id) as task_count
+     FROM tasks
+     WHERE status = 'completed'
+     AND completed_at >= NOW() - CAST($1 AS INTERVAL)
+     GROUP BY hour
+     ORDER BY hour`, [interval]);
+    return res.rows;
+};
+exports.getPeakActivity = getPeakActivity;
+const getBuildingComparisonService = async () => {
+    const query = `
+    SELECT 
+      b.id as building_id,
+      b.building_name,
+      b.location,
+      COUNT(t.id)::int as total_washes,
+      COALESCE(SUM(t.final_price), 0)::float as total_revenue,
+      COALESCE(AVG(r.rating), 0)::float as avg_rating
+    FROM buildings b
+    LEFT JOIN tasks t ON b.id = t.building_id AND t.status = 'completed'
+    LEFT JOIN reviews r ON t.id = r.task_id
+    GROUP BY b.id, b.building_name, b.location
+    ORDER BY total_revenue DESC
+  `;
+    const { rows } = await connectDatabase_1.pool.query(query);
+    return rows;
+};
+exports.getBuildingComparisonService = getBuildingComparisonService;
+const getCustomerRatingSummaryService = async () => {
+    const query = `
+    SELECT 
+      rating::int,
+      COUNT(*)::int as count
+    FROM reviews
+    GROUP BY rating
+    ORDER BY rating DESC
+  `;
+    const { rows } = await connectDatabase_1.pool.query(query);
+    return rows;
+};
+exports.getCustomerRatingSummaryService = getCustomerRatingSummaryService;
+const getFraudTrendsService = async () => {
+    const cacheKey = 'analytics:fraud_trends';
+    const cached = await (0, redis_1.getCache)(cacheKey);
+    if (cached)
+        return cached;
+    const query = `
+    SELECT 
+      DATE(f.created_at) as date,
+      b.building_name,
+      f.type as fraud_type,
+      COUNT(*) as incident_count
+    FROM fraud_cases f
+    JOIN tasks t ON f.task_id = t.id
+    JOIN buildings b ON t.building_id = b.id
+    GROUP BY DATE(f.created_at), b.building_name, f.type
+    ORDER BY DATE(f.created_at) DESC, incident_count DESC;
+  `;
+    const { rows } = await connectDatabase_1.pool.query(query);
+    await (0, redis_1.setCache)(cacheKey, rows, 1800); // 30 min cache
+    return rows;
+};
+exports.getFraudTrendsService = getFraudTrendsService;
