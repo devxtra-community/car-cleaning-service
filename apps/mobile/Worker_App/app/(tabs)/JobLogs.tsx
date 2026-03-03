@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,15 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ChevronLeft, Calendar, X, Clock, Car } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import api from '../../src/api/api';
+import { useLanguage } from '../../contexts/LanguageContext';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Task = {
   id: string;
@@ -38,81 +41,25 @@ type Task = {
   status: string;
 };
 
-export default function JobLogs() {
-  // const insets = useSafeAreaInsets();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+// ─── Sub-components (defined OUTSIDE the screen component so they are never
+//     remounted on re-render, which was causing the flicker / loading loop) ────
 
-  const fetchTaskLogs = async (date: Date) => {
-    try {
-      const dateStr = date.toISOString().split('T')[0];
-      const res = await api.get(`/workers/task-logs?date=${dateStr}`);
-      if (res.data && res.data.success) {
-        setTasks(res.data.tasks || []);
-      }
-    } catch (e) {
-      console.error('Task logs fetch error:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+function TaskCard({
+  task,
+  onPress,
+}: {
+  task: Task;
+  onPress: (t: Task) => void;
+}) {
+  const { t } = useLanguage();
+  const timeStr = new Date(task.completed_at).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
-  /*
-  useFocusEffect(
-    useCallback(() => {
-      fetchTaskLogs(selectedDate);
-    }, [selectedDate])
-  );
-  */
-
-  React.useEffect(() => {
-    fetchTaskLogs(selectedDate);
-  }, [selectedDate]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchTaskLogs(selectedDate);
-    setRefreshing(false);
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate);
-    setLoading(true);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onDateChange = (event: any, date?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (date) {
-      setSelectedDate(date);
-      setLoading(true);
-    }
-  };
-
-  const TaskCard = ({ task }: { task: Task }) => (
+  return (
     <Pressable
-      onPress={() => {
-        setSelectedTask(task);
-        setShowDetail(true);
-      }}
+      onPress={() => onPress(task)}
       className="clay-card p-5 mb-4 border-none shadow-sm bg-white"
     >
       <View className="flex-row items-center justify-between mb-3">
@@ -125,7 +72,9 @@ export default function JobLogs() {
           </View>
         </View>
         <View className="px-3 py-1 rounded-full bg-[#ECFDF5] border border-[#10B981]/20">
-          <Text className="font-bold text-[10px] text-[#10B981]">COMPLETED</Text>
+          <Text className="font-bold text-[10px] text-[#10B981] uppercase">
+            {t('addJob.completed')}
+          </Text>
         </View>
       </View>
 
@@ -134,7 +83,7 @@ export default function JobLogs() {
       <View className="flex-row justify-between items-center mt-2">
         <View>
           <Text className="text-[10px] font-label uppercase text-clay-secondary/80 mb-1">
-            Details
+            {t('jobLogs.details')}
           </Text>
           <Text className="font-heading text-sm text-clay-text">
             {task.car_color} {task.car_model}
@@ -144,19 +93,23 @@ export default function JobLogs() {
 
         <View className="items-end">
           <Text className="text-[10px] font-label uppercase text-clay-secondary/80 mb-1">
-            Earned
+            {t('jobLogs.earned')}
           </Text>
           <Text className="font-heading text-xl text-[#0EA5E9]">₹{task.final_price}</Text>
           <View className="flex-row items-center gap-1 mt-1">
             <Clock size={10} color="#94A3B8" />
-            <Text className="text-[10px] text-clay-secondary">{formatTime(task.completed_at)}</Text>
+            <Text className="text-[10px] text-clay-secondary">{timeStr}</Text>
           </View>
         </View>
       </View>
     </Pressable>
   );
+}
 
-  const DetailRow = ({ label, value }: { label: string; value: string }) => (
+function DetailRow({ label, value }: { label: string; value: string }) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { t } = useLanguage();
+  return (
     <View className="flex-row py-3 border-b border-gray-100">
       <Text className="text-[11px] font-label uppercase w-28 tracking-wide text-clay-secondary">
         {label}
@@ -164,32 +117,122 @@ export default function JobLogs() {
       <Text className="text-[13px] font-heading flex-1 text-clay-text">{value}</Text>
     </View>
   );
+}
 
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
+/** Returns today's date as a YYYY-MM-DD string (avoids Date object reference churn). */
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+/** Formats a YYYY-MM-DD string for display. */
+function displayDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+export default function JobLogs() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  // Store the date as a plain ISO string (YYYY-MM-DD) — avoids object
+  // reference instability that was triggering infinite useFocusEffect loops.
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(todayStr);
+
+  const [loading, setLoading] = useState(false);   // starts FALSE — no ghost spinner
+  const [refreshing, setRefreshing] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const { t } = useLanguage();
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
+  const fetchTaskLogs = useCallback(async (dateStr: string) => {
+    try {
+      setLoading(true);
+      const res = await api.get(`/workers/task-logs?date=${dateStr}`);
+      if (res.data?.success) {
+        setTasks(res.data.tasks || []);
+      } else {
+        setTasks([]);
+      }
+    } catch (e) {
+      console.error('Task logs fetch error:', e);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // no deps — stable forever
+
+  // Re-fetch every time the screen comes into focus or the date changes.
+  useFocusEffect(
+    useCallback(() => {
+      fetchTaskLogs(selectedDateStr);
+    }, [selectedDateStr, fetchTaskLogs])
+  );
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchTaskLogs(selectedDateStr);
+    setRefreshing(false);
+  }, [selectedDateStr, fetchTaskLogs]);
+
+  const changeDate = useCallback((days: number) => {
+    setSelectedDateStr((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    });
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onDateChange = useCallback((_event: any, date?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (date) {
+      setSelectedDateStr(date.toISOString().split('T')[0]);
+    }
+  }, []);
+
+  const openDetail = useCallback((task: Task) => {
+    setSelectedTask(task);
+    setShowDetail(true);
+  }, []);
+
+  const closeDetail = useCallback(() => setShowDetail(false), []);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
+      {/* ─ Header ─ */}
       <View
         className="pb-4 rounded-b-[40px] shadow-sm bg-white/80"
-        style={{
-          paddingTop: insets.top + 10,
-        }}
+        style={{ paddingTop: insets.top + 10 }}
       >
         <View className="px-6 flex-row items-center justify-between mb-4">
+          {/* Use router.back() — not router.replace — so Android/iOS navigation
+              state stays clean and doesn't trigger a re-mount loop. */}
           <Pressable
-            onPress={() => router.replace('/Homepage')}
+            onPress={() => router.back()}
             className="w-10 h-10 rounded-xl items-center justify-center bg-white shadow-sm border border-gray-100"
           >
             <ChevronLeft size={24} color="#1E293B" />
           </Pressable>
-          <Text className="text-xl font-heading tracking-tight text-clay-text">Job Logs</Text>
+          <Text className="text-xl font-heading tracking-tight text-clay-text">{t('jobLogs.title')}</Text>
           <View className="w-10" />
         </View>
 
-        {/* Date Picker */}
+        {/* ─ Date Picker Row ─ */}
         <View className="px-6 mb-2">
           <View className="flex-row items-center gap-3">
             <Pressable
@@ -198,15 +241,17 @@ export default function JobLogs() {
             >
               <Text className="font-heading text-lg text-[#0EA5E9]">←</Text>
             </Pressable>
+
             <Pressable
               onPress={() => setShowDatePicker(true)}
               className="flex-1 p-3 rounded-xl flex-row items-center justify-center gap-2 shadow-sm clay-button bg-white"
             >
               <Calendar size={18} color="#64748B" />
               <Text className="font-heading text-[13px] text-clay-text">
-                {formatDate(selectedDate)}
+                {displayDate(selectedDateStr)}
               </Text>
             </Pressable>
+
             <Pressable
               onPress={() => changeDate(1)}
               className="w-10 h-10 rounded-xl items-center justify-center shadow-sm clay-button bg-white"
@@ -214,9 +259,10 @@ export default function JobLogs() {
               <Text className="font-heading text-lg text-[#0EA5E9]">→</Text>
             </Pressable>
           </View>
+
           {showDatePicker && (
             <DateTimePicker
-              value={selectedDate}
+              value={new Date(selectedDateStr)}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onDateChange}
@@ -226,6 +272,7 @@ export default function JobLogs() {
         </View>
       </View>
 
+      {/* ─ List ─ */}
       <ScrollView
         className="flex-1 px-6 pt-6"
         showsVerticalScrollIndicator={false}
@@ -241,10 +288,10 @@ export default function JobLogs() {
         ) : tasks.length > 0 ? (
           <>
             <Text className="font-label text-[10px] uppercase tracking-widest mb-4 ml-1 text-clay-secondary/80">
-              {tasks.length} {tasks.length === 1 ? 'job' : 'jobs'} completed
+              {t(tasks.length === 1 ? 'jobLogs.completed_count' : 'jobLogs.completed_count_plural', { count: tasks.length })}
             </Text>
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard key={task.id} task={task} onPress={openDetail} />
             ))}
           </>
         ) : (
@@ -252,16 +299,17 @@ export default function JobLogs() {
             <View className="w-16 h-16 rounded-full bg-[#E0F2FE] items-center justify-center mb-4">
               <Calendar size={32} color="#0EA5E9" />
             </View>
-            <Text className="font-heading text-lg text-clay-text mb-2">No jobs found</Text>
+            <Text className="font-heading text-lg text-clay-text mb-2">{t('jobLogs.noJobs')}</Text>
             <Text className="text-center font-body text-xs text-clay-secondary">
-              There are no completed jobs for this date.
+              {t('jobLogs.noJobsSubtitle')}
             </Text>
           </View>
         )}
       </ScrollView>
 
+      {/* ─ Detail Modal ─ */}
       <Modal visible={showDetail} animationType="slide" transparent>
-        <BlurView intensity={20} className="flex-1 justify-end">
+        <BlurView intensity={20} style={{ flex: 1, justifyContent: 'flex-end' }}>
           <View
             className="flex-1 rounded-t-[40px] mt-24 overflow-hidden bg-[#F0F9FF]"
             style={{ paddingBottom: insets.bottom }}
@@ -269,10 +317,10 @@ export default function JobLogs() {
             {/* Modal Header */}
             <View className="p-6 border-b border-gray-200 flex-row items-center justify-between bg-white/80">
               <Text className="text-xl font-heading tracking-tight text-clay-text">
-                Job Details
+                {t('jobLogs.jobDetails')}
               </Text>
               <Pressable
-                onPress={() => setShowDetail(false)}
+                onPress={closeDetail}
                 className="w-10 h-10 rounded-full items-center justify-center bg-gray-100"
               >
                 <X size={20} color="#64748B" />
@@ -282,16 +330,16 @@ export default function JobLogs() {
             <ScrollView className="flex-1 bg-[#F0F9FF]" showsVerticalScrollIndicator={false}>
               {selectedTask && (
                 <View className="p-6">
-                  {/* Images */}
+                  {/* Photos */}
                   <View className="mb-6">
                     <Text className="text-[10px] font-label uppercase tracking-widest mb-3 text-clay-secondary ml-1">
-                      Photos
+                      {t('jobLogs.photos')}
                     </Text>
                     <View className="flex-row gap-4">
                       {selectedTask.before_photo_url && (
                         <View className="flex-1 clay-card p-3 bg-white">
                           <Text className="text-[9px] font-bold mb-2 uppercase tracking-wide text-clay-secondary text-center">
-                            BEFORE
+                            {t('jobLogs.before')}
                           </Text>
                           <Image
                             source={{ uri: selectedTask.before_photo_url }}
@@ -303,7 +351,7 @@ export default function JobLogs() {
                       {(selectedTask.after_wash_image_url || selectedTask.after_photo_url) && (
                         <View className="flex-1 clay-card p-3 bg-white">
                           <Text className="text-[9px] font-bold mb-2 uppercase tracking-wide text-[#10B981] text-center">
-                            AFTER
+                            {t('jobLogs.after')}
                           </Text>
                           <Image
                             source={{
@@ -318,38 +366,44 @@ export default function JobLogs() {
                     </View>
                   </View>
 
-                  {/* Vehicle Details Table */}
+                  {/* Vehicle */}
                   <View className="clay-card p-5 mb-5 bg-white">
                     <Text className="text-[10px] font-label uppercase tracking-widest mb-3 text-clay-primary">
-                      Vehicle Details
+                      {t('jobLogs.vehicleDetails')}
                     </Text>
                     <DetailRow
-                      label="Model"
+                      label={t('jobLogs.model')}
                       value={`${selectedTask.car_color} ${selectedTask.car_model}`}
                     />
-                    <DetailRow label="Number" value={selectedTask.car_number} />
-                    <DetailRow label="Type" value={selectedTask.car_type} />
+                    <DetailRow label={t('jobLogs.number')} value={selectedTask.car_number} />
+                    <DetailRow label={t('jobLogs.type')} value={selectedTask.car_type} />
                   </View>
 
-                  {/* Customer Details Table */}
+                  {/* Customer */}
                   <View className="clay-card p-5 mb-5 bg-white">
                     <Text className="text-[10px] font-label uppercase tracking-widest mb-3 text-clay-primary">
-                      Customer Details
+                      {t('jobLogs.customerDetails')}
                     </Text>
-                    <DetailRow label="Name" value={selectedTask.owner_name} />
-                    <DetailRow label="Phone" value={selectedTask.owner_phone} />
+                    <DetailRow label={t('jobLogs.name')} value={selectedTask.owner_name} />
+                    <DetailRow label={t('jobLogs.phone')} value={selectedTask.owner_phone} />
                   </View>
 
-                  {/* Payment Details Table */}
+                  {/* Payment */}
                   <View className="clay-card p-5 mb-8 bg-white">
                     <Text className="text-[10px] font-label uppercase tracking-widest mb-3 text-clay-primary">
-                      Payment Details
+                      {t('jobLogs.paymentDetails')}
                     </Text>
-                    <DetailRow label="Amount" value={`₹${selectedTask.final_price}`} />
+                    <DetailRow label={t('jobLogs.amount')} value={`₹${selectedTask.final_price}`} />
                     {selectedTask.payment_method && (
-                      <DetailRow label="Method" value={selectedTask.payment_method} />
+                      <DetailRow label={t('jobLogs.method')} value={selectedTask.payment_method} />
                     )}
-                    <DetailRow label="Completed" value={formatTime(selectedTask.completed_at)} />
+                    <DetailRow
+                      label={t('jobLogs.completed')}
+                      value={new Date(selectedTask.completed_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    />
                   </View>
                 </View>
               )}

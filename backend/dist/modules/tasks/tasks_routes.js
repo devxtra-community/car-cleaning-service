@@ -11,4 +11,8 @@ const router = express_1.default.Router();
 router.post('/', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('worker', 'admin', 'cleaner', 'super_admin'), tasks_controller_1.createTaskController);
 router.get('/my', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('worker', 'cleaner', 'admin', 'super_admin'), tasks_controller_1.GetTaskpending);
 router.patch('/:id/complete', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('worker', 'cleaner', 'admin', 'super_admin'), tasks_controller_1.completeTaskController);
+// Supervisor routes
+router.get('/supervisor/completed', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor', 'admin', 'super_admin'), tasks_controller_1.getSupervisorCompletedTasks);
+router.patch('/:id/verify', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor', 'admin', 'super_admin'), tasks_controller_1.verifyTaskController);
+router.get('/collections/supervisor', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor', 'admin', 'super_admin'), tasks_controller_1.getSupervisorCollections);
 exports.default = router;

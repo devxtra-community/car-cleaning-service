@@ -1,0 +1,28 @@
+{
+    "common": {
+        "dashboard": "डैशबोर्ड",
+        "reports": "रिपोर्ट",
+        "analytics": "विश्लेषण",
+        "settings": "सेटिंग्स",
+        "logout": "लॉग आउट",
+        "export": "निर्यात",
+        "search": "खोजें",
+        "loading": "लोड हो रहा है...",
+        "save": "सहेजें",
+        "cancel": "रद्द करें"
+    },
+    "admin": {
+        "operationalReports": "परिचालन रिपोर्ट",
+        "dailyRevenue": "दैनिक राजस्व",
+        "revenueTrends": "राजस्व रुझान",
+        "peakActivity": "पीक गतिविधि विश्लेषण",
+        "buildingStats": "भवन आँकड़े",
+        "cleanerPerformance": "क्लीनर प्रदर्शन"
+    },
+    "accountant": {
+        "salarySummary": "वेतन सारांश",
+        "netSalary": "कुल वेतन",
+        "processSalary": "वेतन संसाधित करें",
+        "exportExcel": "एक्सेल निर्यात करें"
+    }
+}

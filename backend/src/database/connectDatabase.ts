@@ -1,5 +1,11 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import { logger } from '../config/logger';
+
+// Force timestamps to be parsed as UTC to avoid double-offset issues in IST environments
+const TIMESTAMP_OID = 1114;
+types.setTypeParser(TIMESTAMP_OID, (stringValue) => {
+  return new Date(stringValue + 'Z');
+});
 
 const MAX_STARTUP_RETRIES = 5;
 const STARTUP_RETRY_DELAY_MS = 3000;

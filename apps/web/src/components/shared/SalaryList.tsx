@@ -6,13 +6,14 @@ import SalaryBreakdownModal from './SalaryBreakdownModal';
 
 interface SalaryRow {
   id: string;
-  cleaner_id: string;
+  user_id: string;
   cleaner_name: string;
   base_salary: number;
-  total_incentives: number;
-  total_penalties: number;
-  net_salary: number;
+  incentives: number;
+  penalties: number;
+  final_salary: number;
   status: string;
+  role: string;
 }
 
 const SalaryList: React.FC = () => {
@@ -53,9 +54,7 @@ const SalaryList: React.FC = () => {
        ========================= */
   const handleMarkPaid = async (salaryId: string) => {
     try {
-      await api.post(`/salary/pay/${salaryId}`, {
-        payment_method: 'Bank Transfer',
-      });
+      await api.post(`/salary/pay/${salaryId}`, {});
       setToast({ message: 'Salary marked as paid', type: 'success' });
       fetchSalaries();
     } catch {
@@ -66,7 +65,7 @@ const SalaryList: React.FC = () => {
   /* =========================
        Summary
        ========================= */
-  const totalSalary = rows.reduce((s, r) => s + Number(r.net_salary || 0), 0);
+  const totalSalary = rows.reduce((s, r) => s + Number(r.final_salary || 0), 0);
   const paidCount = rows.filter((r) => r.status === 'paid').length;
 
   /* =========================
@@ -77,14 +76,15 @@ const SalaryList: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Salary List</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Cleaner-wise salary breakdown for selected cycle
+          Role-wise salary breakdown for this cycle (Cleaners & Supervisors)
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <Stat title="TOTAL SALARY" value={`₹${totalSalary.toLocaleString('en-IN')}`} color="blue" />
-        <Stat title="PAID COUNT" value={paidCount.toString()} color="green" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Stat title="TOTAL PAYROLL" value={`₹${totalSalary.toLocaleString('en-IN')}`} color="blue" />
+        <Stat title="PAID" value={paidCount.toString()} color="green" />
+        <Stat title="PENDING" value={(rows.length - paidCount).toString()} color="blue" />
       </div>
 
       {/* Table */}
@@ -92,7 +92,8 @@ const SalaryList: React.FC = () => {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="p-4 text-left">Cleaner</th>
+              <th className="p-4 text-left">Employee</th>
+              <th className="p-4 text-left">Role</th>
               <th className="p-4 text-right">Base</th>
               <th className="p-4 text-right">Incentives</th>
               <th className="p-4 text-right">Penalties</th>
@@ -117,32 +118,53 @@ const SalaryList: React.FC = () => {
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="p-4 font-medium text-gray-800">
+                <tr key={row.user_id || row.id} className="hover:bg-gray-50 text-slate-700">
+                  <td className="p-4 font-medium text-gray-900">
                     {row.cleaner_name}
-                    <button
-                      onClick={() => setSelectedSalary(row.id)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs"
-                    >
-                      View
-                    </button>
+                    {row.role === 'cleaner' && row.id && (
+                      <button
+                        onClick={() => setSelectedSalary(row.id)}
+                        className="ml-2 px-3 py-1 bg-blue-600 text-white rounded-md text-xs shadow-sm"
+                      >
+                        View
+                      </button>
+                    )}
                   </td>
-                  <td className="p-4 text-right">₹{row.base_salary}</td>
-                  <td className="p-4 text-right text-green-600">₹{row.total_incentives}</td>
-                  <td className="p-4 text-right text-red-600">₹{row.total_penalties}</td>
-                  <td className="p-4 text-right font-semibold text-blue-700">₹{row.net_salary}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${row.role === 'cleaner' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'
+                      }`}>
+                      {row.role}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right">₹{Number(row.base_salary).toLocaleString('en-IN')}</td>
+                  {row.role === 'cleaner' ? (
+                    <>
+                      <td className="p-4 text-right text-green-600">₹{Number(row.incentives).toLocaleString('en-IN')}</td>
+                      <td className="p-4 text-right text-red-600">₹{Number(row.penalties).toLocaleString('en-IN')}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="p-4 text-right text-gray-400 font-mono">—</td>
+                      <td className="p-4 text-right text-gray-400 font-mono">—</td>
+                    </>
+                  )}
+                  <td className="p-4 text-right font-semibold text-blue-700">₹{Number(row.final_salary).toLocaleString('en-IN')}</td>
                   <td className="p-4">
                     {row.status === 'paid' ? (
-                      <span className="text-green-600 font-medium">Paid</span>
+                      <span className="text-green-600 font-semibold flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-600"></span> Paid
+                      </span>
+                    ) : row.status === 'not_generated' ? (
+                      <span className="text-slate-400 italic">Not Generated</span>
                     ) : (
-                      <span className="text-yellow-600 font-medium">{row.status}</span>
+                      <span className="text-amber-600 font-medium capitalize">{row.status}</span>
                     )}
                   </td>
                   <td className="p-4 text-right">
                     {row.status === 'locked' && (
                       <button
                         onClick={() => handleMarkPaid(row.id)}
-                        className="px-3 py-1 bg-green-600 text-white rounded-md text-xs"
+                        className="px-3 py-1 bg-green-600 text-white rounded-md text-xs hover:bg-green-700 transition shadow-sm"
                       >
                         Mark Paid
                       </button>

@@ -20,6 +20,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/api/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type Transaction = {
@@ -54,6 +55,7 @@ export default function Wallet() {
   const [data, setData] = useState<WalletData | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const { t } = useLanguage();
 
   const fetchWalletStats = useCallback(async () => {
     try {
@@ -84,14 +86,12 @@ export default function Wallet() {
   const FilterTab = ({ label, value }: { label: string; value: Period }) => (
     <Pressable
       onPress={() => setPeriod(value)}
-      className={`flex-1 py-3 rounded-xl border ${
-        period === value ? 'bg-[#0EA5E9] border-[#0EA5E9]' : 'bg-white border-transparent'
-      } clay-button items-center justify-center`}
+      className={`flex-1 py-3 rounded-xl border ${period === value ? 'bg-[#0EA5E9] border-[#0EA5E9]' : 'bg-white border-transparent'
+        } clay-button items-center justify-center`}
     >
       <Text
-        className={`text-[10px] font-black text-center uppercase tracking-wide ${
-          period === value ? 'text-white' : 'text-clay-secondary'
-        }`}
+        className={`text-[10px] font-black text-center uppercase tracking-wide ${period === value ? 'text-white' : 'text-clay-secondary'
+          }`}
       >
         {label}
       </Text>
@@ -135,7 +135,7 @@ export default function Wallet() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       {/* Simple Header */}
@@ -152,7 +152,7 @@ export default function Wallet() {
           >
             <ChevronLeft size={24} color="#1E293B" />
           </Pressable>
-          <Text className="text-xl font-heading tracking-tight text-clay-text">My Wallet</Text>
+          <Text className="text-xl font-heading tracking-tight text-clay-text">{t('wallet.title')}</Text>
           <View className="w-10" />
         </View>
 
@@ -180,9 +180,9 @@ export default function Wallet() {
 
         {/* Period Filters */}
         <View className="flex-row gap-3 px-6">
-          <FilterTab label="Today" value="day" />
-          <FilterTab label="Week" value="week" />
-          <FilterTab label="Month" value="month" />
+          <FilterTab label={t('wallet.today')} value="day" />
+          <FilterTab label={t('wallet.week')} value="week" />
+          <FilterTab label={t('wallet.month')} value="month" />
         </View>
       </View>
 
@@ -204,14 +204,14 @@ export default function Wallet() {
             <View className="clay-card p-6 mb-6 bg-white overflow-hidden relative">
               <LinearGradient
                 colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.4)']}
-                className="absolute inset-0"
+                style={{ position: 'absolute', width: '100%', height: '100%' }}
               />
               <View className="flex-row items-center gap-3 mb-6">
                 <View className="w-10 h-10 rounded-full bg-[#E0F2FE] items-center justify-center border border-[#0EA5E9]/20">
                   <WalletIcon size={20} color="#0EA5E9" />
                 </View>
                 <Text className="text-[11px] font-label uppercase tracking-widest text-clay-secondary">
-                  Total Earnings
+                  {t('wallet.totalEarnings')}
                 </Text>
               </View>
 
@@ -223,7 +223,7 @@ export default function Wallet() {
               <View className="flex-row gap-4 pt-6 border-t border-gray-100">
                 <View className="flex-1 p-3 rounded-2xl bg-[#F8FAFC] border border-gray-100">
                   <Text className="text-[10px] font-label uppercase tracking-wide mb-1 text-clay-secondary">
-                    Jobs
+                    {t('wallet.jobs')}
                   </Text>
                   <Text className="text-xl font-heading text-clay-text">
                     {data.summary.taskCount || 0}
@@ -231,7 +231,7 @@ export default function Wallet() {
                 </View>
                 <View className="flex-1 p-3 rounded-2xl bg-[#ECFDF5] border border-[#10B981]/20">
                   <Text className="text-[10px] font-label uppercase tracking-wide mb-1 text-[#10B981]">
-                    Amount
+                    {t('wallet.amount')}
                   </Text>
                   <Text className="text-xl font-heading text-[#10B981]">
                     ₹{data.summary.taskTotal.toFixed(0)}
@@ -244,11 +244,11 @@ export default function Wallet() {
             <View className="clay-card p-6 bg-white mb-8">
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="font-heading text-[13px] uppercase tracking-wide text-clay-text">
-                  Completed Jobs
+                  {t('wallet.completedJobs')}
                 </Text>
                 <View className="bg-[#E0F2FE] px-2 py-1 rounded-md">
                   <Text className="text-[10px] font-bold text-[#0EA5E9]">
-                    {data.transactions.length} jobs
+                    {t('jobLogs.completed_count_plural', { count: data.transactions.length })}
                   </Text>
                 </View>
               </View>
@@ -265,7 +265,7 @@ export default function Wallet() {
                     <TrendingUp size={24} color="#94A3B8" />
                   </View>
                   <Text className="text-[11px] font-bold uppercase tracking-widest text-clay-secondary">
-                    No transactions yet
+                    {t('wallet.noTransactions')}
                   </Text>
                 </View>
               )}
@@ -275,7 +275,7 @@ export default function Wallet() {
           <View className="clay-card p-10 items-center justify-center bg-white mt-6">
             <WalletIcon size={32} color="#94A3B8" />
             <Text className="text-[11px] font-bold mt-4 uppercase tracking-widest text-clay-secondary">
-              No data
+              {t('wallet.noData')}
             </Text>
           </View>
         )}

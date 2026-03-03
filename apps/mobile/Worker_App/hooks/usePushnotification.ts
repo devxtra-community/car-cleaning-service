@@ -15,6 +15,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
+import api from '../src/api/api';
+
 export interface PushNotificationState {
   expoPushToken?: string;
   notification?: Notifications.Notification;
@@ -74,20 +76,17 @@ export const usePushNotifications = () => {
     return token;
   }
 
-  async function sendTokenToBackend(pushToken: string, authToken: string): Promise<void> {
+  async function sendTokenToBackend(pushToken: string, authToken?: string): Promise<void> {
     try {
-      const response = await fetch('http://10.10.1.203:3033/api/notifications/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          expoPushToken: pushToken,
-        }),
+      const response = await api.post('/api/notifications/register', {
+        expoPushToken: pushToken,
+      }, {
+        // If authToken is provided (e.g. during login), use it. 
+        // Otherwise the interceptor will use the one from SecureStore.
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
       });
 
-      if (!response.ok) {
+      if (!response.data.success) {
         throw new Error('Failed to register push token');
       }
 

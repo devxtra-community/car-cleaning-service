@@ -1,7 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getWorkerTaskLogs = exports.getWorkerWalletStats = exports.getWorkerPenalties = exports.getWorkerDashboard = void 0;
+exports.getCleanerFullDetailsController = exports.getWorkerTaskLogs = exports.getWorkerWalletStats = exports.getWorkerPenalties = exports.getWorkerDashboard = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
+const worker_service_1 = require("./worker_service");
+/**
+ * Helper: returns the cleaner_id for a given user_id.
+ * If no cleaners row exists yet, it auto-creates one so the
+ * worker app never receives a confusing 404 on first use.
+ */
+async function getOrCreateCleanerId(userId) {
+    const existing = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [userId]);
+    if (existing.rows.length)
+        return existing.rows[0].id;
+    // Auto-create a minimal cleaners record linked to this user.
+    // ON CONFLICT DO NOTHING handles the race condition if two requests arrive at the same time.
+    await connectDatabase_1.pool.query(`INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [userId]);
+    // Re-fetch after the insert (handles both success and conflict cases)
+    const after = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [userId]);
+    if (after.rows.length)
+        return after.rows[0].id;
+    throw new Error('Failed to create or find cleaners record for this worker');
+}
 const getWorkerDashboard = async (req, res) => {
     try {
         const workerId = req.user?.userId;
@@ -53,25 +72,42 @@ const getWorkerDashboard = async (req, res) => {
         (
           SELECT COALESCE(SUM(dib_d.amount), 0)::float
           FROM daily_work_records dwr_d
-          JOIN daily_incentive_breakdown dib_d ON dwr_d.id = dib_d.daily_work_record_id
+          LEFT JOIN daily_incentive_breakdown dib_d ON dwr_d.id = dib_d.daily_work_record_id
           WHERE dwr_d.cleaner_id = c.id
             AND dwr_d.date = $2::date
+        ) + (
+          SELECT COALESCE(SUM(ci_d.amount), 0)::float
+          FROM cleaner_incentives ci_d
+          WHERE ci_d.cleaner_id = c.id
+            AND ci_d.created_at::date = $2::date
         ) as incentive_day,
         (
           SELECT COALESCE(SUM(dib_w.amount), 0)::float
           FROM daily_work_records dwr_w
-          JOIN daily_incentive_breakdown dib_w ON dwr_w.id = dib_w.daily_work_record_id
+          LEFT JOIN daily_incentive_breakdown dib_w ON dwr_w.id = dib_w.daily_work_record_id
           WHERE dwr_w.cleaner_id = c.id
             AND dwr_w.date >= date_trunc('week', $2::date)::date
             AND dwr_w.date < (date_trunc('week', $2::date) + interval '1 week')::date
+        ) + (
+          SELECT COALESCE(SUM(ci_w.amount), 0)::float
+          FROM cleaner_incentives ci_w
+          WHERE ci_w.cleaner_id = c.id
+            AND ci_w.created_at >= date_trunc('week', $2::date)
+            AND ci_w.created_at < date_trunc('week', $2::date) + interval '1 week'
         ) as incentive_week,
         (
           SELECT COALESCE(SUM(dib_m.amount), 0)::float
           FROM daily_work_records dwr_m
-          JOIN daily_incentive_breakdown dib_m ON dwr_m.id = dib_m.daily_work_record_id
+          LEFT JOIN daily_incentive_breakdown dib_m ON dwr_m.id = dib_m.daily_work_record_id
           WHERE dwr_m.cleaner_id = c.id
             AND dwr_m.date >= date_trunc('month', $2::date)::date
             AND dwr_m.date < (date_trunc('month', $2::date) + interval '1 month')::date
+        ) + (
+          SELECT COALESCE(SUM(ci_m.amount), 0)::float
+          FROM cleaner_incentives ci_m
+          WHERE ci_m.cleaner_id = c.id
+            AND ci_m.created_at >= date_trunc('month', $2::date)
+            AND ci_m.created_at < date_trunc('month', $2::date) + interval '1 month'
         ) as incentive_month,
         (
           SELECT COALESCE(SUM(ma.amount), 0)::float
@@ -167,11 +203,7 @@ const getWorkerPenalties = async (req, res) => {
         if (!workerId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const cleanerRes = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
-        if (!cleanerRes.rows.length) {
-            return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
-        }
-        const cleanerId = cleanerRes.rows[0].id;
+        const cleanerId = await getOrCreateCleanerId(workerId);
         let dateCondition = '';
         if (period === 'day') {
             dateCondition = `AND created_at::date = CURRENT_DATE`;
@@ -233,11 +265,7 @@ const getWorkerWalletStats = async (req, res) => {
         if (!workerId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const cleanerRes = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
-        if (!cleanerRes.rows.length) {
-            return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
-        }
-        const cleanerId = cleanerRes.rows[0].id;
+        const cleanerId = await getOrCreateCleanerId(workerId);
         const selectedDate = date ? new Date(date) : new Date();
         let dateCondition = '';
         if (range === 'week') {
@@ -263,6 +291,55 @@ const getWorkerWalletStats = async (req, res) => {
         ${dateCondition}
     `;
         const tasksRes = await connectDatabase_1.pool.query(tasksQuery, [cleanerId, selectedDate]);
+        // 2. Incentives Summary (Unified)
+        const incentiveQuery = `
+      SELECT COALESCE(SUM(amount), 0)::float as total
+      FROM (
+        SELECT amount FROM daily_incentive_breakdown dib
+        JOIN daily_work_records dwr ON dib.daily_work_record_id = dwr.id
+        WHERE dwr.cleaner_id = $1 AND dwr.date ${range === 'day'
+            ? '= $2::date'
+            : range === 'week'
+                ? '>= date_trunc(\'week\', $2::date) AND dwr.date < date_trunc(\'week\', $2::date) + interval \'1 week\''
+                : '>= date_trunc(\'month\', $2::date) AND dwr.date < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+        UNION ALL
+        SELECT amount FROM milestone_achievements WHERE cleaner_id = $1 AND achieved_at ${range === 'day'
+            ? '::date = $2::date'
+            : range === 'week'
+                ? '>= date_trunc(\'week\', $2::date) AND achieved_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
+                : '>= date_trunc(\'month\', $2::date) AND achieved_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+        UNION ALL
+        SELECT amount FROM cleaner_incentives WHERE cleaner_id = $1 AND created_at ${range === 'day'
+            ? '::date = $2::date'
+            : range === 'week'
+                ? '>= date_trunc(\'week\', $2::date) AND created_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
+                : '>= date_trunc(\'month\', $2::date) AND created_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+      ) as all_incentives
+    `;
+        const milestoneQuery = `
+      SELECT COALESCE(SUM(amount), 0)::float as total FROM milestone_achievements 
+      WHERE cleaner_id = $1 AND achieved_at ${range === 'day'
+            ? '::date = $2::date'
+            : range === 'week'
+                ? '>= date_trunc(\'week\', $2::date) AND achieved_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
+                : '>= date_trunc(\'month\', $2::date) AND achieved_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+    `;
+        const penaltyQuery = `
+      SELECT COALESCE(SUM(amount), 0)::float as total FROM penalties 
+      WHERE cleaner_id = $1 AND created_at ${range === 'day'
+            ? '::date = $2::date'
+            : range === 'week'
+                ? '>= date_trunc(\'week\', $2::date) AND created_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
+                : '>= date_trunc(\'month\', $2::date) AND created_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+    `;
+        const [incRes, milRes, penRes] = await Promise.all([
+            connectDatabase_1.pool.query(incentiveQuery, [cleanerId, selectedDate]),
+            connectDatabase_1.pool.query(milestoneQuery, [cleanerId, selectedDate]),
+            connectDatabase_1.pool.query(penaltyQuery, [cleanerId, selectedDate]),
+        ]);
+        const incentiveTotal = incRes.rows[0].total;
+        const milestoneTotal = milRes.rows[0].total;
+        const penaltyTotal = penRes.rows[0].total;
         // Combine all transactions (Only tasks now)
         const transactions = [
             ...tasksRes.rows.map((t) => ({
@@ -285,9 +362,9 @@ const getWorkerWalletStats = async (req, res) => {
                 totalEarnings: taskTotal,
                 taskCount: tasksRes.rows.length,
                 taskTotal: taskTotal,
-                incentiveTotal: 0,
-                milestoneTotal: 0,
-                penaltyTotal: 0,
+                incentiveTotal: incentiveTotal,
+                milestoneTotal: milestoneTotal,
+                penaltyTotal: penaltyTotal,
             },
             transactions,
         });
@@ -308,11 +385,7 @@ const getWorkerTaskLogs = async (req, res) => {
         if (!workerId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const cleanerRes = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
-        if (!cleanerRes.rows.length) {
-            return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
-        }
-        const cleanerId = cleanerRes.rows[0].id;
+        const cleanerId = await getOrCreateCleanerId(workerId);
         const selectedDate = date ? new Date(date) : new Date();
         const tasksQuery = `
       SELECT 
@@ -356,3 +429,42 @@ const getWorkerTaskLogs = async (req, res) => {
     }
 };
 exports.getWorkerTaskLogs = getWorkerTaskLogs;
+const getCleanerFullDetailsController = async (req, res) => {
+    try {
+        const param = req.params.cleanerId;
+        if (!param || Array.isArray(param)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid cleaner ID',
+            });
+        }
+        const cleanerId = param;
+        if (!cleanerId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cleaner ID is required',
+            });
+        }
+        const { date } = req.query;
+        const data = await (0, worker_service_1.getCleanerFullDetailsService)(connectDatabase_1.pool, cleanerId, {
+            date: typeof date === 'string' ? date : undefined,
+        });
+        return res.status(200).json({
+            success: true,
+            data,
+        });
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            return res.status(400).json({
+                success: false,
+                message: error.message,
+            });
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+};
+exports.getCleanerFullDetailsController = getCleanerFullDetailsController;

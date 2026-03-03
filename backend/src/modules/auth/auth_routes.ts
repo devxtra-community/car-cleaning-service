@@ -33,4 +33,9 @@ router.post('/refresh', refresh);
 
 router.get('/supervisor/:supervisorId', protect, allowRoles('admin'), getCleanersBySupervisor);
 
+/* USER MANAGEMENT - ADMIN ONLY */
+import { toggleUserStatusController, resetUserPasswordController } from './auth_controller';
+router.patch('/users/:id/status', protect, allowRoles('admin'), toggleUserStatusController);
+router.patch('/users/:id/reset-password', protect, allowRoles('admin'), resetUserPasswordController);
+
 export default router;

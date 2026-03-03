@@ -1,22 +1,42 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pool = void 0;
+exports.pool = exports.getPool = void 0;
 exports.connectDatabase = connectDatabase;
 exports.isDatabaseConnected = isDatabaseConnected;
 const pg_1 = require("pg");
 const logger_1 = require("../config/logger");
+// Force timestamps to be parsed as UTC to avoid double-offset issues in IST environments
+const TIMESTAMP_OID = 1114;
+pg_1.types.setTypeParser(TIMESTAMP_OID, (stringValue) => {
+    return new Date(stringValue + 'Z');
+});
 const MAX_STARTUP_RETRIES = 5;
 const STARTUP_RETRY_DELAY_MS = 3000;
 const RECONNECT_INTERVAL_MS = 10000;
 let isDbConnected = false;
 let reconnectInterval = null;
-exports.pool = new pg_1.Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false,
-    },
-    connectionTimeoutMillis: 5000,
-});
+let poolInstance = null;
+const getPool = () => {
+    if (!poolInstance) {
+        poolInstance = new pg_1.Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: {
+                rejectUnauthorized: false,
+            },
+            connectionTimeoutMillis: 5000,
+        });
+    }
+    return poolInstance;
+};
+exports.getPool = getPool;
+// For backward compatibility, keep the pool export but use a getter if possible
+// instead of a static instance, or just export it as a lazy proxy.
+// But mostly we use pool.query...
+exports.pool = {
+    query: (text, params) => (0, exports.getPool)().query(text, params),
+    connect: () => (0, exports.getPool)().connect(),
+    end: () => poolInstance?.end(),
+};
 function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }

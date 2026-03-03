@@ -1,0 +1,28 @@
+{
+    "common": {
+        "dashboard": "لوحة القيادة",
+        "reports": "التقارير",
+        "analytics": "التحليلات",
+        "settings": "الإعدادات",
+        "logout": "تسجيل الخروج",
+        "export": "تصدير",
+        "search": "بحث",
+        "loading": "جاري التحميل...",
+        "save": "حفظ",
+        "cancel": "إلغاء"
+    },
+    "admin": {
+        "operationalReports": "التقارير التشغيلية",
+        "dailyRevenue": "الإيرادات اليومية",
+        "revenueTrends": "اتجاهات الإيرادات",
+        "peakActivity": "تحليل ذروة النشاط",
+        "buildingStats": "إحصائيات المباني",
+        "cleanerPerformance": "أداء عمال النظافة"
+    },
+    "accountant": {
+        "salarySummary": "ملخص الرواتب",
+        "netSalary": "صافي الراتب",
+        "processSalary": "معالجة الراتب",
+        "exportExcel": "تصدير Excel"
+    }
+}

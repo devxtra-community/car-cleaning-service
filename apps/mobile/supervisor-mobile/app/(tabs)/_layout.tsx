@@ -104,6 +104,11 @@ export default function TabLayout() {
       <Tabs.Screen name="analytics" />
       <Tabs.Screen name="index" />
       <Tabs.Screen name="profile" />
+      {/* New screens — accessible via router.push, not visible in tab bar */}
+      <Tabs.Screen name="photo-verify" options={{ href: null }} />
+      <Tabs.Screen name="floor-overview" options={{ href: null }} />
+      <Tabs.Screen name="collections" options={{ href: null }} />
+      <Tabs.Screen name="fraud-review" options={{ href: null }} />
     </Tabs>
   );
 }

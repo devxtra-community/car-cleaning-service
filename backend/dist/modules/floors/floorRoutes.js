@@ -10,7 +10,7 @@ const floor_controller_1 = require("./floor_controller");
 const router = express_1.default.Router();
 // Get floors by building ID
 // Route: GET /api/buildings/:buildingId/floors
-router.get('/buildings/:buildingId/floors', floor_controller_1.getFloorsByBuilding);
+router.get('/buildings/:buildingId', floor_controller_1.getFloorsByBuilding);
 // Alternative: Get all floors with optional filter
 // Route: GET /api/floors?building_id=xxx
 router.get('/floors', floor_controller_1.getAllFloors);

@@ -18,9 +18,12 @@ import buildingsRoutes from './modules/buildings/buildings_routes';
 import incentiveRoutes from './modules/incentives/incentives_routes';
 import analyticRoutes from './modules/analytics/analytic_routes';
 import reviewRoutes from './modules/feedback/review_routes';
-
+import supervisorRoute from './modules/supervisor/supervisor_routes';
+import floorRoute from './modules/floors/floorRoutes';
 import s3Routes from './routes/s3';
 import penaltiesRoutes from './modules/penalties/penalties_routes';
+import fraudRoutes from './modules/fraud/fraud_routes';
+import notificationRoutes from './modules/notifications/notification_routes';
 
 const app = express();
 
@@ -70,7 +73,11 @@ app.use('/penalties', penaltiesRoutes);
 console.log('Penalties route registered at /penalties (NORMAL FLOW)');
 
 app.use('/analytics', analyticRoutes);
-app.use('/api/reviews', reviewRoutes);
+app.use('/feedback', reviewRoutes);
+app.use('/supervisors', supervisorRoute);
+app.use('/api/floors', floorRoute);
+app.use('/fraud', fraudRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
@@ -80,3 +87,5 @@ app.listen(PORT, '0.0.0.0', () => {
 app.get('/test', (req, res) => {
   res.json({ message: 'Backend reachable' });
 });
+
+// restart

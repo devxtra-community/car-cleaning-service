@@ -199,7 +199,7 @@ export default function AfterWash() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       <KeyboardAvoidingView
@@ -332,9 +332,8 @@ export default function AfterWash() {
 
           {/* CONTINUE BUTTON */}
           <Pressable
-            className={`w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center mb-10 clay-button bg-[#0EA5E9] ${
-              loading || !canSubmit ? 'opacity-50' : ''
-            }`}
+            className={`w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center mb-10 clay-button bg-[#0EA5E9] ${loading || !canSubmit ? 'opacity-50' : ''
+              }`}
             disabled={loading || !canSubmit}
             onPress={handleContinue}
           >

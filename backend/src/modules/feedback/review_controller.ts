@@ -109,3 +109,35 @@ export const getReviewByTask = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, message: 'Failed to fetch review' });
   }
 };
+
+/* ================= GET MY REVIEWS (FOR AUTHENTICATED WORKER) ================= */
+
+export const getMyReviews = async (req: AuthRequest, res: Response) => {
+  try {
+    const workerId = req.user?.userId;
+
+    if (!workerId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: No worker ID in token' });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT 
+        r.*,
+        t.car_model,
+        t.car_type,
+        t.owner_name
+      FROM reviews r
+      LEFT JOIN tasks t ON r.task_id = t.id
+      WHERE r.cleaner_id = $1
+      ORDER BY r.created_at DESC
+      `,
+      [workerId]
+    );
+
+    return res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('GET MY REVIEWS ERROR:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch your reviews' });
+  }
+};

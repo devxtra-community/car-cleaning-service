@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
+import { initI18n } from '../src/i18n/i18n';
 import {
   useFonts,
   Nunito_400Regular,
@@ -13,8 +14,13 @@ import {
   Nunito_600SemiBold,
   Nunito_700Bold,
 } from '@expo-google-fonts/nunito';
+import OfflineBanner from '../components/OfflineBanner';
+import NetInfo from '@react-native-community/netinfo';
+import { syncQueue } from '../src/api/offlineQueue';
+import { usePushNotifications } from '../hooks/usePushnotification';
 
 export default function RootLayout() {
+  const { expoPushToken, notification } = usePushNotifications();
   const [hydrated, setHydrated] = useState(false);
   const [fontsLoaded] = useFonts({
     Nunito_400Regular,
@@ -24,11 +30,24 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    let mounted = true;
+    // 1. Sync on mount if online
+    syncQueue();
 
+    // 2. Listen for connection changes
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected && state.isInternetReachable) {
+        console.log('[RootLayout] Connection restored, syncing queue...');
+        syncQueue();
+      }
+    });
+
+    let mounted = true;
     (async () => {
       try {
-        await SecureStore.getItemAsync('access_token');
+        await Promise.all([
+          SecureStore.getItemAsync('access_token'),
+          initI18n(),
+        ]);
       } finally {
         if (mounted) setHydrated(true);
       }
@@ -36,8 +55,10 @@ export default function RootLayout() {
 
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, []);
+
 
   // ✅ Prevent blank screen until fonts AND auth check are done
   if (!hydrated || !fontsLoaded) {
@@ -52,7 +73,10 @@ export default function RootLayout() {
     <ThemeProvider>
       <LanguageProvider>
         <SafeAreaProvider>
-          <Stack screenOptions={{ headerShown: false }} />
+          <View style={{ flex: 1 }}>
+            <OfflineBanner />
+            <Stack screenOptions={{ headerShown: false }} />
+          </View>
         </SafeAreaProvider>
       </LanguageProvider>
     </ThemeProvider>

@@ -55,19 +55,23 @@ export const markAttendance = async (data: MarkAttendanceData) => {
   }
 
   const building = buildingResult.rows[0];
-  const distance = calculateDistance(
-    building.latitude,
-    building.longitude,
-    data.latitude,
-    data.longitude
-  );
 
-  // Check if within radius (default 100m)
-  const allowedRadius = building.radius || 100;
-  if (distance > allowedRadius) {
-    throw new Error(
-      `You must be within ${allowedRadius}m of the building to mark attendance. Current distance: ${Math.round(distance)}m`
+  // Only validate GPS distance if the building has GPS coordinates set
+  if (building.latitude != null && building.longitude != null) {
+    const distance = calculateDistance(
+      building.latitude,
+      building.longitude,
+      data.latitude,
+      data.longitude
     );
+
+    // Check if within radius (default 100m)
+    const allowedRadius = building.radius || 100;
+    if (distance > allowedRadius) {
+      throw new Error(
+        `You must be within ${allowedRadius}m of the building to mark attendance. Current distance: ${Math.round(distance)}m`
+      );
+    }
   }
 
   // Validate supervisor exists or set to NULL
