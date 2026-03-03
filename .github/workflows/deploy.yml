@@ -23,10 +23,9 @@ jobs:
             git fetch origin yasir
             git reset --hard origin/yasir
 
-            # Install pnpm if missing
-            if ! command -v pnpm &> /dev/null; then
-              sudo npm install -g pnpm
-            fi
+            # Enable corepack to manage pnpm
+            sudo corepack enable
+            sudo corepack prepare pnpm@latest --activate
 
             # Install dependencies via pnpm (scales better)
             pnpm install
