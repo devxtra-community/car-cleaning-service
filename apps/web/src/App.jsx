@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+﻿import { lazy, Suspense } from 'react';
 import Loader from './pages/Loader';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -26,6 +26,7 @@ const CleanerDetails = lazy(() => import('./components/admin/CleanerDetails'));
 const TargetManagement = lazy(() => import('./components/admin/TargetManagement'));
 const OperationalReports = lazy(() => import('./components/admin/OperationalReports'));
 const PerformanceInsights = lazy(() => import('./components/admin/PerformanceInsights'));
+
 /* Accountant pages */
 const Accountant = lazy(() => import('./components/accountant/AccDashboard'));
 
@@ -46,25 +47,20 @@ const SalarySummary = lazy(() => import('./components/shared/SalarySummary'));
 const BuildingDetailsPage = lazy(() => import('./components/admin/BuildingDetails'));
 const EditBuilding = lazy(() => import('./components/admin/EditBuilding'));
 const RoleBasedSalary = lazy(() => import('./components/shared/RoleBasedSalary'));
+
 function App() {
   return (
     <AuthProvider>
       <Suspense fallback={<Loader />}>
         <Routes>
-          {/* Default route */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-
-          {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/privacyPolicy" element={<PrivacyPolicy />} />
           <Route path="/review/:taskId" element={<Review />} />
 
-          {/* Accountant Portal */}
           <Route path="/accountant" element={<AccountantPortal />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Accountant />} />
-
-            {/* Shared salary pages */}
             <Route path="salaryFinalization" element={<SalaryFinalization />} />
             <Route path="monthlyReport" element={<MonthlyReport />} />
             <Route path="reconciliation" element={<Reconciliation />} />
@@ -73,31 +69,23 @@ function App() {
             <Route path="role-salaries" element={<RoleBasedSalary />} />
           </Route>
 
-          {/* Admin Portal */}
           <Route path="/admin" element={<AdminPortal />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-
             <Route path="customer" element={<Customers />} />
-
             <Route path="vechicles" element={<VehicleManagement />} />
             <Route path="vechicles/addVehicles" element={<AddVehicles />} />
-
             <Route path="buildings" element={<BuildingsManagement />} />
             <Route path="buildings/add" element={<AddBuilding />} />
-
             <Route path="cleaners" element={<Cleaners />} />
-
             <Route path="supervisors" element={<Supervisors />} />
             <Route path="supervisor/:supervisorId" element={<CleanerUnderSupervisorDetails />} />
-            <Route path="register/:role" element={<RegisterUser />} />
             <Route path="register/:role" element={<RegisterUser />} />
             <Route path="cleaner/:cleanerId" element={<CleanerDetails />} />
             <Route path="buildings/:buildingId" element={<BuildingDetailsPage />} />
             <Route path="buildings/:buildingId/edit" element={<EditBuilding />} />
             <Route path="targets" element={<TargetManagement />} />
             <Route path="operational-reports" element={<OperationalReports />} />
-            {/* Shared salary pages for admin also */}
             <Route path="salaryFinalization" element={<SalaryFinalization />} />
             <Route path="monthlyReport" element={<MonthlyReport />} />
             <Route path="reconciliation" element={<Reconciliation />} />
@@ -114,7 +102,6 @@ function App() {
             <Route path="role-salaries" element={<RoleBasedSalary />} />
           </Route>
 
-          {/* Catch all */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
