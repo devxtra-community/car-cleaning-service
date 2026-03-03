@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMonthlyReport = exports.getRoleBasedSalaries = exports.getSalaryTimeline = exports.getSalariesByUserId = exports.getSalariesByCycleId = exports.getSalarySummary = exports.previewSalaryForCleaner = exports.markSalaryAsPaid = exports.lockSalaryCycle = exports.getAllSalaries = exports.getAllSalaryCycles = exports.generateSalaryForAllUsers = exports.generateSalaryForUser = void 0;
-// src/services/salary_service.ts
+exports.getSalaryBreakdown = exports.getMonthlyReport = exports.getRoleBasedSalaries = exports.getSalaryTimeline = exports.getSalariesByUserId = exports.getSalariesByCycleId = exports.getSalarySummary = exports.previewSalaryForCleaner = exports.markSalaryAsPaid = exports.lockSalaryCycle = exports.getAllSalaries = exports.getLatestOpenCycle = exports.getAllSalaryCycles = exports.generateSalaryForAllUsers = exports.generateSalaryForUser = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
-const generateSalaryForUser = async (userId, cycleId) => {
+const notification_service_1 = require("../notifications/notification_service");
+const redis_1 = require("../../config/redis");
+const generateSalaryForUser = async (userId, cycleId, bypassLock = false) => {
     const client = await connectDatabase_1.pool.connect();
     try {
         await client.query('BEGIN');
@@ -14,7 +15,7 @@ const generateSalaryForUser = async (userId, cycleId) => {
         if (!cycleRes.rowCount)
             throw new Error('CYCLE_NOT_FOUND');
         const cycle = cycleRes.rows[0];
-        if (cycle.is_locked)
+        if (cycle.is_locked && !bypassLock)
             throw new Error('SALARY_CYCLE_LOCKED');
         const { start_date, end_date } = cycle;
         // 2️⃣ Get user
@@ -65,7 +66,7 @@ const generateSalaryForUser = async (userId, cycleId) => {
             totalPenalties = Number(penaltyRes.rows[0].total);
         }
         else {
-            // For supervisors and other roles, incentives/penalties are disabled
+            // For supervisors and other roles, incentives/penalties are currently 0 unless logic is added later
             totalTasks = 0;
             totalIncentives = 0;
             totalPenalties = 0;
@@ -74,20 +75,18 @@ const generateSalaryForUser = async (userId, cycleId) => {
         const baseSalary = Number(user.base_salary);
         const netSalary = baseSalary + totalIncentives - totalPenalties;
         const salaryRes = await client.query(`INSERT INTO salaries (
-        cleaner_id, salary_cycle_id, base_salary, total_tasks,
-        total_incentives, total_penalties, gross_salary, net_salary, status
+        user_id, salary_cycle_id, base_salary,
+        incentives, penalties, final_salary, status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-      ON CONFLICT (cleaner_id, salary_cycle_id)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      ON CONFLICT (user_id, salary_cycle_id)
       DO UPDATE SET
         base_salary = EXCLUDED.base_salary,
-        total_tasks = EXCLUDED.total_tasks,
-        total_incentives = EXCLUDED.total_incentives,
-        total_penalties = EXCLUDED.total_penalties,
-        gross_salary = EXCLUDED.gross_salary,
-        net_salary = EXCLUDED.net_salary,
+        incentives = EXCLUDED.incentives,
+        penalties = EXCLUDED.penalties,
+        final_salary = EXCLUDED.final_salary,
         status = CASE WHEN salaries.status = 'paid' THEN 'paid' ELSE 'pending' END
-      RETURNING *`, [userId, cycleId, baseSalary, totalTasks, totalIncentives, totalPenalties, netSalary, netSalary]);
+      RETURNING *`, [userId, cycleId, baseSalary, totalIncentives, totalPenalties, netSalary]);
         await client.query('COMMIT');
         return salaryRes.rows[0];
     }
@@ -121,24 +120,59 @@ const getAllSalaryCycles = async () => {
     return result.rows;
 };
 exports.getAllSalaryCycles = getAllSalaryCycles;
+const getLatestOpenCycle = async () => {
+    const result = await connectDatabase_1.pool.query(`
+    SELECT id FROM salary_cycles
+    WHERE is_locked = false
+    ORDER BY year DESC, month DESC
+    LIMIT 1
+  `);
+    return result.rows[0]?.id;
+};
+exports.getLatestOpenCycle = getLatestOpenCycle;
 /* ================= GET ALL SALARIES ================= */
 const getAllSalaries = async () => {
     const result = await connectDatabase_1.pool.query(`
     SELECT
       s.id,
-      s.cleaner_id                                        AS user_id,
+      s.user_id,
       u.full_name,
       u.role,
       CONCAT(sc.year, '-', LPAD(sc.month::text, 2, '0')) AS salary_month,
-      s.base_salary,
-      s.total_incentives                                  AS incentive_amount,
-      s.total_penalties                                   AS penalty_amount,
-      s.net_salary                                        AS final_salary,
+      u.base_salary,
+      CASE 
+        WHEN sc.is_locked = true THEN COALESCE(s.incentives, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.incentives, 0)
+        ELSE 0 
+      END AS incentives,
+      CASE 
+        WHEN sc.is_locked = true THEN COALESCE(s.penalties, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.penalties, 0)
+        ELSE 0 
+      END AS penalties,
+      CASE
+        WHEN sc.is_locked = true THEN COALESCE(s.final_salary, u.base_salary)
+        WHEN u.role = 'cleaner' THEN (COALESCE(u.base_salary, 0) + COALESCE(live.incentives, 0) - COALESCE(live.penalties, 0))
+        ELSE COALESCE(u.base_salary, 0)
+      END AS final_salary,
+      s.payout_date,
       s.status
     FROM salaries s
-    JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
-    JOIN users u ON u.id = s.cleaner_id
-    ORDER BY sc.year DESC, sc.month DESC, u.full_name ASC
+    LEFT JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
+    JOIN users u ON u.id = s.user_id
+    LEFT JOIN cleaners c ON c.user_id = u.id
+    LEFT JOIN LATERAL (
+      SELECT
+        CASE WHEN sc.is_locked = false THEN
+          (SELECT COALESCE(SUM(amount), 0) FROM cleaner_incentives WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+          + (SELECT COALESCE(SUM(dib.amount), 0) FROM daily_work_records dwr JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id WHERE dwr.cleaner_id = c.id AND dwr.date BETWEEN sc.start_date AND sc.end_date)
+          + (SELECT COALESCE(SUM(amount), 0) FROM milestone_achievements WHERE cleaner_id = c.id AND achieved_at BETWEEN sc.start_date AND sc.end_date)
+        ELSE 0 END AS incentives,
+        CASE WHEN sc.is_locked = false THEN
+          (SELECT COALESCE(SUM(amount), 0) FROM penalties WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        ELSE 0 END AS penalties
+    ) live ON u.role = 'cleaner'
+    ORDER BY sc.year DESC NULLS LAST, sc.month DESC NULLS LAST, u.full_name ASC
   `);
     return result.rows;
 };
@@ -177,6 +211,21 @@ const lockSalaryCycle = async (cycleId) => {
       WHERE salary_cycle_id = $1
       `, [cycleId]);
         await client.query('COMMIT');
+        // Send notifications to all affected users (non-blocking)
+        (async () => {
+            try {
+                const salaryMonthRes = await connectDatabase_1.pool.query('SELECT month, year FROM salary_cycles WHERE id = $1', [cycleId]);
+                const { month, year } = salaryMonthRes.rows[0];
+                const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+                const usersRes = await connectDatabase_1.pool.query('SELECT user_id FROM salaries WHERE salary_cycle_id = $1', [cycleId]);
+                for (const row of usersRes.rows) {
+                    await (0, notification_service_1.sendNotificationToUser)(row.user_id, 'Salary Finalized', `Your salary for ${monthName} ${year} has been finalized and locked.`);
+                }
+            }
+            catch (notifyErr) {
+                console.error('Error sending salary finalization notifications:', notifyErr);
+            }
+        })();
         return { message: 'Salary cycle locked successfully' };
     }
     catch (err) {
@@ -188,7 +237,7 @@ const lockSalaryCycle = async (cycleId) => {
     }
 };
 exports.lockSalaryCycle = lockSalaryCycle;
-const markSalaryAsPaid = async (salaryId, paymentMethod) => {
+const markSalaryAsPaid = async (salaryId) => {
     const client = await connectDatabase_1.pool.connect();
     try {
         await client.query('BEGIN');
@@ -204,12 +253,21 @@ const markSalaryAsPaid = async (salaryId, paymentMethod) => {
         const updateRes = await client.query(`
       UPDATE salaries
       SET status = 'paid',
-          paid_at = now(),
-          payment_method = $2
+          payout_date = now()
       WHERE id = $1
       RETURNING *
-      `, [salaryId, paymentMethod || null]);
+      `, [salaryId]);
         await client.query('COMMIT');
+        // Send notification (non-blocking)
+        (async () => {
+            try {
+                const salary = updateRes.rows[0];
+                await (0, notification_service_1.sendNotificationToUser)(salary.user_id, 'Salary Paid', `Your salary payment of ${salary.final_salary} has been processed.`);
+            }
+            catch (notifyErr) {
+                console.error('Error sending salary payment notification:', notifyErr);
+            }
+        })();
         return updateRes.rows[0];
     }
     catch (err) {
@@ -226,7 +284,7 @@ const previewSalaryForCleaner = async (cleanerId, cycleId) => {
     if (!cycleRes.rowCount)
         throw new Error('CYCLE_NOT_FOUND');
     const { start_date, end_date } = cycleRes.rows[0];
-    const baseRes = await connectDatabase_1.pool.query(`SELECT base_salary FROM cleaners WHERE id = $1`, [cleanerId]);
+    const baseRes = await connectDatabase_1.pool.query(`SELECT base_salary FROM users WHERE id = $1`, [cleanerId]);
     const incentiveRes = await connectDatabase_1.pool.query(`
     SELECT COALESCE(SUM(amount),0) AS total
     FROM cleaner_incentives
@@ -289,20 +347,37 @@ const getSalariesByCycleId = async (cycleId) => {
       u.id              AS user_id,
       u.full_name       AS cleaner_name,
       u.role            AS role,
-      COALESCE(s.base_salary, u.base_salary, 0) AS base_salary,
+      u.base_salary     AS base_salary,
       CASE 
-        WHEN u.role = 'cleaner' THEN COALESCE(s.total_incentives, 0)
+        WHEN sc.is_locked = true THEN COALESCE(s.incentives, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.incentives, 0)
         ELSE 0 
-      END AS total_incentives,
+      END AS incentives,
       CASE 
-        WHEN u.role = 'cleaner' THEN COALESCE(s.total_penalties, 0)
+        WHEN sc.is_locked = true THEN COALESCE(s.penalties, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.penalties, 0)
         ELSE 0 
-      END AS total_penalties,
-      COALESCE(s.net_salary, COALESCE(s.base_salary, u.base_salary, 0)) AS net_salary,
-      COALESCE(s.status, 'not_generated') AS status,
+      END AS penalties,
+      CASE
+        WHEN sc.is_locked = true THEN COALESCE(s.final_salary, u.base_salary)
+        WHEN u.role = 'cleaner' THEN (COALESCE(u.base_salary, 0) + COALESCE(live.incentives, 0) - COALESCE(live.penalties, 0))
+        ELSE COALESCE(u.base_salary, 0)
+      END AS final_salary,
+      COALESCE(s.status, 'pending') AS status,
       s.id              AS id
     FROM users u
-    LEFT JOIN salaries s ON s.cleaner_id = u.id AND s.salary_cycle_id = $1
+    JOIN salary_cycles sc ON sc.id = $1
+    LEFT JOIN salaries s ON s.user_id = u.id AND s.salary_cycle_id = sc.id
+    LEFT JOIN cleaners c ON c.user_id = u.id
+    LEFT JOIN LATERAL (
+      SELECT
+        (SELECT COALESCE(SUM(amount), 0) FROM cleaner_incentives WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        + (SELECT COALESCE(SUM(dib.amount), 0) FROM daily_work_records dwr JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id WHERE dwr.cleaner_id = c.id AND dwr.date BETWEEN sc.start_date AND sc.end_date)
+        + (SELECT COALESCE(SUM(amount), 0) FROM milestone_achievements WHERE cleaner_id = c.id AND achieved_at BETWEEN sc.start_date AND sc.end_date)
+        AS incentives,
+        (SELECT COALESCE(SUM(amount), 0) FROM penalties WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        AS penalties
+    ) live ON u.role = 'cleaner'
     WHERE u.role IN ('cleaner', 'supervisor')
     ORDER BY u.full_name ASC
     `, [cycleId]);
@@ -314,18 +389,40 @@ const getSalariesByUserId = async (userId) => {
     SELECT 
       s.id,
       CONCAT(sc.year, '-', LPAD(sc.month::text, 2, '0')) AS salary_month,
-      s.base_salary,
-      s.total_incentives AS incentive_amount,
-      s.total_penalties AS penalty_amount,
-      s.net_salary AS final_salary,
+      u.base_salary,
+      CASE 
+        WHEN sc.is_locked = true THEN COALESCE(s.incentives, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.incentives, 0)
+        ELSE 0 
+      END AS incentives,
+      CASE 
+        WHEN sc.is_locked = true THEN COALESCE(s.penalties, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.penalties, 0)
+        ELSE 0 
+      END AS penalties,
+      CASE
+        WHEN sc.is_locked = true THEN COALESCE(s.final_salary, u.base_salary)
+        WHEN u.role = 'cleaner' THEN (COALESCE(u.base_salary, 0) + COALESCE(live.incentives, 0) - COALESCE(live.penalties, 0))
+        ELSE COALESCE(u.base_salary, 0)
+      END AS final_salary,
       s.status,
       s.created_at,
       u.role
     FROM salaries s
-    JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
-    JOIN users u ON u.id = s.cleaner_id
-    WHERE s.cleaner_id = $1
-    ORDER BY sc.year DESC, sc.month DESC
+    LEFT JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
+    JOIN users u ON u.id = s.user_id
+    LEFT JOIN cleaners c ON c.user_id = u.id
+    LEFT JOIN LATERAL (
+      SELECT
+        (SELECT COALESCE(SUM(amount), 0) FROM cleaner_incentives WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        + (SELECT COALESCE(SUM(dib.amount), 0) FROM daily_work_records dwr JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id WHERE dwr.cleaner_id = c.id AND dwr.date BETWEEN sc.start_date AND sc.end_date)
+        + (SELECT COALESCE(SUM(amount), 0) FROM milestone_achievements WHERE cleaner_id = c.id AND achieved_at BETWEEN sc.start_date AND sc.end_date)
+        AS incentives,
+        (SELECT COALESCE(SUM(amount), 0) FROM penalties WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        AS penalties
+    ) live ON u.role = 'cleaner'
+    WHERE s.user_id = $1
+    ORDER BY sc.year DESC NULLS LAST, sc.month DESC NULLS LAST
     `, [userId]);
     return result.rows;
 };
@@ -344,11 +441,11 @@ const getSalaryTimeline = async (userId) => {
     const cRes = await connectDatabase_1.pool.query(`SELECT id FROM cleaners WHERE user_id = $1`, [userId]);
     if (cRes.rowCount)
         cleanerId = cRes.rows[0].id;
-    const salaryRes = await connectDatabase_1.pool.query(`SELECT s.id, sc.year, sc.month, s.base_salary, s.total_incentives,
-            s.total_penalties, s.net_salary, s.status, sc.is_locked
+    const salaryRes = await connectDatabase_1.pool.query(`SELECT s.id, sc.year, sc.month, s.incentives,
+            s.penalties, s.final_salary, s.status, sc.is_locked, s.payout_date
      FROM salaries s
-     JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
-     WHERE s.cleaner_id = $1`, [userId]);
+     LEFT JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
+     WHERE s.user_id = $1`, [userId]);
     const salaryMap = new Map();
     for (const row of salaryRes.rows) {
         salaryMap.set(`${row.year}-${String(row.month).padStart(2, '0')}`, row);
@@ -393,15 +490,15 @@ const getSalaryTimeline = async (userId) => {
             livePenalties = Number(pRes.rows[0].total);
         }
         const existing = salaryMap.get(key);
-        const baseSalary = existing ? Number(existing.base_salary) : (Number(user.base_salary) || 0);
+        const baseSalary = Number(user.base_salary) || 0;
         const finalSalary = baseSalary + liveIncentives - livePenalties;
         timeline.push({
             salary_month: key,
             year,
             month,
             base_salary: baseSalary,
-            incentive_amount: liveIncentives,
-            penalty_amount: livePenalties,
+            incentives: liveIncentives,
+            penalties: livePenalties,
             final_salary: finalSalary,
             status: existing
                 ? (existing.is_locked ? 'locked' : existing.status)
@@ -423,8 +520,13 @@ const getRoleBasedSalaries = async (cycleId) => {
     const params = [];
     let cycleFilter = '';
     if (cycleId) {
-        cycleFilter = 'AND s.salary_cycle_id = $1';
+        cycleFilter = 'AND sc.id = $1';
         params.push(cycleId);
+    }
+    else {
+        // If no cycleId, we'll join on the latest cycle for each user effectively
+        // But usually this is called with a cycleId from the dashboard.
+        // If it's null, we'll return all records.
     }
     const result = await connectDatabase_1.pool.query(`SELECT
       u.id              AS user_id,
@@ -432,18 +534,24 @@ const getRoleBasedSalaries = async (cycleId) => {
       u.role,
       u.email,
       COALESCE(b_c.building_name, b_s.building_name, 'N/A') AS building_name,
-      COALESCE(s.base_salary, u.base_salary, 0) AS base_salary,
+      COALESCE(u.base_salary, 0) AS base_salary,
       CASE 
-        WHEN u.role = 'cleaner' THEN COALESCE(s.total_incentives, 0)
+        WHEN sc.is_locked = true THEN COALESCE(s.incentives, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.incentives, 0)
         ELSE 0 
-      END AS total_incentives,
+      END AS incentives,
       CASE 
-        WHEN u.role = 'cleaner' THEN COALESCE(s.total_penalties, 0)
+        WHEN sc.is_locked = true THEN COALESCE(s.penalties, 0)
+        WHEN u.role = 'cleaner' THEN COALESCE(live.penalties, 0)
         ELSE 0 
-      END AS total_penalties,
-      COALESCE(s.total_tasks, 0) AS total_tasks,
-      COALESCE(s.net_salary, COALESCE(s.base_salary, u.base_salary, 0)) AS net_salary,
-      COALESCE(s.status, 'not_generated') AS status,
+      END AS penalties,
+      CASE
+        WHEN sc.is_locked = true THEN COALESCE(s.final_salary, u.base_salary)
+        WHEN u.role = 'cleaner' THEN (COALESCE(u.base_salary, 0) + COALESCE(live.incentives, 0) - COALESCE(live.penalties, 0))
+        ELSE COALESCE(u.base_salary, 0)
+      END AS final_salary,
+      COALESCE(s.status, CASE WHEN sc.id IS NOT NULL THEN 'pending' ELSE 'not_generated' END) AS status,
+      s.payout_date,
       s.id AS salary_id,
       CONCAT(sc.year, '-', LPAD(sc.month::text, 2, '0')) AS salary_month
     FROM users u
@@ -451,8 +559,20 @@ const getRoleBasedSalaries = async (cycleId) => {
     LEFT JOIN buildings b_c ON b_c.id = cl.building_id
     LEFT JOIN supervisors sv ON sv.user_id = u.id
     LEFT JOIN buildings b_s ON b_s.id = sv.building_id
-    LEFT JOIN salaries s ON s.cleaner_id = u.id ${cycleFilter}
-    LEFT JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
+    -- Dynamic join based on cycle filter
+    LEFT JOIN salary_cycles sc ON (1=1 ${cycleId ? 'AND sc.id = $1' : 'AND sc.is_locked = false'})
+    LEFT JOIN salaries s ON s.user_id = u.id AND s.salary_cycle_id = sc.id
+    LEFT JOIN LATERAL (
+      SELECT
+        CASE WHEN sc.is_locked = false THEN
+          (SELECT COALESCE(SUM(amount), 0) FROM cleaner_incentives WHERE cleaner_id = cl.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+          + (SELECT COALESCE(SUM(dib.amount), 0) FROM daily_work_records dwr JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id WHERE dwr.cleaner_id = cl.id AND dwr.date BETWEEN sc.start_date AND sc.end_date)
+          + (SELECT COALESCE(SUM(amount), 0) FROM milestone_achievements WHERE cleaner_id = cl.id AND achieved_at BETWEEN sc.start_date AND sc.end_date)
+        ELSE 0 END AS incentives,
+        CASE WHEN sc.is_locked = false THEN
+          (SELECT COALESCE(SUM(amount), 0) FROM penalties WHERE cleaner_id = cl.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        ELSE 0 END AS penalties
+    ) live ON u.role = 'cleaner'
     WHERE u.role IN ('cleaner', 'supervisor')
     ORDER BY u.role, u.full_name`, params);
     return result.rows;
@@ -463,18 +583,51 @@ exports.getRoleBasedSalaries = getRoleBasedSalaries;
  * Returns aggregated totals per month and per building for the latest cycle.
  */
 const getMonthlyReport = async () => {
+    const cacheKey = 'salary:monthly_report';
+    const cached = await (0, redis_1.getCache)(cacheKey);
+    if (cached)
+        return cached;
     // 1. Monthly History (Last 12 cycles)
     const historyRes = await connectDatabase_1.pool.query(`
     SELECT
       CONCAT(sc.year, '-', LPAD(sc.month::text, 2, '0')) AS month_key,
-      SUM(s.base_salary) as base_salary,
-      SUM(s.total_incentives) as incentives,
-      SUM(s.total_penalties) as penalties,
-      SUM(s.net_salary) as net_payout,
+      SUM(u.base_salary) as base_salary,
+      SUM(
+        CASE 
+          WHEN sc.is_locked = true THEN COALESCE(s.incentives, 0)
+          ELSE COALESCE(live.incentives, 0)
+        END
+      ) as incentives,
+      SUM(
+        CASE 
+          WHEN sc.is_locked = true THEN COALESCE(s.penalties, 0)
+          ELSE COALESCE(live.penalties, 0)
+        END
+      ) as penalties,
+      SUM(
+        CASE 
+          WHEN sc.is_locked = true THEN COALESCE(s.final_salary, u.base_salary)
+          ELSE (COALESCE(u.base_salary, 0) + COALESCE(live.incentives, 0) - COALESCE(live.penalties, 0))
+        END
+      ) as net_payout,
       CASE WHEN sc.is_locked THEN 'finalized' ELSE 'current' END as status
-    FROM salaries s
-    JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
-    GROUP BY sc.year, sc.month, sc.is_locked, sc.id
+    FROM salary_cycles sc
+    CROSS JOIN users u
+    LEFT JOIN salaries s ON s.user_id = u.id AND s.salary_cycle_id = sc.id
+    LEFT JOIN cleaners c ON c.user_id = u.id
+    LEFT JOIN LATERAL (
+      SELECT
+        CASE WHEN sc.is_locked = false THEN
+          (SELECT COALESCE(SUM(amount), 0) FROM cleaner_incentives WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+          + (SELECT COALESCE(SUM(dib.amount), 0) FROM daily_work_records dwr JOIN daily_incentive_breakdown dib ON dwr.id = dib.daily_work_record_id WHERE dwr.cleaner_id = c.id AND dwr.date BETWEEN sc.start_date AND sc.end_date)
+          + (SELECT COALESCE(SUM(amount), 0) FROM milestone_achievements WHERE cleaner_id = c.id AND achieved_at BETWEEN sc.start_date AND sc.end_date)
+        ELSE 0 END AS incentives,
+        CASE WHEN sc.is_locked = false THEN
+          (SELECT COALESCE(SUM(amount), 0) FROM penalties WHERE cleaner_id = c.id AND created_at BETWEEN sc.start_date AND sc.end_date)
+        ELSE 0 END AS penalties
+    ) live ON u.role = 'cleaner'
+    WHERE u.role IN ('cleaner', 'supervisor')
+    GROUP BY sc.id, sc.year, sc.month, sc.is_locked
     ORDER BY sc.year DESC, sc.month DESC
     LIMIT 12
   `);
@@ -486,19 +639,39 @@ const getMonthlyReport = async () => {
     SELECT
       b.id,
       b.building_name as name,
-      COUNT(DISTINCT s.cleaner_id)::int as cleaners_count,
-      SUM(s.net_salary) as total_salary,
-      SUM(s.total_incentives) as incentives,
-      SUM(s.total_penalties) as penalties
+      COUNT(DISTINCT s.user_id)::int as cleaners_count,
+      SUM(s.final_salary) as total_salary,
+      SUM(s.incentives) as incentives,
+      SUM(s.penalties) as penalties
     FROM salaries s
     JOIN latest_cycle lc ON s.salary_cycle_id = lc.id
-    JOIN cleaners cl ON cl.user_id = s.cleaner_id
+    JOIN cleaners cl ON cl.user_id = s.user_id
     JOIN buildings b ON b.id = cl.building_id
     GROUP BY b.id, b.building_name
   `);
-    return {
+    const result = {
         history: historyRes.rows,
         buildings: buildingRes.rows,
     };
+    await (0, redis_1.setCache)(cacheKey, result, 600); // 10 min cache
+    return result;
 };
 exports.getMonthlyReport = getMonthlyReport;
+const getSalaryBreakdown = async (salaryId) => {
+    const salaryRes = await connectDatabase_1.pool.query(`SELECT user_id, salary_cycle_id FROM salaries WHERE id = $1`, [salaryId]);
+    if (!salaryRes.rowCount)
+        throw new Error('SALARY_NOT_FOUND');
+    const { user_id, salary_cycle_id } = salaryRes.rows[0];
+    const cycleRes = await connectDatabase_1.pool.query(`SELECT start_date, end_date FROM salary_cycles WHERE id = $1`, [salary_cycle_id]);
+    const { start_date, end_date } = cycleRes.rows[0];
+    const cleanerRes = await connectDatabase_1.pool.query(`SELECT id FROM cleaners WHERE user_id = $1`, [user_id]);
+    if (!cleanerRes.rowCount)
+        return [];
+    const cleanerProfileId = cleanerRes.rows[0].id;
+    const incentives = await connectDatabase_1.pool.query(`SELECT 'Incentive' as type, description, amount FROM cleaner_incentives 
+     WHERE cleaner_id = $1 AND created_at BETWEEN $2 AND $3`, [cleanerProfileId, start_date, end_date]);
+    const penalties = await connectDatabase_1.pool.query(`SELECT 'Penalty' as type, description, amount FROM penalties 
+     WHERE cleaner_id = $1 AND created_at BETWEEN $2 AND $3`, [cleanerProfileId, start_date, end_date]);
+    return [...incentives.rows, ...penalties.rows];
+};
+exports.getSalaryBreakdown = getSalaryBreakdown;

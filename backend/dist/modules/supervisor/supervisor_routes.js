@@ -12,6 +12,8 @@ const router = express_1.default.Router();
 // ── Supervisor-role routes ────────────────────────────────────────────────────
 router.get('/workers', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor', 'super_admin'), supervisor_controller_1.getSupervisorWorkers);
 router.get('/workers/live', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor', 'super_admin'), supervisor_controller_1.getLiveWorkers);
+router.get('/workers/attendance', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.getCleanersAttendance);
+router.post('/workers/assignment', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.updateCleanerAssignment);
 router.get('/report', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.supervisorReport);
 router.get('/tasks', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.getSupervisorTasks);
 router.post('/tasks', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.assignTaskToWorker);

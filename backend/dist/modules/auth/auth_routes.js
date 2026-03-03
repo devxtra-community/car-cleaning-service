@@ -20,4 +20,8 @@ router.get('/floors', floor_controller_1.getAllFloors);
 router.get('/cleaners', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_1.getCleaners);
 router.post('/refresh', refresh_1.refresh);
 router.get('/supervisor/:supervisorId', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_1.getCleanersBySupervisor);
+/* USER MANAGEMENT - ADMIN ONLY */
+const auth_controller_2 = require("./auth_controller");
+router.patch('/users/:id/status', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_2.toggleUserStatusController);
+router.patch('/users/:id/reset-password', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_2.resetUserPasswordController);
 exports.default = router;

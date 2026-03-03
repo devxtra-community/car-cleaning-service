@@ -3,12 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllAdminsService = exports.getAllAccountantsService = exports.getSupervisorsByBuildingService = exports.getAllSupervisorsService = exports.getCleanersBySupervisorService = exports.getAllCleanersService = exports.logoutService = exports.loginService = exports.createUser = void 0;
+exports.updateCleanerAssignmentService = exports.resetUserPasswordService = exports.toggleUserStatusService = exports.getAllAdminsService = exports.getAllAccountantsService = exports.getSupervisorsByBuildingService = exports.getAllSupervisorsService = exports.getCleanersBySupervisorService = exports.getAllCleanersService = exports.logoutService = exports.loginService = exports.createUser = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const connectDatabase_1 = require("../../database/connectDatabase");
 const error_handler_1 = require("src/middlewares/error-handler");
 const jwt_1 = require("../../config/jwt");
 const uuid_1 = require("uuid");
+const salary_service_1 = require("../salary/salary_service");
 const SALT_ROUNDS = 12;
 // ============================================================
 // REGISTER
@@ -123,6 +124,19 @@ const createUser = async (data) => {
             ]);
             if (!cleanerResult.rows.length) {
                 throw new error_handler_1.AppError('Failed to update cleaner record', 500, 'FAILED_TO_UPDATE_CLEANER');
+            }
+        }
+        // --- AUTO-GENERATE SALARY RECORD FOR CURRENT CYCLE ---
+        if (data.role === 'cleaner' || data.role === 'supervisor') {
+            try {
+                const cycleId = await (0, salary_service_1.getLatestOpenCycle)();
+                if (cycleId) {
+                    await (0, salary_service_1.generateSalaryForUser)(user.id, cycleId);
+                }
+            }
+            catch (salaryErr) {
+                // Log but don't fail registration if salary generation fails
+                console.error('Failed to auto-generate salary for new user:', salaryErr);
             }
         }
         await client.query('COMMIT');
@@ -306,3 +320,59 @@ const getAllAdminsService = async () => {
     return rows;
 };
 exports.getAllAdminsService = getAllAdminsService;
+// ============================================================
+// ADMIN MANAGEMENT
+// ============================================================
+const toggleUserStatusService = async (userId, isActive) => {
+    const { rows } = await connectDatabase_1.pool.query(`UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING id, is_active`, [isActive, userId]);
+    return rows[0];
+};
+exports.toggleUserStatusService = toggleUserStatusService;
+const resetUserPasswordService = async (userId, newPassword) => {
+    const hashed = await bcrypt_1.default.hash(newPassword, SALT_ROUNDS);
+    await connectDatabase_1.pool.query(`UPDATE users SET password = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2`, [hashed, userId]);
+    return { success: true };
+};
+exports.resetUserPasswordService = resetUserPasswordService;
+const updateCleanerAssignmentService = async (cleanerId, data, changedBy) => {
+    const client = await connectDatabase_1.pool.connect();
+    try {
+        await client.query('BEGIN');
+        // Get current assignment
+        const currentRes = await client.query(`SELECT supervisor_id, floor_id, user_id FROM cleaners WHERE id = $1`, [cleanerId]);
+        if (!currentRes.rows.length)
+            throw new Error('Cleaner not found');
+        const current = currentRes.rows[0];
+        const updates = [];
+        const values = [];
+        let paramIdx = 1;
+        if (data.supervisor_id && data.supervisor_id !== current.supervisor_id) {
+            // Record history
+            await client.query(`INSERT INTO assignment_history (cleaner_id, assignment_type, previous_value, new_value, changed_by)
+         VALUES ($1, 'supervisor', $2, $3, $4)`, [cleanerId, current.supervisor_id, data.supervisor_id, changedBy]);
+            updates.push(`supervisor_id = $${paramIdx++}`);
+            values.push(data.supervisor_id);
+        }
+        if (data.floor_id !== undefined && data.floor_id !== current.floor_id) {
+            // Record history
+            await client.query(`INSERT INTO assignment_history (cleaner_id, assignment_type, previous_value, new_value, changed_by)
+         VALUES ($1, 'floor', $2, $3, $4)`, [cleanerId, current.floor_id, data.floor_id, changedBy]);
+            updates.push(`floor_id = $${paramIdx++}`);
+            values.push(data.floor_id);
+        }
+        if (updates.length > 0) {
+            values.push(cleanerId);
+            await client.query(`UPDATE cleaners SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIdx}`, values);
+        }
+        await client.query('COMMIT');
+        return { success: true };
+    }
+    catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    }
+    finally {
+        client.release();
+    }
+};
+exports.updateCleanerAssignmentService = updateCleanerAssignmentService;

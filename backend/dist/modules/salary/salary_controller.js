@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMonthlyReportController = exports.getRoleBasedSalariesController = exports.getSalariesByUserIdController = exports.getSalariesByCycleIdController = exports.getSalarySummaryController = exports.markSalaryPaidController = exports.lockSalaryController = exports.getSalaryCyclesController = exports.generateSalaryForAllController = exports.generateSalaryForCleanerController = exports.getSalaryTimelineController = exports.getAllSalariesController = void 0;
+exports.getSalaryBreakdownController = exports.getMonthlyReportController = exports.getRoleBasedSalariesController = exports.getSalariesByUserIdController = exports.getSalariesByCycleIdController = exports.getSalarySummaryController = exports.markSalaryPaidController = exports.lockSalaryController = exports.getSalaryCyclesController = exports.generateSalaryForAllController = exports.generateSalaryForCleanerController = exports.getSalaryTimelineController = exports.getAllSalariesController = void 0;
+const auditLogger_1 = require("../../utils/auditLogger");
 const salary_service_1 = require("./salary_service");
 /* ================= GET ALL SALARIES ================= */
 const getAllSalariesController = async (req, res) => {
@@ -109,6 +110,9 @@ const lockSalaryController = async (req, res) => {
             });
         }
         const result = await (0, salary_service_1.lockSalaryCycle)(cycleId);
+        if (req.user?.userId) {
+            await (0, auditLogger_1.logAuditAction)(req.user.userId, 'LOCK_SALARY_CYCLE', { cycleId });
+        }
         return res.json({
             success: true,
             message: result.message,
@@ -126,11 +130,10 @@ exports.lockSalaryController = lockSalaryController;
 const markSalaryPaidController = async (req, res) => {
     try {
         const { salaryId } = req.params;
-        const { payment_method } = req.body;
         if (!salaryId || Array.isArray(salaryId)) {
             return res.status(400).json({ success: false, message: 'Invalid salaryId' });
         }
-        const result = await (0, salary_service_1.markSalaryAsPaid)(salaryId, payment_method);
+        const result = await (0, salary_service_1.markSalaryAsPaid)(salaryId);
         return res.json({
             success: true,
             message: 'Salary marked as paid',
@@ -224,7 +227,7 @@ const getRoleBasedSalariesController = async (req, res) => {
     }
     catch (err) {
         console.error('GET ROLE SALARIES ERROR:', err);
-        return res.status(500).json({ success: false, message: 'Failed to fetch role-based salaries' });
+        return res.status(500).json({ success: false, message: err instanceof Error ? err.message : String(err) });
     }
 };
 exports.getRoleBasedSalariesController = getRoleBasedSalariesController;
@@ -240,3 +243,18 @@ const getMonthlyReportController = async (req, res) => {
     }
 };
 exports.getMonthlyReportController = getMonthlyReportController;
+const getSalaryBreakdownController = async (req, res) => {
+    try {
+        const { salaryId } = req.params;
+        const data = await (0, salary_service_1.getSalaryBreakdown)(salaryId);
+        return res.json({ success: true, data });
+    }
+    catch (err) {
+        console.error('GET BREAKDOWN ERROR:', err);
+        return res.status(500).json({
+            success: false,
+            message: err instanceof Error ? err.message : 'Failed to fetch breakdown',
+        });
+    }
+};
+exports.getSalaryBreakdownController = getSalaryBreakdownController;

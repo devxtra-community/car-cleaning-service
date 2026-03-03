@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAdminSupervisor = exports.toggleAdminSupervisorStatus = exports.updateAdminSupervisor = exports.getAdminSupervisorDetails = exports.updateSupervisorProfile = exports.updateTask = exports.assignTaskToWorker = exports.getLiveWorkers = exports.getSupervisorTasks = exports.supervisorReport = exports.getSupervisorWorkers = exports.registerPushTokenController = void 0;
+exports.deleteAdminSupervisor = exports.toggleAdminSupervisorStatus = exports.updateAdminSupervisor = exports.getAdminSupervisorDetails = exports.updateSupervisorProfile = exports.updateTask = exports.assignTaskToWorker = exports.getLiveWorkers = exports.updateCleanerAssignment = exports.getCleanersAttendance = exports.getSupervisorTasks = exports.supervisorReport = exports.getSupervisorWorkers = exports.registerPushTokenController = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
 const supervisor_services_1 = require("./supervisor_services");
 const tasks_service_1 = require("../tasks/tasks_service");
@@ -164,6 +164,51 @@ const getSupervisorTasks = async (req, res) => {
     }
 };
 exports.getSupervisorTasks = getSupervisorTasks;
+/* ================= ATTENDANCE ================= */
+const getCleanersAttendance = async (req, res) => {
+    try {
+        const supervisorId = req.user?.userId;
+        if (!supervisorId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const attendance = await (0, supervisor_services_1.getSupervisorWorkersAttendanceService)(supervisorId);
+        return res.json({ success: true, data: attendance });
+    }
+    catch (err) {
+        console.error('getCleanersAttendance error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch attendance' });
+    }
+};
+exports.getCleanersAttendance = getCleanersAttendance;
+/* ================= ASSIGNMENTS ================= */
+const updateCleanerAssignment = async (req, res) => {
+    try {
+        const supervisorId = req.user?.userId;
+        if (!supervisorId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const { cleaner_id, floor_id } = req.body;
+        if (!cleaner_id) {
+            return res.status(400).json({ success: false, message: 'Cleaner ID is required' });
+        }
+        // Verify cleaner belongs to this supervisor
+        const check = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE id = $1 AND supervisor_id = (SELECT id FROM supervisors WHERE user_id = $2)', [cleaner_id, supervisorId]);
+        if (check.rows.length === 0) {
+            return res.status(403).json({ success: false, message: 'Not authorized to manage this cleaner' });
+        }
+        const updated = await (0, supervisor_services_1.updateWorkerAssignmentService)(cleaner_id, floor_id || null);
+        return res.json({
+            success: true,
+            message: 'Assignment updated successfully',
+            data: updated,
+        });
+    }
+    catch (err) {
+        console.error('updateCleanerAssignment error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to update assignment' });
+    }
+};
+exports.updateCleanerAssignment = updateCleanerAssignment;
 /* ================= LIVE WORKERS ================= */
 const getLiveWorkers = async (req, res) => {
     try {
