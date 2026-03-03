@@ -2,7 +2,7 @@ name: CD - Deploy Web to S3/CloudFront
 
 on:
   push:
-    branches: ["yasir"]
+    branches: ["main"]
     paths:
       - "apps/web/**"
       - ".github/workflows/deploy-web.yml"
