@@ -41,6 +41,10 @@ jobs:
             # Diagnostic: Check if something is listening on 3033
             sudo netstat -tuln | grep 3033 || echo "Nothing listening on 3033"
             
+            # Diagnostic: Check OS-level firewalls
+            sudo ufw status || echo "ufw not found"
+            sudo iptables -L -n | grep 3033 || echo "No iptables rule for 3033"
+
             # Diagnostic: Check PM2 status and logs
             pm2 status
-            pm2 logs car-cleaning-api --lines 20 --no-daemon & sleep 5 && kill $!
+            pm2 logs car-cleaning-api --lines 50 --no-daemon & sleep 10 && kill $!
