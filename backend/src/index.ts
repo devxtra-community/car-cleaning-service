@@ -11,9 +11,9 @@ import path from 'path';
 import authRouter from './modules/auth/auth_routes';
 import vechicleRoutes from './modules/vehicles/vechicleRoutes';
 import attendanceRoutes from './modules/attendance/attendance_routes';
-import salaryRoute from '../src/modules/salary/salary_routes';
-import taskRoutes from '../src/modules/tasks/tasks_routes';
-import workersRoutes from '../src/modules/Worker/workers_routes';
+import salaryRoute from './modules/salary/salary_routes';
+import taskRoutes from './modules/tasks/tasks_routes';
+import workersRoutes from './modules/Worker/workers_routes';
 import buildingsRoutes from './modules/buildings/buildings_routes';
 import incentiveRoutes from './modules/incentives/incentives_routes';
 import analyticRoutes from './modules/analytics/analytic_routes';
@@ -77,8 +77,8 @@ app.get('/health', async (req: Request, res: Response) => {
       },
       cpu: {
         load: os.loadavg()[0].toFixed(2),
-      }
-    }
+      },
+    },
   };
 
   res.status(healthData.status === 'ok' ? 200 : 503).json(healthData);
