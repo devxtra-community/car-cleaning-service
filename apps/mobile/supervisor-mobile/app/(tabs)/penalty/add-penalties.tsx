@@ -68,7 +68,7 @@ export default function SelectWorkerScreen() {
                 className={`flex-row items-center bg-white rounded-[18px] p-4 mb-3 border ${
                   selectedWorker === worker.cleaner_id
                     ? 'border-[#3DA2CE] border-2 shadow-sm'
-                    : 'border-white shadow-lg shadow-[#0000000D]'
+                    : 'border-white shadow-lg shadow-black/5'
                 }`}
               >
                 <View className="w-9 h-9 rounded-full bg-[#E8F4F8] justify-center items-center mr-3">
@@ -91,7 +91,7 @@ export default function SelectWorkerScreen() {
         {/* CONTINUE */}
         <Pressable
           disabled={!selectedWorker}
-          className={`h-14 rounded-[18px] items-center justify-center mt-6 shadow-lg shadow-[#3DA2CE4C] ${
+          className={`h-14 rounded-[18px] items-center justify-center mt-6 shadow-lg ${
             !selectedWorker ? 'bg-[#3DA2CE] opacity-40' : 'bg-[#3DA2CE]'
           }`}
           onPress={() =>

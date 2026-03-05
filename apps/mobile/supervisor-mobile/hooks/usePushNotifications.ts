@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -24,6 +24,13 @@ export const usePushNotifications = () => {
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+    if (Constants.appOwnership === 'expo') {
+      console.log(
+        'Push notifications are not supported in Expo Go (SDK 53+). Use a development build.'
+      );
+      return undefined;
+    }
+
     let token: string | undefined;
 
     if (Platform.OS === 'android') {
@@ -70,34 +77,37 @@ export const usePushNotifications = () => {
     return token;
   }
 
-  const sendTokenToBackend = async (token: string, authToken: string): Promise<void> => {
-    try {
-      console.log('Sending supervisor push token to backend...');
-      console.log('URL:', BACKEND_URL);
-      console.log('Token:', token);
+  const sendTokenToBackend = useCallback(
+    async (token: string, authToken: string): Promise<void> => {
+      try {
+        console.log('Sending supervisor push token to backend...');
+        console.log('URL:', BACKEND_URL);
+        console.log('Token:', token);
 
-      const response = await axios.post(
-        BACKEND_URL,
-        { pushToken: token },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            'Content-Type': 'application/json',
-          },
+        const response = await axios.post(
+          BACKEND_URL,
+          { pushToken: token },
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        console.log('Supervisor push token registered:', response.data);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          console.error('Backend error:', error.response?.data);
+          console.error('Status:', error.response?.status);
+          console.error('URL:', error.config?.url);
+        } else {
+          console.error('Failed to send push token:', error);
         }
-      );
-
-      console.log('Supervisor push token registered:', response.data);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Backend error:', error.response?.data);
-        console.error('Status:', error.response?.status);
-        console.error('URL:', error.config?.url);
-      } else {
-        console.error('Failed to send push token:', error);
       }
-    }
-  };
+    },
+    []
+  );
 
   useEffect(() => {
     registerForPushNotificationsAsync().then((token) => {

@@ -24,6 +24,7 @@ const TopoPattern = () => (
     className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
+    pointerEvents="none"
   >
     <Path
       d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
@@ -69,7 +70,7 @@ const ActionCard = ({
   onPress?: () => void;
 }) => (
   <Pressable
-    className="w-[165px] bg-white rounded-[24px] p-4 items-center border border-[#F1F5F9] shadow-sm active:scale-95 transition-transform"
+    className="w-[165px] bg-white rounded-[24px] p-4 items-center border border-[#F1F5F9] shadow-sm"
     onPress={onPress}
   >
     <View className="w-[52px] h-[52px] rounded-[20px] bg-[#E0F2FE] justify-center items-center mb-[10px]">
@@ -89,6 +90,18 @@ export default function HomePage() {
     profile_image?: string;
   } | null>(null);
 
+  const [summary, setSummary] = React.useState<{
+    total_earnings: number;
+    total_jobs: number;
+    avg_rating: number;
+    live_workers: number;
+  }>({
+    total_earnings: 0,
+    total_jobs: 0,
+    avg_rating: 0,
+    live_workers: 0,
+  });
+
   const fetchUserProfile = async () => {
     try {
       const res = await API.get('/api/users/me');
@@ -100,14 +113,30 @@ export default function HomePage() {
     }
   };
 
+  const fetchDashboardSummary = async () => {
+    try {
+      const res = await API.get('/api/supervisor/dashboard-summary');
+      if (res.data.success) {
+        setSummary(res.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard summary', error);
+    }
+  };
+
   React.useEffect(() => {
     fetchUserProfile();
+    fetchDashboardSummary();
   }, []);
 
   return (
     <View className="flex-1">
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} className="absolute inset-0" />
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        className="absolute inset-0"
+        pointerEvents="none"
+      />
       <TopoPattern />
 
       <ScrollView
@@ -140,10 +169,19 @@ export default function HomePage() {
         </View>
 
         {/* EARNINGS CARD CLAY SECTION */}
-        <View className="clay-card p-6 mb-6 bg-white border border-[#F1F5F9] shadow-xl">
+        <View
+          className="clay-card p-6 mb-6 bg-white border border-[#F1F5F9]"
+          style={{
+            shadowColor: '#BFDBFE',
+            shadowOffset: { width: 4, height: 4 },
+            shadowOpacity: 0.5,
+            shadowRadius: 10,
+            elevation: 8,
+          }}
+        >
           <View className="flex-row items-center gap-2 mb-3">
             <TrendingUp size={14} color="#0EA5E9" />
-            <Text className="text-[11px] font-antigravity-bold color-[#0EA5E9] uppercase tracking-widest">
+            <Text className="text-[11px] font-antigravity-bold text-[#0EA5E9] uppercase tracking-widest">
               Daily Performance
             </Text>
           </View>
@@ -151,10 +189,11 @@ export default function HomePage() {
           <View className="flex-row items-baseline mb-4">
             <Text className="text-xl text-[#1E293B] font-antigravity-semibold mr-1">₹</Text>
             <Text className="text-[38px] font-antigravity-bold text-[#1E293B] tracking-tighter">
-              5,580
+              {summary.total_earnings.toLocaleString()}
             </Text>
+            {/* Percentage is still dummy since we don't have historical comparison yet */}
             <View className="bg-[#10B9811A] px-[10px] py-[4px] rounded-xl ml-3">
-              <Text className="text-xs font-antigravity-bold text-[#059669]">+12%</Text>
+              <Text className="text-xs font-antigravity-bold text-[#059669]">+0%</Text>
             </View>
           </View>
 
@@ -162,19 +201,23 @@ export default function HomePage() {
 
           <View className="flex-row justify-between">
             <View className="items-center">
-              <Text className="text-base font-antigravity-bold text-[#1E293B]">30</Text>
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">
+                {summary.total_jobs}
+              </Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
                 Jobs Done
               </Text>
             </View>
             <View className="items-center">
-              <Text className="text-base font-antigravity-bold text-[#1E293B]">04</Text>
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">--</Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
                 Pending
               </Text>
             </View>
             <View className="items-center">
-              <Text className="text-base font-antigravity-bold text-[#1E293B]">98%</Text>
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">
+                {summary.avg_rating > 0 ? summary.avg_rating.toFixed(1) : '5.0'}
+              </Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
                 Rating
               </Text>
@@ -185,7 +228,7 @@ export default function HomePage() {
         {/* ACTION BUTTONS REDESIGN */}
         <View className="flex-row gap-3 mb-6">
           <Pressable
-            className="flex-[1.6] h-[60px] rounded-[20px] overflow-hidden shadow-lg shadow-[#0EA5E94C]"
+            className="flex-[1.6] h-[60px] rounded-[20px] overflow-hidden shadow-lg"
             onPress={() => router.push('/(tabs)/supervisor/add-task')}
           >
             <LinearGradient
@@ -221,11 +264,11 @@ export default function HomePage() {
           </Pressable>
         </View>
 
-        <View className="flex-row flex-wrap gap-4">
+        <View className="flex-row flex-wrap gap-4 justify-center">
           <ActionCard
             icon={<UserCog size={24} color="#0EA5E9" />}
             title="Live Workers"
-            subtitle="Active Crew"
+            subtitle={`${summary.live_workers} Active Crew`}
             onPress={() => router.push('/supervisor/live-worker')}
           />
 

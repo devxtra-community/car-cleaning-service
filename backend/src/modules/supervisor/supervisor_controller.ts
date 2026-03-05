@@ -1,7 +1,11 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../middlewares/authMiddleware';
 import { pool } from '../../database/connectDatabase';
-import { getSupervisorWorkersService, supervisorReportService } from './supervisor_services';
+import {
+  getSupervisorWorkersService,
+  supervisorReportService,
+  getSupervisorDashboardSummaryService,
+} from './supervisor_services';
 import { createTaskService } from '../tasks/tasks_service';
 import { sendNotificationToUser } from '../notifications/notification_service';
 import { logger } from '../../config/logger';
@@ -88,6 +92,25 @@ export const supervisorReport = async (req: AuthRequest, res: Response) => {
 
   const report = await supervisorReportService(supervisorId, period);
   return res.json({ success: true, data: report });
+};
+
+/* ================= DASHBOARD SUMMARY ================= */
+export const getSupervisorDashboardSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const supervisorId = req.user?.userId;
+    if (!supervisorId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const summary = await getSupervisorDashboardSummaryService(supervisorId);
+    return res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (err) {
+    console.error('getSupervisorDashboardSummary error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch dashboard summary' });
+  }
 };
 
 /* ================= TASKS ================= */

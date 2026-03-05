@@ -29,6 +29,7 @@ const TopoPattern = () => (
     className="absolute inset-0"
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
+    pointerEvents="none"
   >
     <Path
       d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
@@ -54,7 +55,7 @@ const TopoPattern = () => (
 );
 
 const WavyHeader = () => (
-  <View className="absolute inset-0">
+  <View className="absolute inset-0" pointerEvents="none">
     <Svg
       height={height * 0.45}
       width={width}
@@ -127,7 +128,7 @@ export default function LoginScreen() {
               <Mail size={32} color="#fff" />
             </View>
             <Text className="text-[28px] font-antigravity-bold text-white mb-2">Welcome Back</Text>
-            <Text className="text-[15px] text-white/80 font-antigravity-medium border-0">
+            <Text className="text-[15px] text-white/80 font-antigravity-medium">
               Sign in to manage your team
             </Text>
           </View>
@@ -198,7 +199,7 @@ export default function LoginScreen() {
 
             {/* LOGIN BUTTON */}
             <Pressable
-              className={`h-[60px] rounded-[20px] overflow-hidden shadow-lg shadow-[#0EA5E94C]`}
+              className="h-[60px] rounded-[20px] overflow-hidden shadow-lg"
               style={({ pressed }) => [
                 { transform: [{ scale: pressed ? 0.98 : 1 }], opacity: pressed ? 0.9 : 1 },
               ]}
@@ -227,9 +228,7 @@ export default function LoginScreen() {
         </View>
 
         <View className="flex-row justify-center items-center mt-10 pb-10">
-          <Text className="text-sm text-[#64748B] font-antigravity-medium border-0">
-            Need an account?{' '}
-          </Text>
+          <Text className="text-sm text-[#64748B] font-antigravity-medium">Need an account? </Text>
           <Pressable>
             <Text className="text-sm text-[#0EA5E9] font-antigravity-bold">Contact Admin</Text>
           </Pressable>

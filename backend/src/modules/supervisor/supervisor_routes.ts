@@ -9,6 +9,7 @@ import {
   assignTaskToWorker,
   updateTask,
   updateSupervisorProfile,
+  getSupervisorDashboardSummary,
 } from './supervisor_controller';
 import { addPenalty, getSupervisorPenalties } from '../penalties/penalties_controller';
 
@@ -20,6 +21,7 @@ router.get('/report', protect, allowRoles('supervisor'), supervisorReport);
 router.get('/tasks', protect, allowRoles('supervisor'), getSupervisorTasks);
 router.post('/tasks', protect, allowRoles('supervisor'), assignTaskToWorker);
 router.patch('/tasks/:id', protect, allowRoles('supervisor'), updateTask);
+router.get('/dashboard-summary', protect, allowRoles('supervisor'), getSupervisorDashboardSummary);
 
 // Profile
 router.patch('/profile', protect, allowRoles('supervisor'), updateSupervisorProfile);

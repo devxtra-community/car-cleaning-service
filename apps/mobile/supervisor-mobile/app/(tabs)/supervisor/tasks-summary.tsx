@@ -65,7 +65,7 @@ export default function DailyTasksScreen() {
                   transform: [{ rotate: `${progressPercent * 3.6 - 90}deg` }],
                 }}
               />
-              <View className="w-[110px] h-[110px] rounded-full bg-white justify-center items-center shadow-inner">
+              <View className="w-[110px] h-[110px] rounded-full bg-white justify-center items-center">
                 <Text className="text-2xl font-antigravity-bold text-[#1E293B]">
                   {completed}/{DAILY_TARGET}
                 </Text>

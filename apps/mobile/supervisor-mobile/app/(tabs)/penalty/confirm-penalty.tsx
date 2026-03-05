@@ -93,7 +93,7 @@ export default function PenaltyDetailsScreen() {
 
         {/* SUBMIT */}
         <Pressable
-          className={`h-14 rounded-[18px] items-center justify-center bg-[#EF4444] shadow-lg shadow-[#EF44444C] ${submitting ? 'opacity-70' : ''}`}
+          className={`h-14 rounded-[18px] items-center justify-center bg-[#EF4444] shadow-lg shadow-red-500/30 ${submitting ? 'opacity-70' : ''}`}
           onPress={handleSubmit}
           disabled={submitting}
         >

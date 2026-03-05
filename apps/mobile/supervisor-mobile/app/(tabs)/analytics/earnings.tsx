@@ -72,7 +72,7 @@ export default function EarningsScreen() {
           <DollarSign size={22} color="#2563EB" />
         </View>
 
-        <Text className="text-xs text-[#6B7280] mb-1.5 font-antigravity-medium border-0">
+        <Text className="text-xs text-[#6B7280] mb-1.5 font-antigravity-medium">
           Total Earnings
         </Text>
         <Text className="text-4xl font-antigravity-bold text-[#2563EB] mb-2">
@@ -89,15 +89,13 @@ export default function EarningsScreen() {
       </View>
 
       {/* SERVICE BREAKDOWN */}
-      <Text className="text-lg font-antigravity-bold mb-3.5 text-[#111827] border-0">
-        Service Breakdown
-      </Text>
+      <Text className="text-lg font-antigravity-bold mb-3.5 text-[#111827]">Service Breakdown</Text>
 
       <FlatList
         data={current.services}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View className="flex-row items-center bg-white rounded-2xl p-4.5 mb-3.5 shadow-sm border border-white">
+          <View className="flex-row items-center bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm border border-white">
             <View className="w-11 h-11 rounded-full bg-[#E0F2FE] justify-center items-center mr-3.5">
               <Text className="text-xl">{item.icon}</Text>
             </View>
@@ -106,7 +104,7 @@ export default function EarningsScreen() {
               <Text className="text-base font-antigravity-bold text-[#1F2937] mb-0.5">
                 {item.type} Cleaned
               </Text>
-              <Text className="text-xs font-antigravity-medium text-[#6B7280] border-0">
+              <Text className="text-xs font-antigravity-medium text-[#6B7280]">
                 {item.count} cars
               </Text>
             </View>

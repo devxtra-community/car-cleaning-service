@@ -5,9 +5,9 @@ import {
   Image,
   Pressable,
   ScrollView,
-  Dimensions,
   Alert,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { API } from '../../src/api/api';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,8 +16,6 @@ import { router } from 'expo-router';
 import { User, Settings, HelpCircle, LogOut, ChevronRight, MapPin } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import { clearTokens } from '../../src/tokenStorage';
-
-const { width } = Dimensions.get('window');
 
 // Topographic Pattern for Header
 const TopoPattern = () => (
@@ -45,6 +43,7 @@ const TopoPattern = () => (
 );
 
 export default function ProfileView() {
+  const { width } = useWindowDimensions();
   const [user, setUser] = React.useState<{
     full_name?: string;
     role?: string;
@@ -116,7 +115,7 @@ export default function ProfileView() {
           <TopoPattern />
 
           <View
-            className="mt-20 w-[width-48] bg-white rounded-[32px] p-6 items-center shadow-xl border border-[#F1F5F9]"
+            className="mt-20 bg-white rounded-[32px] p-6 items-center shadow-xl border border-[#F1F5F9]"
             style={{ width: width - 48 }}
           >
             <View className="w-[104px] h-[104px] rounded-full border-4 border-[#F0F9FF] -mt-[70px] bg-white justify-center items-center">
@@ -141,7 +140,7 @@ export default function ProfileView() {
             {user?.building_name && (
               <View className="flex-row items-center mt-3 gap-1">
                 <MapPin size={14} color="#64748B" />
-                <Text className="text-[13px] color-[#64748B] font-antigravity-medium">
+                <Text className="text-[13px] text-[#64748B] font-antigravity-medium">
                   {user.building_name}
                 </Text>
               </View>
@@ -208,7 +207,7 @@ function MenuItem({
 }) {
   return (
     <Pressable
-      className="flex-row items-center bg-white rounded-[24px] p-4 mb-3 border border-[#F1F5F9] shadow-sm active:scale-[0.98] transition-transform"
+      className="flex-row items-center bg-white rounded-[24px] p-4 mb-3 border border-[#F1F5F9] shadow-sm"
       onPress={onPress}
     >
       <View

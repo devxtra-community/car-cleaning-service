@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Dimensions, Pressable, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Pressable, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,9 +12,6 @@ import {
   Calendar,
   Clock,
 } from 'lucide-react-native';
-
-// Dimensions available if needed
-// const { width } = Dimensions.get('window');
 
 // Topographic Pattern
 const TopoPattern = () => (
@@ -84,7 +81,7 @@ export default function AnalyticsView() {
     <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       {/* HEADER WITH TOPOGRAPHIC BACKGROUND */}
       <View className="h-[140px] mb-5">
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} className="flex-1 pt-3 overflow-hidden">
+        <LinearGradient colors={['#0EA5E9', '#0284C7']} className="flex-1 pt-3 overflow-hidden">
           <TopoPattern />
           <View className="flex-row justify-between items-center px-5 z-10">
             <View>
@@ -95,8 +92,8 @@ export default function AnalyticsView() {
                 Track your performance metrics
               </Text>
             </View>
-            <TouchableOpacity className="w-11 h-11 rounded-full bg-white justify-center items-center shadow-md shadow-[#3DA2CE4C]">
-              <Calendar size={20} color="#3DA2CE" />
+            <TouchableOpacity className="w-11 h-11 rounded-full bg-white justify-center items-center shadow-md">
+              <Calendar size={20} color="#0EA5E9" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -111,10 +108,10 @@ export default function AnalyticsView() {
           {/* TOTAL EARNINGS */}
           <Pressable
             onPress={() => router.push('/(tabs)/analytics/earnings')}
-            className="mb-3 rounded-[20px] overflow-hidden shadow-xl shadow-[#3DA2CE4C]"
+            className="mb-3 rounded-[20px] overflow-hidden shadow-xl"
           >
             <LinearGradient
-              colors={['#5AB9E0', '#3DA2CE']}
+              colors={['#0EA5E9', '#0284C7']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="p-5 min-h-[160px]"
@@ -137,21 +134,19 @@ export default function AnalyticsView() {
                 Total Earnings
               </Text>
               <Text className="text-xs text-white opacity-75 mt-0.5">This month</Text>
-              <ChevronRight
-                size={20}
-                color="#fff"
-                className="absolute right-5 bottom-5 opacity-50"
-              />
+              <View className="absolute right-5 bottom-5 opacity-50">
+                <ChevronRight size={20} color="#fff" />
+              </View>
             </LinearGradient>
           </Pressable>
 
           {/* COMPLETED TASKS CARD - NOW FULL WIDTH */}
           <Pressable
-            className="mb-3 rounded-2xl overflow-hidden shadow-md shadow-[#3DA2CE26]"
+            className="mb-3 rounded-2xl overflow-hidden shadow-md"
             onPress={() => router.push('/(tabs)/analytics/tasks')}
           >
             <LinearGradient
-              colors={['#4FB3D9', '#3DA2CE']}
+              colors={['#0EA5E9', '#0284C7']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="p-[18px] flex-row justify-between items-center"
@@ -174,14 +169,16 @@ export default function AnalyticsView() {
                     +8.3%
                   </Text>
                 </View>
-                <ChevronRight size={20} color="#fff" className="opacity-70" />
+                <View className="opacity-70">
+                  <ChevronRight size={20} color="#fff" />
+                </View>
               </View>
             </LinearGradient>
           </Pressable>
 
           {/* PENALTY CARD */}
           <Pressable
-            onPress={() => router.push('/(tabs)/penalty/penalty-history')}
+            onPress={() => router.push('/(tabs)/penalty-history')}
             className="bg-white rounded-2xl p-4 border-l-4 border-l-[#EF4444] shadow-sm"
           >
             <View className="flex-row justify-between items-center">
@@ -189,23 +186,14 @@ export default function AnalyticsView() {
                 <View className="w-10 h-10 rounded-full bg-[#FEE2E2] justify-center items-center mr-3">
                   <AlertCircle size={20} color="#EF4444" strokeWidth={2.5} />
                 </View>
-                <View className="mt-0.5">
-                  <Text className="text-base font-antigravity-bold text-[#111827]">
-                    3 Penalties
-                  </Text>
+                <View>
+                  <Text className="text-base font-antigravity-bold text-[#111827]">Penalties</Text>
                   <Text className="text-xs text-[#6B7280] font-antigravity-medium mt-0.5">
-                    Review required
+                    Review history
                   </Text>
                 </View>
               </View>
-              <View className="flex-row items-center">
-                <View className="flex-row items-center bg-[#FEE2E2] px-2 py-1 rounded-xl mr-2">
-                  <Text className="text-[#EF4444] text-[11px] font-antigravity-bold ml-1">
-                    -15%
-                  </Text>
-                </View>
-                <ChevronRight size={18} color="#EF4444" />
-              </View>
+              <ChevronRight size={18} color="#EF4444" />
             </View>
           </Pressable>
         </View>
@@ -215,14 +203,14 @@ export default function AnalyticsView() {
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-xl font-antigravity-bold text-[#111827]">Weekly Performance</Text>
             <TouchableOpacity>
-              <Text className="text-sm font-antigravity-semibold text-[#3DA2CE]">View All</Text>
+              <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">View All</Text>
             </TouchableOpacity>
           </View>
           <View className="bg-white rounded-[20px] p-5 shadow-sm">
             <View className="flex-row justify-between items-center mb-5">
               <View className="flex-row items-center">
-                <View className="w-2 h-2 rounded-full bg-[#3DA2CE] mr-2" />
-                <Text className="text-[13px] text-[#6B7280] font-antigravity-medium border-0">
+                <View className="w-2 h-2 rounded-full bg-[#0EA5E9] mr-2" />
+                <Text className="text-[13px] text-[#6B7280] font-antigravity-medium">
                   Tasks Completed
                 </Text>
               </View>
@@ -243,20 +231,20 @@ export default function AnalyticsView() {
                   className="flex-1 items-center justify-end mx-1"
                   activeOpacity={0.7}
                 >
-                  <Text className="text-[11px] font-antigravity-bold text-[#3DA2CE] mb-1">
+                  <Text className="text-[11px] font-antigravity-bold text-[#0EA5E9] mb-1">
                     {item.tasks}
                   </Text>
                   <LinearGradient
-                    colors={['#5AB9E0', '#3DA2CE']}
+                    colors={['#0EA5E9', '#0284C7']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 0, y: 1 }}
-                    className="w-full max-w-[32px] rounded-lg shadow-sm shadow-[#3DA2CE33]"
+                    className="w-full max-w-[32px] rounded-lg shadow-sm"
                     style={{ height: `${item.value}%` }}
                   />
                   <Text
                     className={`text-[11px] mt-2 font-antigravity-semibold ${
                       i === new Date().getDay() - 1
-                        ? 'text-[#3DA2CE] font-antigravity-bold'
+                        ? 'text-[#0EA5E9] font-antigravity-bold'
                         : 'text-[#9CA3AF]'
                     }`}
                   >
@@ -273,7 +261,7 @@ export default function AnalyticsView() {
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-xl font-antigravity-bold text-[#111827]">Task Breakdown</Text>
             <TouchableOpacity>
-              <Text className="text-sm font-antigravity-semibold text-[#3DA2CE]">Details</Text>
+              <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">Details</Text>
             </TouchableOpacity>
           </View>
           <View className="bg-white rounded-[20px] p-5 shadow-sm">

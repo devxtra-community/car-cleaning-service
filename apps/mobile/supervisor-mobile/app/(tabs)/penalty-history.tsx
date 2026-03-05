@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertCircle, User } from 'lucide-react-native';
 import { API } from '@/src/api/api';
@@ -20,6 +20,7 @@ export default function PenaltyHistory() {
 
   const fetchPenalties = useCallback(async () => {
     try {
+      console.log(` [PENALTY HISTORY] Fetching for period: ${activeTab}`);
       setLoading(true);
       const response = await API.get(`/api/supervisor/penalties?period=${activeTab}`);
 
@@ -37,27 +38,32 @@ export default function PenaltyHistory() {
     fetchPenalties();
   }, [fetchPenalties]);
 
+  const Segment = ({ label, type }: { label: string; type: TabType }) => {
+    const active = activeTab === type;
+    return (
+      <TouchableOpacity
+        onPress={() => setActiveTab(type)}
+        activeOpacity={0.7}
+        className={`flex-1 py-2 rounded-lg items-center ${active ? 'bg-white shadow-sm' : ''}`}
+      >
+        <Text
+          className={`text-[13px] font-antigravity-bold ${active ? 'text-[#111827]' : 'text-[#6B7280]'}`}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB] p-4">
       <Text className="text-xl font-antigravity-bold text-[#1E293B] mb-3">Penalty History</Text>
 
       {/* SEGMENTED TABS */}
       <View className="flex-row bg-[#E5E7EB] rounded-xl p-1 mb-3">
-        <Segment
-          label="Daily"
-          active={activeTab === 'daily'}
-          onPress={() => setActiveTab('daily')}
-        />
-        <Segment
-          label="Weekly"
-          active={activeTab === 'weekly'}
-          onPress={() => setActiveTab('weekly')}
-        />
-        <Segment
-          label="Monthly"
-          active={activeTab === 'monthly'}
-          onPress={() => setActiveTab('monthly')}
-        />
+        <Segment label="Daily" type="daily" />
+        <Segment label="Weekly" type="weekly" />
+        <Segment label="Monthly" type="monthly" />
       </View>
 
       {/* LIST */}
@@ -68,11 +74,11 @@ export default function PenaltyHistory() {
       ) : (
         <FlatList
           data={penalties}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id || item.workerName}
           contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
           ListEmptyComponent={
             <Text className="text-center text-[#9CA3AF] mt-10 text-[13px] font-antigravity-medium">
-              No penalties found
+              No penalties found for this period
             </Text>
           }
           renderItem={({ item }) => (
@@ -102,30 +108,5 @@ export default function PenaltyHistory() {
         />
       )}
     </SafeAreaView>
-  );
-}
-
-/* ---------------- COMPONENTS ---------------- */
-
-function Segment({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-1 py-2 rounded-lg items-center ${active ? 'bg-white shadow-sm' : ''}`}
-    >
-      <Text
-        className={`text-[13px] font-antigravity-bold ${active ? 'text-[#111827]' : 'text-[#6B7280]'}`}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }

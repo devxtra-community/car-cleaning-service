@@ -221,13 +221,13 @@ export default function MyAccountScreen() {
               className="w-[120px] h-[120px] rounded-full border-4 border-white shadow-lg"
             />
             <Pressable
-              className="absolute right-0 bottom-0 w-10 h-10 rounded-full bg-[#3DA2CE] justify-center items-center border-[3px] border-white shadow shadow-[#3DA2CE4C]"
+              className="absolute right-0 bottom-0 w-10 h-10 rounded-full bg-[#3DA2CE] justify-center items-center border-[3px] border-white shadow"
               onPress={showImageOptions}
             >
               <Camera size={18} color="#fff" />
             </Pressable>
           </View>
-          <Text className="mt-3 text-[13px] text-[#6B7280] font-antigravity-medium border-0">
+          <Text className="mt-3 text-[13px] text-[#6B7280] font-antigravity-medium">
             Tap to change photo
           </Text>
         </View>
@@ -236,9 +236,7 @@ export default function MyAccountScreen() {
         <View className="px-5">
           {/* NAME */}
           <View className="mb-5">
-            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
-              Full Name
-            </Text>
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2">Full Name</Text>
             <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
               <User size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
@@ -253,9 +251,9 @@ export default function MyAccountScreen() {
 
           {/* EMAIL */}
           <View className="mb-5">
-            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2">
               Email Address{' '}
-              <Text className="text-[#9CA3AF] text-[11px] font-antigravity-medium border-0">
+              <Text className="text-[#9CA3AF] text-[11px] font-antigravity-medium">
                 (cannot be changed)
               </Text>
             </Text>
@@ -275,9 +273,7 @@ export default function MyAccountScreen() {
 
           {/* PHONE */}
           <View className="mb-5">
-            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
-              Phone Number
-            </Text>
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2">Phone Number</Text>
             <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
               <Phone size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
@@ -293,9 +289,7 @@ export default function MyAccountScreen() {
 
           {/* ADDRESS */}
           <View className="mb-5">
-            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2 border-0">
-              Address
-            </Text>
+            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2">Address</Text>
             <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
               <MapPin size={18} color="#A0A0A0" className="mr-3" />
               <TextInput
@@ -313,7 +307,7 @@ export default function MyAccountScreen() {
         {/* SAVE BUTTON */}
         <View className="px-5 mt-3">
           <Pressable
-            className={`flex-row items-center justify-center py-4 rounded-xl gap-2 shadow-lg shadow-[#3DA2CE4C] ${loading ? 'bg-[#4FB3D9] opacity-60' : 'bg-[#4FB3D9]'}`}
+            className={`flex-row items-center justify-center py-4 rounded-xl gap-2 shadow-lg ${loading ? 'bg-[#4FB3D9] opacity-60' : 'bg-[#4FB3D9]'}`}
             onPress={handleSave}
             disabled={loading}
           >

@@ -26,6 +26,12 @@ export const usePushNotifications = () => {
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   async function registerForPushNotificationsAsync() {
+    if (Constants.appOwnership === 'expo') {
+      console.log(
+        'Push notifications are not supported in Expo Go (SDK 53+). Use a development build.'
+      );
+      return undefined;
+    }
     let token;
 
     if (Platform.OS === 'android') {

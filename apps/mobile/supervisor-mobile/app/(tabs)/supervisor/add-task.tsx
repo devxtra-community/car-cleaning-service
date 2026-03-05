@@ -344,7 +344,7 @@ export default function AddTaskScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
         ListEmptyComponent={
-          <Text className="text-center mt-15 text-base text-[#94A3B8] font-antigravity-medium">
+          <Text className="text-center mt-[60px] text-base text-[#94A3B8] font-antigravity-medium">
             No workers assigned to you
           </Text>
         }
@@ -414,7 +414,7 @@ export default function AddTaskScreen() {
                 className={`flex-1 h-12 rounded-2xl items-center justify-center ${
                   item.status === 'working'
                     ? 'bg-white border border-[#0EA5E9]'
-                    : 'bg-[#0EA5E9] shadow-lg shadow-[#0EA5E94C]'
+                    : 'bg-[#0EA5E9] shadow-lg'
                 }`}
                 onPress={() => handleOpenModal(item, item.status === 'working')}
               >
@@ -531,7 +531,7 @@ export default function AddTaskScreen() {
                       />
                     </View>
                     <View className="flex-1 mb-6">
-                      <Text className="text-[10px] font-antigravity-bold color-[#94A3B8CC] uppercase tracking-widest mb-1.5 ml-1">
+                      <Text className="text-[10px] font-antigravity-bold text-[#94A3B8CC] uppercase tracking-widest mb-1.5 ml-1">
                         Car Type
                       </Text>
                       <Pressable
@@ -560,7 +560,7 @@ export default function AddTaskScreen() {
               <Pressable
                 onPress={handleSubmit}
                 disabled={submitting}
-                className={`h-14 bg-[#0EA5E9] rounded-[20px] items-center justify-center mt-3 shadow-lg shadow-[#0EA5E94C] ${submitting ? 'opacity-70' : ''}`}
+                className={`h-14 bg-[#0EA5E9] rounded-[20px] items-center justify-center mt-3 shadow-lg ${submitting ? 'opacity-70' : ''}`}
               >
                 {submitting ? (
                   <ActivityIndicator color="white" />

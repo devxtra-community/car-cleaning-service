@@ -1,97 +1,184 @@
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Tabs } from 'expo-router';
-import { View, Text, Pressable, Animated, Dimensions } from 'react-native';
-import { PieChart, Home, User } from 'lucide-react-native';
+import { Tabs, Redirect } from 'expo-router';
+import { View, Text, Platform, Dimensions, Pressable, Animated } from 'react-native';
+import { Home, User, PieChart } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import React from 'react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { getAccessToken } from '../../src/tokenStorage';
 
+const ACTIVE = '#ffffff'; // White for active text
+const INACTIVE = '#9ca3af'; // Gray for inactive
 const { width } = Dimensions.get('window');
-const PADDING = 4;
-const CONTAINER_WIDTH = width * 0.94;
-const TAB_WIDTH = (CONTAINER_WIDTH - PADDING * 2) / 3;
+const CONTAINER_WIDTH = width * 0.9;
 
-function CustomTabBar({ state, descriptors: _descriptors, navigation }: BottomTabBarProps) {
-  const [translateX] = useState(() => new Animated.Value(PADDING));
-  const index = state.index;
+function CustomTabBar({ state, _descriptors, navigation }: any) {
+  const tabs = [
+    { name: 'Analytics', icon: <PieChart size={22} />, routeName: 'analytics' },
+    { name: 'Home', icon: <Home size={22} />, routeName: 'index' },
+    { name: 'Profile', icon: <User size={22} />, routeName: 'profile' },
+  ];
+
+  const tabCount = tabs.length;
+  const tabWidth = CONTAINER_WIDTH / tabCount;
+
+  // Find the exact active tab based on the current Expo router state
+  const currentRouteName = state.routes[state.index]?.name;
+  const activeIndex = tabs.findIndex((t) => t.routeName === currentRouteName);
+  const safeActiveIndex = activeIndex === -1 ? 1 : activeIndex; // Fallback to Home
+
+  const [animatedValue] = useState(new Animated.Value(safeActiveIndex * tabWidth));
 
   useEffect(() => {
-    Animated.spring(translateX, {
-      toValue: PADDING + index * TAB_WIDTH,
+    Animated.spring(animatedValue, {
+      toValue: safeActiveIndex * tabWidth,
       useNativeDriver: true,
+      friction: 9,
+      tension: 60,
     }).start();
-  }, [index, translateX]);
+  }, [safeActiveIndex, tabWidth, animatedValue]);
 
   return (
-    <View className="absolute bottom-4 w-full items-center">
-      <View
-        className="w-[94%] h-[72px] bg-white rounded-[36px] flex-row items-center overflow-hidden"
-        style={{ padding: PADDING }}
+    <View className="absolute bottom-6 w-full items-center" pointerEvents="box-none">
+      {/* @ts-expect-error: BlurView intensity type mismatch or missing props in some environments */}
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 30 : 100}
+        tint="light"
+        style={
+          {
+            width: CONTAINER_WIDTH,
+            height: 60,
+            overflow: 'hidden',
+            borderRadius: 9999,
+            elevation: 20,
+          } as any
+        }
       >
-        <Animated.View
-          className="absolute bg-[#1B86C6] rounded-[32px]"
-          style={{
-            width: TAB_WIDTH,
-            height: 72 - PADDING * 2,
-            top: PADDING,
-            transform: [{ translateX }],
-          }}
+        {/* @ts-expect-error: LinearGradient types can be tricky with NativeWind or version mismatches */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+          style={{ position: 'absolute', width: '100%', height: '100%' } as any}
         />
-
-        <Pressable
-          className="flex-1 items-center justify-center gap-1 z-10"
-          onPress={() => navigation.navigate('analytics')}
-        >
-          <PieChart size={22} color={index === 0 ? '#fff' : '#9ca3af'} />
-          <Text
-            className={`text-[10px] font-antigravity-medium ${index === 0 ? 'text-white' : 'text-[#9ca3af]'}`}
+        <View className="flex-row items-center w-full h-full relative">
+          {/* Active Pill */}
+          <Animated.View
+            style={{
+              width: tabWidth,
+              height: 48,
+              paddingHorizontal: 2,
+              transform: [{ translateX: animatedValue }],
+              position: 'absolute',
+              left: 0,
+            }}
           >
-            Analytics
-          </Text>
-        </Pressable>
+            {/* @ts-expect-error: LinearGradient styling and types mismatch with Animated.View */}
+            <LinearGradient
+              colors={['#0EA5E9', '#0284C7']}
+              style={{ width: '100%', height: '100%', borderRadius: 24, elevation: 10 } as any}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
+          </Animated.View>
 
-        <Pressable
-          className="flex-1 items-center justify-center gap-1 z-10"
-          onPress={() => navigation.navigate('index')}
-        >
-          <Home size={22} color={index === 1 ? '#fff' : '#9ca3af'} />
-          <Text
-            className={`text-[10px] font-antigravity-medium ${index === 1 ? 'text-white' : 'text-[#9ca3af]'}`}
-          >
-            Home
-          </Text>
-        </Pressable>
+          {/* Tabs */}
+          {tabs.map((tab, idx) => {
+            const isFocused = safeActiveIndex === idx;
 
-        <Pressable
-          className="flex-1 items-center justify-center gap-1 z-10"
-          onPress={() => navigation.navigate('profile')}
-        >
-          <User size={22} color={index === 2 ? '#fff' : '#9ca3af'} />
-          <Text
-            className={`text-[10px] font-antigravity-medium ${index === 2 ? 'text-white' : 'text-[#9ca3af]'}`}
-          >
-            Profile
-          </Text>
-        </Pressable>
-      </View>
+            const onPress = () => {
+              const route = state.routes.find(
+                (r: { name: string; key: string }) => r.name === tab.routeName
+              );
+              if (route) {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(tab.routeName);
+                }
+              } else {
+                navigation.navigate(tab.routeName);
+              }
+            };
+
+            return (
+              <TabButton
+                key={tab.routeName}
+                label={tab.name}
+                icon={tab.icon}
+                active={isFocused}
+                onPress={onPress}
+              />
+            );
+          })}
+        </View>
+      </BlurView>
     </View>
+  );
+}
+
+function TabButton({
+  label,
+  icon,
+  active,
+  onPress,
+}: {
+  label: string;
+  icon: React.ReactElement;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} className="flex-1 h-full items-center justify-center z-10">
+      <View className="items-center justify-center gap-[4px]">
+        {React.cloneElement(icon, {
+          color: active ? ACTIVE : INACTIVE,
+          strokeWidth: active ? 2.5 : 2,
+        } as any)}
+        <Text
+          className="text-[10px] font-bold tracking-widest uppercase"
+          style={{ color: active ? ACTIVE : INACTIVE }}
+        >
+          {label}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
 export default function TabLayout() {
   const { expoPushToken, sendTokenToBackend } = usePushNotifications();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const registerToken = async () => {
+    const checkAuthAndRegister = async () => {
+      const token = await getAccessToken();
+      if (!token) {
+        console.log(' [AUTH] No token found in TabLayout, redirecting...');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
+
       if (expoPushToken) {
-        const token = await getAccessToken();
-        if (token) {
-          await sendTokenToBackend(expoPushToken, token);
-        }
+        console.log(' [PUSH] Registering token from TabLayout...');
+        await sendTokenToBackend(expoPushToken, token);
       }
     };
-    registerToken();
+    checkAuthAndRegister();
   }, [expoPushToken, sendTokenToBackend]);
+
+  if (isAuthenticated === false) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
+  // Still checking auth
+  if (isAuthenticated === null) {
+    return null;
+  }
 
   return (
     <Tabs
@@ -99,7 +186,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: { display: 'none' },
       }}
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props: any) => <CustomTabBar {...props} />}
     >
       <Tabs.Screen name="analytics" />
       <Tabs.Screen name="index" />

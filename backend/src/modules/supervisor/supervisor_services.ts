@@ -64,3 +64,31 @@ export const supervisorReportService = async (supervisorId: string, period: stri
 
   return result.rows;
 };
+
+export const getSupervisorDashboardSummaryService = async (supervisorId: string) => {
+  const result = await pool.query(
+    `
+    SELECT 
+      COALESCE(SUM(t.amount_charged), 0)::float as total_earnings,
+      COUNT(t.id)::int as total_jobs,
+      COALESCE(AVG(r.rating), 0)::float as avg_rating,
+      (
+        SELECT COUNT(DISTINCT c.id)::int
+        FROM cleaners c
+        WHERE c.supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
+          AND EXISTS (
+            SELECT 1 FROM tasks t2 
+            WHERE t2.cleaner_id = c.id AND t2.status != 'completed'
+          )
+      ) as live_workers
+    FROM tasks t
+    JOIN cleaners c ON c.id = t.cleaner_id
+    JOIN supervisors s ON c.supervisor_id = s.id
+    LEFT JOIN reviews r ON r.task_id = t.id
+    WHERE s.user_id = $1
+      AND t.status = 'completed'
+    `,
+    [supervisorId]
+  );
+  return result.rows[0];
+};

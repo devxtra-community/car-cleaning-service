@@ -10,8 +10,8 @@ import {
   TextInput,
   Alert,
   Image,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import {
   User,
@@ -168,18 +168,18 @@ export default function LiveWorker() {
         folder: 'tasks',
       });
 
-      const { url, key } = presignRes.data;
+      const { uploadUrl, fileUrl } = presignRes.data;
 
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      await fetch(url, {
+      await fetch(uploadUrl, {
         method: 'PUT',
         body: blob,
         headers: { 'Content-Type': 'image/jpeg' },
       });
 
-      setFormData({ ...formData, car_image_url: key });
+      setFormData({ ...formData, car_image_url: fileUrl });
     } catch (err) {
       console.error('Upload failed', err);
       Alert.alert('Error', 'Failed to upload image');
@@ -235,7 +235,7 @@ export default function LiveWorker() {
       } else {
         setError('Failed to fetch workers');
       }
-    } catch (_err) {
+    } catch {
       setError('Connection error');
     } finally {
       setLoading(false);
@@ -251,7 +251,7 @@ export default function LiveWorker() {
     return (
       <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
         <ActivityIndicator size="large" color="#3DA2CE" />
-        <Text className="mt-3 text-sm text-[#6B7280] font-antigravity-medium border-0">
+        <Text className="mt-3 text-sm text-[#6B7280] font-antigravity-medium">
           Loading workers...
         </Text>
       </View>
@@ -261,7 +261,7 @@ export default function LiveWorker() {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
-        <Text className="text-sm text-[#EF4444] text-center px-5 font-antigravity-medium border-0">
+        <Text className="text-sm text-[#EF4444] text-center px-5 font-antigravity-medium">
           {error}
         </Text>
       </View>
@@ -269,11 +269,11 @@ export default function LiveWorker() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F7FA] p-4 text-0">
-      <View className="flex-row justify-between items-center mb-4 text-0">
-        <Text className="text-xl font-antigravity-bold text-[#2C2C2C] border-0">Worker Status</Text>
+    <SafeAreaView className="flex-1 bg-[#F5F7FA] p-4">
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-xl font-antigravity-bold text-[#2C2C2C]">Worker Status</Text>
         <TouchableOpacity className="px-3 py-1.5 bg-[#E8F4F8] rounded-lg" onPress={loadWorkers}>
-          <Text className="text-[#3DA2CE] text-[13px] font-antigravity-bold border-0">Refresh</Text>
+          <Text className="text-[#3DA2CE] text-[13px] font-antigravity-bold">Refresh</Text>
         </TouchableOpacity>
       </View>
 
@@ -282,7 +282,7 @@ export default function LiveWorker() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 40 }}
         ListEmptyComponent={
-          <Text className="text-center mt-10 text-[#9CA3AF] font-antigravity-medium border-0">
+          <Text className="text-center mt-10 text-[#9CA3AF] font-antigravity-medium">
             No workers assigned to you
           </Text>
         }
@@ -322,7 +322,7 @@ export default function LiveWorker() {
 
             {item.status === 'working' && (
               <View className="bg-[#E8F4F8] px-2 py-1 rounded">
-                <Text className="text-[10px] color-[#3DA2CE] font-antigravity-bold">View Task</Text>
+                <Text className="text-[10px] text-[#3DA2CE] font-antigravity-bold">View Task</Text>
               </View>
             )}
           </Pressable>
@@ -346,7 +346,7 @@ export default function LiveWorker() {
 
             <ScrollView contentContainerStyle={{ padding: 20 }}>
               <View className="items-center mb-6">
-                <View className="w-15 h-15 rounded-full bg-[#E8F4F8] justify-center items-center mb-3">
+                <View className="w-[60px] h-[60px] rounded-full bg-[#E8F4F8] justify-center items-center mb-3">
                   <User size={30} color="#3DA2CE" />
                 </View>
                 <Text className="text-lg font-antigravity-bold text-[#2C2C2C]">
@@ -406,7 +406,7 @@ export default function LiveWorker() {
               ) : (
                 <View className="items-center py-6">
                   <Clock size={40} color="#9CA3AF" className="mb-2.5" />
-                  <Text className="text-sm text-[#9CA3AF] font-antigravity-medium border-0">
+                  <Text className="text-sm text-[#9CA3AF] font-antigravity-medium">
                     No active task at the moment
                   </Text>
                 </View>
@@ -418,7 +418,7 @@ export default function LiveWorker() {
                   {isUpdating ? 'Update Task Details' : 'Assign New Task'}
                 </Text>
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
                   Owner Name
                 </Text>
                 <TextInput
@@ -428,7 +428,7 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, owner_name: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
                   Owner Phone
                 </Text>
                 <TextInput
@@ -439,7 +439,7 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, owner_phone: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
                   Car Number
                 </Text>
                 <TextInput
@@ -450,9 +450,7 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, car_number: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
-                  Car Model
-                </Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Model</Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: Honda City"
@@ -460,9 +458,7 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, car_model: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
-                  Car Type
-                </Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Type</Text>
                 <Pressable
                   className="flex-row items-center justify-between bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 mb-4"
                   onPress={() => setShowTypePicker(true)}
@@ -475,7 +471,7 @@ export default function LiveWorker() {
                   <ChevronDown size={20} color="#6B7280" />
                 </Pressable>
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
                   Car Location (Optional)
                 </Text>
                 <View className="flex-row items-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 mb-4">
@@ -488,9 +484,7 @@ export default function LiveWorker() {
                   />
                 </View>
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
-                  Car Color
-                </Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Color</Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: White"
@@ -498,9 +492,7 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, car_color: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
-                  Car Photo
-                </Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Photo</Text>
                 <Pressable
                   className="bg-[#F9FAFB] border border-[#E5E7EB] border-dashed rounded-xl p-4 mb-4 items-center justify-center min-h-[100px]"
                   onPress={showImageOptions}
@@ -524,14 +516,14 @@ export default function LiveWorker() {
                   ) : (
                     <>
                       <ImageIcon size={28} color="#3DA2CE" />
-                      <Text className="text-[#3DA2CE] text-sm font-antigravity-bold mt-2 border-0">
+                      <Text className="text-[#3DA2CE] text-sm font-antigravity-bold mt-2">
                         Upload Car Photo
                       </Text>
                     </>
                   )}
                 </Pressable>
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2 border-0">
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
                   Task Amount (₹)
                 </Text>
                 <TextInput
@@ -543,7 +535,7 @@ export default function LiveWorker() {
                 />
 
                 <TouchableOpacity
-                  className={`py-4 rounded-xl items-center shadow-lg shadow-[#3DA2CE4C] bg-[#3DA2CE] ${submitting ? 'opacity-70' : ''}`}
+                  className={`py-4 rounded-xl items-center shadow-lg bg-[#3DA2CE] ${submitting ? 'opacity-70' : ''}`}
                   onPress={handleSubmit}
                   disabled={submitting}
                 >

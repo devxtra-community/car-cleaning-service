@@ -21,6 +21,8 @@ import reviewRoutes from './modules/feedback/review_routes';
 
 import s3Routes from './routes/s3';
 import penaltiesRoutes from './modules/penalties/penalties_routes';
+import userRoutes from './modules/users/user_Routes';
+import supervisorRoutes from './modules/supervisor/supervisor_routes';
 
 const app = express();
 
@@ -61,6 +63,10 @@ app.use('/workers', workersRoutes);
 
 app.use('/api/vehicle', vechicleRoutes);
 app.use('/api/buildings', buildingsRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/supervisor', supervisorRoutes);
+console.log('User routes registered at /api/users');
+console.log('Supervisor routes registered at /api/supervisor');
 
 app.use('/tasks', taskRoutes);
 app.use('/salary', salaryRoute);
@@ -71,6 +77,15 @@ console.log('Penalties route registered at /penalties (NORMAL FLOW)');
 
 app.use('/analytics', analyticRoutes);
 app.use('/api/reviews', reviewRoutes);
+
+// Catch-all for unmatched routes to debug 404s
+app.use((req, res, _next) => {
+  console.log(`[404 NOT MATCHED] ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+  });
+});
 
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
