@@ -20,12 +20,16 @@ function globalErrorHandler(err, req, res, _next) {
         message = err.message;
         code = err.code;
     }
+    else if (err instanceof Error) {
+        message = err.message;
+    }
     logger_1.logger.error('Unhandled error', {
         path: req.path,
         method: req.method,
         statusCode,
         code,
-        error: err,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
     });
     res.status(statusCode).json({
         success: false,

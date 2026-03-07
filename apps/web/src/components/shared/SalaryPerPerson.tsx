@@ -11,6 +11,7 @@ interface UserSalary {
   final_salary: number;
   status: string;
   created_at: string;
+  role: string;
 }
 
 const SalaryPerPerson = () => {
@@ -41,6 +42,8 @@ const SalaryPerPerson = () => {
     fetch();
   }, [userId]);
 
+  const userRole = salaries.length > 0 ? salaries[0].role : 'cleaner';
+
   // Calculate totals
   const totalBase = salaries.reduce((sum, s) => sum + Number(s.base_salary || 0), 0);
   const totalIncentives = salaries.reduce((sum, s) => sum + Number(s.incentive_amount || 0), 0);
@@ -70,10 +73,14 @@ const SalaryPerPerson = () => {
     <div className="space-y-6">
       {/* Summary Cards */}
       {salaries.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${userRole === 'cleaner' ? 'lg:grid-cols-4' : 'lg:grid-cols-2'} gap-4`}>
           <SummaryCard title="Total Base Salary" value={totalBase} color="blue" />
-          <SummaryCard title="Total Incentives" value={totalIncentives} color="green" prefix="+" />
-          <SummaryCard title="Total Penalties" value={totalPenalties} color="red" prefix="-" />
+          {userRole === 'cleaner' && (
+            <>
+              <SummaryCard title="Total Incentives" value={totalIncentives} color="green" prefix="+" />
+              <SummaryCard title="Total Penalties" value={totalPenalties} color="red" prefix="-" />
+            </>
+          )}
           <SummaryCard title="Total Earnings" value={totalFinal} color="purple" />
         </div>
       )}
@@ -93,8 +100,12 @@ const SalaryPerPerson = () => {
               <tr>
                 <th className="p-4 text-left font-semibold text-gray-700">Month</th>
                 <th className="p-4 text-right font-semibold text-gray-700">Base Salary</th>
-                <th className="p-4 text-right font-semibold text-gray-700">Incentives</th>
-                <th className="p-4 text-right font-semibold text-gray-700">Penalties</th>
+                {userRole === 'cleaner' && (
+                  <>
+                    <th className="p-4 text-right font-semibold text-gray-700">Incentives</th>
+                    <th className="p-4 text-right font-semibold text-gray-700">Penalties</th>
+                  </>
+                )}
                 <th className="p-4 text-right font-semibold text-gray-700">Final Salary</th>
                 <th className="p-4 text-center font-semibold text-gray-700">Status</th>
                 <th className="p-4 text-center font-semibold text-gray-700">Date</th>
@@ -121,28 +132,23 @@ const SalaryPerPerson = () => {
                     </td>
                     <td className="p-4 text-right">
                       <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md font-medium">
-                        ₹
-                        {Number(s.base_salary).toLocaleString('en-IN', {
-                          minimumFractionDigits: 2,
-                        })}
+                        ₹{Number(s.base_salary).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
-                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-md font-medium">
-                        +₹
-                        {Number(s.incentive_amount).toLocaleString('en-IN', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <span className="bg-red-100 text-red-700 px-3 py-1 rounded-md font-medium">
-                        -₹
-                        {Number(s.penalty_amount).toLocaleString('en-IN', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </span>
-                    </td>
+                    {userRole === 'cleaner' && (
+                      <>
+                        <td className="p-4 text-right">
+                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-md font-medium">
+                            +₹{Number(s.incentive_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <span className="bg-red-100 text-red-700 px-3 py-1 rounded-md font-medium">
+                            -₹{Number(s.penalty_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                      </>
+                    )}
                     <td className="p-4 text-right">
                       <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md font-semibold">
                         ₹
@@ -153,13 +159,12 @@ const SalaryPerPerson = () => {
                     </td>
                     <td className="p-4 text-center">
                       <span
-                        className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${
-                          s.status === 'finalized'
+                        className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${s.status === 'finalized'
                             ? 'bg-green-100 text-green-700'
                             : s.status === 'paid'
                               ? 'bg-blue-100 text-blue-700'
                               : 'bg-yellow-100 text-yellow-700'
-                        }`}
+                          }`}
                       >
                         {s.status === 'finalized' && '✓ '}
                         {s.status === 'paid' && '💰 '}
@@ -181,12 +186,16 @@ const SalaryPerPerson = () => {
                   <td className="p-4 text-right text-gray-800">
                     ₹{totalBase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className="p-4 text-right text-green-700">
-                    +₹{totalIncentives.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="p-4 text-right text-red-700">
-                    -₹{totalPenalties.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </td>
+                  {userRole === 'cleaner' && (
+                    <>
+                      <td className="p-4 text-right text-green-700">
+                        +₹{totalIncentives.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-4 text-right text-red-700">
+                        -₹{totalPenalties.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                    </>
+                  )}
                   <td className="p-4 text-right text-blue-700 text-base">
                     ₹{totalFinal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>

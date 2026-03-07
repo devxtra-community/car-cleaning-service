@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getReviewByTask = exports.getReviewsByWorker = exports.createReview = void 0;
+exports.getMyReviews = exports.getReviewByTask = exports.getReviewsByWorker = exports.createReview = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
 /* ================= CREATE REVIEW ================= */
 const createReview = async (req, res) => {
@@ -87,3 +87,29 @@ const getReviewByTask = async (req, res) => {
     }
 };
 exports.getReviewByTask = getReviewByTask;
+/* ================= GET MY REVIEWS (FOR AUTHENTICATED WORKER) ================= */
+const getMyReviews = async (req, res) => {
+    try {
+        const workerId = req.user?.userId;
+        if (!workerId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized: No worker ID in token' });
+        }
+        const result = await connectDatabase_1.pool.query(`
+      SELECT 
+        r.*,
+        t.car_model,
+        t.car_type,
+        t.owner_name
+      FROM reviews r
+      LEFT JOIN tasks t ON r.task_id = t.id
+      WHERE r.cleaner_id = $1
+      ORDER BY r.created_at DESC
+      `, [workerId]);
+        return res.json({ success: true, data: result.rows });
+    }
+    catch (err) {
+        console.error('GET MY REVIEWS ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch your reviews' });
+    }
+};
+exports.getMyReviews = getMyReviews;

@@ -33,11 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteBuilding = exports.getBuildingById = exports.getAllBuildings = exports.createBuilding = void 0;
+exports.deleteBuilding = exports.updateBuilding = exports.getBuildingDetails = exports.getBuildingById = exports.getAllBuildingsWithStats = exports.getAllBuildings = exports.createBuilding = void 0;
 const buildingService = __importStar(require("./buildings_service"));
 const createBuilding = async (req, res) => {
     try {
-        const { building_name, latitude, longitude, radius, floors } = req.body;
+        const { building_name, location, latitude, longitude, radius, floors } = req.body;
         if (!building_name) {
             return res.status(400).json({
                 success: false,
@@ -58,6 +58,7 @@ const createBuilding = async (req, res) => {
         }
         const building = await buildingService.createBuilding({
             building_name,
+            location,
             latitude,
             longitude,
             radius,
@@ -96,6 +97,24 @@ const getAllBuildings = async (req, res) => {
     }
 };
 exports.getAllBuildings = getAllBuildings;
+// Get all buildings with statistics (for main page)
+const getAllBuildingsWithStats = async (req, res) => {
+    try {
+        const buildings = await buildingService.getAllBuildingsWithStats();
+        return res.status(200).json({
+            success: true,
+            data: buildings,
+        });
+    }
+    catch (error) {
+        console.error('Error fetching buildings with stats:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch buildings',
+        });
+    }
+};
+exports.getAllBuildingsWithStats = getAllBuildingsWithStats;
 // Get building by ID with floors
 const getBuildingById = async (req, res) => {
     try {
@@ -121,6 +140,64 @@ const getBuildingById = async (req, res) => {
     }
 };
 exports.getBuildingById = getBuildingById;
+// Get building details with comprehensive statistics
+const getBuildingDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const building = await buildingService.getBuildingDetails(id);
+        if (!building) {
+            return res.status(404).json({
+                success: false,
+                message: 'Building not found',
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            data: building,
+        });
+    }
+    catch (error) {
+        console.error('Error fetching building details:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch building details',
+        });
+    }
+};
+exports.getBuildingDetails = getBuildingDetails;
+// Update building
+const updateBuilding = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { building_name, location, latitude, longitude, radius } = req.body;
+        const building = await buildingService.updateBuilding(id, {
+            building_name,
+            location,
+            latitude,
+            longitude,
+            radius,
+        });
+        if (!building) {
+            return res.status(404).json({
+                success: false,
+                message: 'Building not found',
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Building updated successfully',
+            data: building,
+        });
+    }
+    catch (error) {
+        console.error('Error updating building:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update building',
+        });
+    }
+};
+exports.updateBuilding = updateBuilding;
 // Delete building (cascades to floors in database)
 const deleteBuilding = async (req, res) => {
     try {

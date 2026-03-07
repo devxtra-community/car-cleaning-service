@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.completeTaskController = exports.GetTaskpending = exports.createTaskController = void 0;
+exports.getSupervisorCollections = exports.verifyTaskController = exports.getSupervisorCompletedTasks = exports.completeTaskController = exports.GetTaskpending = exports.createTaskController = void 0;
 const tasks_service_1 = require("./tasks_service");
 const connectDatabase_1 = require("../../database/connectDatabase");
 /* ================= CREATE TASK ================= */
@@ -201,3 +201,98 @@ const completeTaskController = async (req, res) => {
     }
 };
 exports.completeTaskController = completeTaskController;
+/* ================= SUPERVISOR: GET COMPLETED TASKS ================= */
+const getSupervisorCompletedTasks = async (req, res) => {
+    try {
+        const supervisorId = req.user?.userId;
+        if (!supervisorId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const result = await connectDatabase_1.pool.query(`
+      SELECT 
+        t.*,
+        u.full_name as worker_name,
+        v.wash_time,
+        v.type as vehicle_type
+      FROM tasks t
+      JOIN cleaners c ON t.cleaner_id = c.id
+      JOIN users u ON c.user_id = u.id
+      JOIN supervisors s ON c.supervisor_id = s.id
+      LEFT JOIN vehicles v ON t.car_type = v.type
+      WHERE s.user_id = $1 
+        AND t.status = 'completed'
+      ORDER BY t.completed_at DESC
+      `, [supervisorId]);
+        return res.json(result.rows);
+    }
+    catch (err) {
+        console.error('GET SUPERVISOR COMPLETED TASKS ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch completed tasks' });
+    }
+};
+exports.getSupervisorCompletedTasks = getSupervisorCompletedTasks;
+/* ================= SUPERVISOR: VERIFY TASK ================= */
+const verifyTaskController = async (req, res) => {
+    try {
+        const supervisorId = req.user?.userId;
+        const taskId = req.params.id;
+        const { status, remarks } = req.body;
+        if (!supervisorId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        // Verify supervisor owns this task's cleaner
+        const taskCheck = await connectDatabase_1.pool.query(`
+      SELECT t.id 
+      FROM tasks t
+      JOIN cleaners c ON t.cleaner_id = c.id
+      JOIN supervisors s ON c.supervisor_id = s.id
+      WHERE t.id = $1 AND s.user_id = $2
+      `, [taskId, supervisorId]);
+        if (!taskCheck.rows.length) {
+            return res.status(404).json({ success: false, message: 'Task not found or unauthorized' });
+        }
+        const result = await connectDatabase_1.pool.query(`
+      UPDATE tasks
+      SET 
+        status = $1,
+        supervisor_remarks = $2,
+        verified_at = NOW()
+      WHERE id = $3
+      RETURNING *
+      `, [status || 'verified', remarks || null, taskId]);
+        return res.json({ success: true, data: result.rows[0] });
+    }
+    catch (err) {
+        console.error('VERIFY TASK ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to verify task' });
+    }
+};
+exports.verifyTaskController = verifyTaskController;
+/* ================= SUPERVISOR: GET COLLECTIONS ================= */
+const getSupervisorCollections = async (req, res) => {
+    try {
+        const supervisorId = req.user?.userId;
+        if (!supervisorId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const result = await connectDatabase_1.pool.query(`
+      SELECT 
+        SUM(final_price) as total_collected,
+        payment_method,
+        COUNT(*) as task_count
+      FROM tasks t
+      JOIN cleaners c ON t.cleaner_id = c.id
+      JOIN supervisors s ON c.supervisor_id = s.id
+      WHERE s.user_id = $1 
+        AND t.status = 'completed'
+        AND DATE(t.completed_at) = CURRENT_DATE
+      GROUP BY payment_method
+      `, [supervisorId]);
+        return res.json({ success: true, data: result.rows });
+    }
+    catch (err) {
+        console.error('GET SUPERVISOR COLLECTIONS ERROR:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch collections' });
+    }
+};
+exports.getSupervisorCollections = getSupervisorCollections;

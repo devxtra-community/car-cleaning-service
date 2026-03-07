@@ -1,8 +1,9 @@
+# CD - Deploy to EC2 (Verified for ec2-user)
 name: CD - Deploy to EC2
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "yasir"]
 
 jobs:
   deploy:
@@ -15,24 +16,35 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
 
           script: |
             set -e
             cd /var/www/car-cleaning/car-cleaning-service
-            git pull origin main
+            git fetch origin yasir
+            git reset --hard origin/yasir
 
-            # Install root dependencies (for workspaces)
-            npm install
+            # Use npx pnpm to avoid PATH issues
+            npx pnpm install
 
             cd backend
-            npm install
-            npm run build
+            npx pnpm run build
 
-            # Check if process exists to decide between start or reload
+            # Pass production env vars (assuming they are in .env or system)
+            # Restart or reload using pm2
             if pm2 describe car-cleaning-api > /dev/null; then
               pm2 reload car-cleaning-api
             else
               pm2 start dist/index.js --name car-cleaning-api
             fi
             
-            pm2 save
+            # Diagnostic: Check if something is listening on 3033
+            sudo netstat -tuln | grep 3033 || echo "Nothing listening on 3033"
+            
+            # Diagnostic: Check OS-level firewalls
+            sudo ufw status || echo "ufw not found"
+            sudo iptables -L -n | grep 3033 || echo "No iptables rule for 3033"
+
+            # Diagnostic: Check PM2 status and logs
+            pm2 status
+            pm2 logs car-cleaning-api --lines 50 --no-daemon & sleep 10 && kill $!

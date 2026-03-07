@@ -24,6 +24,12 @@ export default function PaymentSummary() {
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
 
+  // Reset state when a new job is loaded (since tab screens preserve state)
+  React.useEffect(() => {
+    setCompleted(false);
+    setLoading(false);
+  }, [jobId]);
+
   // QR code data - Web URL for review page
   const qrData = `http://10.10.3.21:5173/review/${jobId}`;
 
@@ -65,7 +71,7 @@ export default function PaymentSummary() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       <View className="flex-1" style={{ paddingTop: insets.top }}>
@@ -88,7 +94,7 @@ export default function PaymentSummary() {
           <View className="clay-card p-6 mb-6 bg-white relative overflow-hidden">
             <LinearGradient
               colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.4)']}
-              className="absolute inset-0"
+              style={{ position: 'absolute', width: '100%', height: '100%' }}
             />
             <View className="flex-row justify-between items-center mb-5 pb-5 border-b border-gray-100">
               <Text className="font-label uppercase tracking-wide text-clay-secondary/80 text-[10px]">
@@ -131,9 +137,8 @@ export default function PaymentSummary() {
 
           {/* COMPLETE JOB BUTTON */}
           <Pressable
-            className={`h-[64px] rounded-[24px] justify-center items-center mb-8 shadow-lg shadow-blue-200 clay-button bg-[#0EA5E9] ${
-              loading || completed ? 'opacity-70' : ''
-            }`}
+            className={`h-[64px] rounded-[24px] justify-center items-center mb-8 shadow-lg shadow-blue-200 clay-button bg-[#0EA5E9] ${loading || completed ? 'opacity-70' : ''
+              }`}
             disabled={loading || completed}
             onPress={handleCompleteJob}
           >

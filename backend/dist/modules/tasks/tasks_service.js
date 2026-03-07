@@ -3,71 +3,45 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkMilestoneIncentives = exports.updateDailyWorkRecord = exports.createTaskService = void 0;
 // src/services/tasks/tasks_service.ts
 const connectDatabase_1 = require("../../database/connectDatabase");
-// Calculate distance between two GPS coordinates (Haversine formula)
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in meters
-};
 const createTaskService = async (data) => {
-    // GPS validation if coordinates provided
-    if (data.latitude !== undefined && data.longitude !== undefined) {
-        // Get worker's building location
-        const buildingQuery = `
-      SELECT b.latitude, b.longitude, b.radius, b.building_name
-      FROM cleaners c
-      JOIN buildings b ON c.building_id = b.id
-      WHERE c.id = $1
+    const client = await connectDatabase_1.pool.connect();
+    try {
+        await client.query('BEGIN');
+        // 2. Insert Task (Merged logic)
+        const query = `
+      INSERT INTO tasks (
+        owner_name, owner_phone, car_number, car_model, car_type, car_color, 
+        car_image_url, cleaner_id, task_amount, amount_charged, status,
+        latitude, longitude
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11, $12)
+      RETURNING *;
     `;
-        const buildingResult = await connectDatabase_1.pool.query(buildingQuery, [data.cleaner_id]);
-        if (buildingResult.rows.length === 0) {
-            throw new Error('No building assigned to worker');
-        }
-        const building = buildingResult.rows[0];
-        if (!building.latitude || !building.longitude) {
-            throw new Error('Building does not have GPS coordinates set');
-        }
-        // Calculate distance
-        const distance = calculateDistance(building.latitude, building.longitude, data.latitude, data.longitude);
-        // Check if within radius (default 100m)
-        const allowedRadius = building.radius || 100;
-        if (distance > allowedRadius) {
-            throw new Error();
-            // You must be within ${allowedRadius}m of ${building.building_name} to create tasks. Current distance: ${Math.round(distance)}m
-        }
+        const values = [
+            data.owner_name,
+            data.owner_phone,
+            data.car_number,
+            data.car_model,
+            data.car_type,
+            data.car_color,
+            data.car_image_url,
+            data.cleaner_id,
+            data.task_amount || 0,
+            data.amount_charged || data.task_amount || 0, // Fallback to task_amount if amount_charged is missing
+            data.latitude || null,
+            data.longitude || null,
+        ];
+        const result = await client.query(query, values);
+        await client.query('COMMIT');
+        return result.rows[0];
     }
-    const result = await connectDatabase_1.pool.query(`
-    INSERT INTO tasks (
-      owner_name,
-      owner_phone,
-      car_number,
-      car_model,
-      car_type,
-      car_color,
-      car_image_url,
-      cleaner_id,
-      task_amount
-    )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-    RETURNING *
-    `, [
-        data.owner_name,
-        data.owner_phone,
-        data.car_number,
-        data.car_model,
-        data.car_type,
-        data.car_color,
-        data.car_image_url,
-        data.cleaner_id,
-        data.task_amount,
-    ]);
-    return result.rows[0];
+    catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    }
+    finally {
+        client.release();
+    }
 };
 exports.createTaskService = createTaskService;
 // src/modules/tasks/tasks_service.ts

@@ -9,6 +9,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,9 +27,11 @@ import {
   Banknote,
   FileWarning,
   Phone,
+  Star,
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import * as Location from 'expo-location';
 import api from '../../src/api/api';
 
@@ -119,10 +122,11 @@ const JobDetailRow = ({
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [worker, setWorker] = useState({ name: '', jobsDone: 0, totalRevenue: 0 });
-  const [supervisor, setSupervisor] = useState({ name: '', location: '', jobsDoneToday: 0 });
+  const [supervisor, setSupervisor] = useState({ name: '', location: '', jobsDoneToday: 0, phone: '' });
   const [refreshing, setRefreshing] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [workerInfo, setWorkerInfo] = useState<WorkerInfo | null>(null);
@@ -139,9 +143,10 @@ export default function HomeScreen() {
           totalRevenue: res.data.period?.revenue || 0,
         });
         setSupervisor({
-          name: res.data.supervisor?.name || 'Not assigned',
+          name: res.data.supervisor?.name || t('profile.not_assigned'),
           location: res.data.supervisor?.location || 'N/A',
           jobsDoneToday: res.data.period?.jobs || 0,
+          phone: res.data.supervisor?.phone || '',
         });
       }
     } catch (e) {
@@ -193,14 +198,14 @@ export default function HomeScreen() {
         longitude: location.coords.longitude,
       });
       if (res.data && res.data.success) {
-        Alert.alert('Success', 'Attendance marked successfully!');
+        Alert.alert(t('common.success'), t('attendance.success_mark'));
         setShowAttendanceModal(false);
       }
     } catch (error: unknown) {
       console.error('Mark attendance error:', error);
       const err = error as { response?: { data?: { message?: string } } };
-      const message = err.response?.data?.message || 'Failed to mark attendance';
-      Alert.alert('Error', message);
+      const message = err.response?.data?.message || t('attendance.failed_mark');
+      Alert.alert(t('common.error'), message);
     } finally {
       setIsMarkingAttendance(false);
     }
@@ -220,10 +225,9 @@ export default function HomeScreen() {
       return;
     }
     const updateTimer = () => {
-      // Parse created_at. It might be a string or a Date object.
-      // If it's a string from Postgres, it might be in UTC or local time.
-      // The debug script will confirming this, but usually new Date(string) works if ISO format.
-      const createdAt = new Date(activeJob.created_at!).getTime();
+      // Ensure the timestamp parses successfully on iOS/Safari by cleaning it up if needed.
+      const dateString = activeJob.created_at!.replace(' ', 'T');
+      const createdAt = new Date(dateString).getTime();
 
       // wash_time is in minutes
       const washTimeMs = activeJob.wash_time! * 60 * 1000;
@@ -231,10 +235,8 @@ export default function HomeScreen() {
       const now = Date.now();
       const remaining = endTime - now;
 
-      // Debugging logs (can// colors removed later)
-      // console.log('Timer Debug:', { createdAt, washTimeMs, endTime, now, remaining });
-
-      if (remaining <= 0) {
+      // Stop at 0 instead of going negative
+      if (Number.isNaN(remaining) || remaining <= 0) {
         setTimeRemaining(0);
       } else {
         setTimeRemaining(Math.floor(remaining / 1000));
@@ -247,9 +249,11 @@ export default function HomeScreen() {
   }, [activeJob]);
 
   const formatTime = (seconds: number | null): string => {
-    if (seconds === null || seconds <= 0) return '00:00';
+    if (seconds === null || Number.isNaN(seconds) || seconds <= 0) return '00:00';
+
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
+
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
@@ -264,7 +268,7 @@ export default function HomeScreen() {
       {/* Background Gradient for overall soft feel */}
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       <ScrollView
@@ -279,16 +283,15 @@ export default function HomeScreen() {
         <BlurView
           intensity={20}
           tint="light"
-          className="rounded-b-[40px] overflow-hidden"
-          style={{ paddingTop: insets.top + 10, paddingBottom: 30 }}
+          style={{ borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: 'hidden', paddingTop: insets.top + 10, paddingBottom: 30 }}
         >
           <View className="px-6 flex-row justify-between items-center mb-6">
             <View>
               <Text className="font-label uppercase tracking-[2.5px] text-clay-secondary mb-1">
-                Field Associate
+                {t('home.fieldAssociate', 'Field Associate')}
               </Text>
               <Text className="text-3xl font-heading tracking-tight text-clay-text">
-                Hi, {worker.name.split(' ')[0] || 'Worker'}
+                {t('home.greeting')} {worker.name.split(' ')[0] || t('home.worker', 'Worker')}
               </Text>
             </View>
             <View className="w-12 h-12 rounded-2xl items-center justify-center bg-white border border-white shadow-sm">
@@ -304,7 +307,7 @@ export default function HomeScreen() {
                 <ClipboardCheck size={16} color="white" />
               </View>
               <Text className="text-white/80 font-label uppercase tracking-widest mb-1">
-                Daily Tasks
+                {t('home.dailyTasks')}
               </Text>
               <Text className="text-white text-3xl font-heading">{worker.jobsDone}</Text>
             </View>
@@ -315,7 +318,7 @@ export default function HomeScreen() {
                 <Wallet size={16} color="#0EA5E9" />
               </View>
               <Text className="font-label uppercase tracking-widest mb-1 text-clay-secondary">
-                Daily Earnings
+                {t('home.dailyEarnings')}
               </Text>
               <Text className="text-3xl font-heading text-[#0EA5E9]">₹{worker.totalRevenue}</Text>
             </View>
@@ -327,12 +330,12 @@ export default function HomeScreen() {
           <View className="mb-8">
             <View className="flex-row justify-between items-center mb-3 px-1">
               <Text className="font-label uppercase tracking-[2px] text-clay-secondary">
-                Active Assignment
+                {t('home.activeAssignment')}
               </Text>
               {activeJob && (
                 <View className="px-3 py-1 rounded-full bg-[#E0F2FE] border border-[#0EA5E9]/20">
                   <Text className="font-label uppercase text-[#0EA5E9] text-[10px] tracking-wide">
-                    In Progress
+                    {t('home.inProgress', 'In Progress')}
                   </Text>
                 </View>
               )}
@@ -352,7 +355,7 @@ export default function HomeScreen() {
                   <BlurView
                     intensity={40}
                     tint="dark"
-                    className="absolute bottom-4 left-4 right-4 rounded-2xl overflow-hidden p-4 flex-row justify-between items-center"
+                    style={{ position: 'absolute', bottom: 16, left: 16, right: 16, borderRadius: 16, overflow: 'hidden', padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                   >
                     <View>
                       <Text className="text-white font-heading text-xl tracking-tight">
@@ -432,16 +435,16 @@ export default function HomeScreen() {
                 <View className="w-16 h-16 rounded-3xl items-center justify-center bg-[#E0F2FE] mb-4 shadow-inner">
                   <Plus size={32} color="#0EA5E9" />
                 </View>
-                <Text className="font-heading text-lg text-clay-text mb-2">No Active Jobs</Text>
+                <Text className="font-heading text-lg text-clay-text mb-2">{t('home.noActiveJobs')}</Text>
                 <Text className="text-center font-label text-xs max-w-[200px] leading-5 mb-6">
-                  Ready to work? Start a new job by tapping the button below.
+                  {t('home.readyToWork')}
                 </Text>
                 <Pressable
                   onPress={() => router.push('/(tabs)/AddJob')}
                   className="clay-button bg-[#0EA5E9] px-8 py-3 w-full"
                 >
                   <Text className="text-white font-heading text-xs uppercase tracking-widest text-center">
-                    + Start New Job
+                    + {t('home.startNewJob')}
                   </Text>
                 </Pressable>
               </View>
@@ -502,9 +505,15 @@ export default function HomeScreen() {
               />
               <QuickAction
                 icon={<CalendarCheck />}
-                title="ATTENDANCE"
+                title={t('home.attendance')}
                 color="#F59E0B"
                 onPress={() => router.push('/(tabs)/Attendance')}
+              />
+              <QuickAction
+                icon={<Star />}
+                title={t('common.myRatings')}
+                color="#F59E0B"
+                onPress={() => router.push('/(tabs)/MyRatings')}
               />
               <QuickAction
                 icon={<FileWarning />}
@@ -516,16 +525,33 @@ export default function HomeScreen() {
                 icon={<AlertTriangle />}
                 title="GET HELP"
                 color="#8B5CF6"
-                onPress={() => {}}
+                onPress={() => {
+                  const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'default' | 'destructive' }[] = [
+                    { text: 'Cancel', style: 'cancel' },
+                  ];
+                  if (supervisor.phone) {
+                    buttons.push({
+                      text: `Call ${supervisor.name}`,
+                      onPress: () => Linking.openURL(`tel:${supervisor.phone}`),
+                    });
+                  }
+                  Alert.alert(
+                    'Get Help',
+                    supervisor.name && supervisor.name !== 'Not assigned'
+                      ? `Your supervisor is ${supervisor.name}${supervisor.phone ? '. Tap below to call them.' : '. Contact them directly for assistance.'}`
+                      : 'No supervisor assigned. Please contact your admin for assistance.',
+                    buttons
+                  );
+                }}
               />
-              <QuickAction icon={<Banknote />} title="SALARY" color="#6366F1" onPress={() => {}} />
+              <QuickAction icon={<Banknote />} title={t('home.salary')} color="#6366F1" onPress={() => router.push('/(tabs)/Salary')} />
             </View>
           </View>
         </View>
 
         {/* ATTENDANCE MODAL */}
         <Modal visible={showAttendanceModal} animationType="slide" transparent>
-          <BlurView intensity={20} className="flex-1 justify-end">
+          <BlurView intensity={20} style={{ flex: 1, justifyContent: 'flex-end' }}>
             <View className="bg-[#E0F2FE] rounded-t-[40px] p-6 pb-12 shadow-2xl border-t border-white">
               <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
               <Text className="font-heading text-xl text-center mb-6 text-clay-text">

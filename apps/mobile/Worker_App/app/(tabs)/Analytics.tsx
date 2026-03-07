@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Calendar, TrendingUp, Award } from 'lucide-r
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +41,7 @@ interface AnalyticsData {
 
 export default function Analytics() {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -107,7 +109,7 @@ export default function Analytics() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
       <ScrollView
         className="flex-1"
@@ -127,16 +129,20 @@ export default function Analytics() {
         <BlurView
           intensity={20}
           tint="light"
-          className="rounded-b-[40px] pb-6 px-6 overflow-hidden"
           style={{
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
+            paddingBottom: 24,
+            paddingHorizontal: 24,
+            overflow: 'hidden',
             paddingTop: insets.top + 10,
           }}
         >
           <Text className="text-[10px] font-label uppercase tracking-widest mb-1 text-clay-secondary/80">
-            Performance Insight
+            {t('analytics.performanceInsight')}
           </Text>
           <Text className="text-3xl font-heading tracking-tighter mb-6 text-clay-text">
-            Analytics
+            {t('tabs.analytics')}
           </Text>
 
           <View className="flex-row p-1 rounded-2xl mb-4 bg-white/60 border border-white/50">
@@ -148,13 +154,13 @@ export default function Analytics() {
                 style={
                   range === r
                     ? {
-                        backgroundColor: '#fff',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 2,
-                        elevation: 1,
-                      }
+                      backgroundColor: '#fff',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 2,
+                      elevation: 1,
+                    }
                     : {}
                 }
               >
@@ -162,7 +168,7 @@ export default function Analytics() {
                   className="text-[11px] font-heading uppercase tracking-tighter"
                   style={{ color: range === r ? '#0EA5E9' : '#94A3B8' }}
                 >
-                  {r}
+                  {t(`wallet.${r}`)}
                 </Text>
               </Pressable>
             ))}
@@ -196,7 +202,7 @@ export default function Analytics() {
             <View className="absolute top-6 left-6 flex-row items-center gap-2">
               <View className="w-2 h-2 rounded-full bg-[#0EA5E9]" />
               <Text className="text-[10px] font-label uppercase tracking-widest text-clay-secondary/80">
-                Progress
+                {t('analytics.progress')}
               </Text>
             </View>
             <PieChart
@@ -211,7 +217,7 @@ export default function Analytics() {
                     {Math.round(progressPerc)}%
                   </Text>
                   <Text className="text-[9px] font-label uppercase tracking-widest text-clay-secondary/60">
-                    Complete
+                    {t('analytics.complete')}
                   </Text>
                 </View>
               )}
@@ -220,13 +226,13 @@ export default function Analytics() {
               <View className="items-center">
                 <Text className="text-2xl font-heading text-clay-text">{jobsDone}</Text>
                 <Text className="text-[9px] font-label uppercase tracking-widest text-clay-secondary/60">
-                  Completed
+                  {t('home.completed')}
                 </Text>
               </View>
               <View className="items-center">
                 <Text className="text-2xl font-heading text-clay-text">{target}</Text>
                 <Text className="text-[9px] font-label uppercase tracking-widest text-clay-secondary/60">
-                  Target
+                  {t('analytics.target')}
                 </Text>
               </View>
             </View>
@@ -234,14 +240,14 @@ export default function Analytics() {
 
           <LinearGradient
             colors={['#0EA5E9', '#0284C7']}
-            className="rounded-[32px] p-6 mb-6 shadow-xl shadow-blue-300"
+            style={{ borderRadius: 32, padding: 24, marginBottom: 24, elevation: 15 }}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
             <View className="flex-row justify-between mb-8">
               <View>
                 <Text className="text-white/80 text-[10px] font-label uppercase tracking-widest">
-                  Potential Bonus
+                  {t('analytics.potentialBonus')}
                 </Text>
                 <Text className="text-white text-4xl font-heading">
                   ₹{period?.incentive_amount || 0}
@@ -257,8 +263,8 @@ export default function Analytics() {
               </View>
               <Text className="text-white text-[12px] font-heading leading-5 flex-1">
                 {jobsDone >= target
-                  ? 'Goal achieved! Reward confirmed.'
-                  : `Wash ${target - jobsDone} more to unlock bonus.`}
+                  ? t('analytics.goalAchieved', 'Goal achieved! Reward confirmed.')
+                  : t('analytics.washMore', { count: target - jobsDone, defaultValue: `Wash ${target - jobsDone} more to unlock bonus.` })}
               </Text>
             </View>
           </LinearGradient>
@@ -266,13 +272,13 @@ export default function Analytics() {
           <View className="flex-row gap-4 mb-8">
             <View className="flex-1 p-6 rounded-[28px] bg-white border border-white/60 shadow-sm clay-card">
               <Text className="text-[9px] font-label uppercase tracking-widest mb-1 text-clay-secondary/80">
-                Today's Revenue
+                {t('analytics.todayRevenue')}
               </Text>
               <Text className="text-2xl font-heading text-clay-text">₹{period?.revenue || 0}</Text>
             </View>
             <View className="flex-1 p-6 rounded-[28px] bg-white border border-white/60 shadow-sm clay-card">
               <Text className="text-[9px] font-label uppercase tracking-widest mb-1 text-clay-secondary/80">
-                Total Revenue
+                {t('home.totalRevenue')}
               </Text>
               <Text className="text-2xl font-heading text-clay-text">
                 ₹{data?.totalRevenue || 0}
@@ -287,9 +293,9 @@ export default function Analytics() {
             <View className="flex-row items-center justify-between mb-6">
               <View>
                 <Text className="text-[10px] font-label uppercase tracking-widest mb-1 text-clay-secondary/80">
-                  Rewards Summary
+                  {t('analytics.rewardsSummary')}
                 </Text>
-                <Text className="text-xl font-heading text-clay-text">Incentive Achieved</Text>
+                <Text className="text-xl font-heading text-clay-text">{t('analytics.incentiveAchieved')}</Text>
               </View>
               <View className="w-10 h-10 rounded-2xl items-center justify-center bg-[#ECFDF5]">
                 <Award size={20} color="#10B981" />
@@ -304,11 +310,11 @@ export default function Analytics() {
                   color: '#0EA5E9',
                 },
                 {
-                  label: 'Weekly',
+                  label: t('wallet.week'),
                   value: data?.incentives?.week || 0,
                   color: '#10B981',
                 },
-                { label: 'Monthly', value: data?.incentives?.month || 0, color: '#8b5cf6' },
+                { label: t('wallet.month'), value: data?.incentives?.month || 0, color: '#8b5cf6' },
               ].map((item, idx) => (
                 <View
                   key={idx}

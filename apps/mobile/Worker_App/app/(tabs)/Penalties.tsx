@@ -5,7 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { ChevronLeft, AlertTriangle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../src/api/api';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 type Penalty = {
   id: string;
@@ -30,14 +30,12 @@ const PeriodTab = ({
   return (
     <Pressable
       onPress={() => onPress(value)}
-      className={`flex-1 py-3 rounded-xl border ${
-        active ? 'bg-[#EF4444] border-[#EF4444]' : 'bg-white border-transparent'
-      } clay-button items-center justify-center`}
+      className={`flex-1 py-3 rounded-xl border ${active ? 'bg-[#EF4444] border-[#EF4444]' : 'bg-white border-transparent'
+        } clay-button items-center justify-center`}
     >
       <Text
-        className={`text-[10px] font-black text-center uppercase tracking-wide ${
-          active ? 'text-white' : 'text-clay-secondary'
-        }`}
+        className={`text-[10px] font-black text-center uppercase tracking-wide ${active ? 'text-white' : 'text-clay-secondary'
+          }`}
       >
         {label}
       </Text>
@@ -74,6 +72,7 @@ const PenaltyCard = ({ penalty }: { penalty: Penalty }) => {
 export default function PenaltiesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [penalties, setPenalties] = useState<Penalty[]>([]);
   const [period, setPeriod] = useState<Period>('week');
@@ -114,7 +113,7 @@ export default function PenaltiesScreen() {
     <View className="flex-1 bg-[#FEF2F2]">
       <LinearGradient
         colors={['#FEF2F2', '#FFF1F2', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       <View
@@ -130,15 +129,15 @@ export default function PenaltiesScreen() {
           >
             <ChevronLeft size={24} color="#1E293B" />
           </Pressable>
-          <Text className="text-xl font-heading tracking-tight text-clay-text">Penalties</Text>
+          <Text className="text-xl font-heading tracking-tight text-clay-text">{t('penalties.title')}</Text>
           <View className="w-10" />
         </View>
 
         <View className="flex-row gap-3 px-6">
-          <PeriodTab label="Daily" value="day" active={period === 'day'} onPress={setPeriod} />
-          <PeriodTab label="Weekly" value="week" active={period === 'week'} onPress={setPeriod} />
+          <PeriodTab label={t('penalties.daily')} value="day" active={period === 'day'} onPress={setPeriod} />
+          <PeriodTab label={t('penalties.weekly')} value="week" active={period === 'week'} onPress={setPeriod} />
           <PeriodTab
-            label="Monthly"
+            label={t('penalties.monthly')}
             value="month"
             active={period === 'month'}
             onPress={setPeriod}
@@ -158,14 +157,14 @@ export default function PenaltiesScreen() {
         <View className="clay-card p-6 mb-8 bg-white overflow-hidden relative border-red-100">
           <LinearGradient
             colors={['rgba(254,242,242,0.8)', 'rgba(255,255,255,0.4)']}
-            className="absolute inset-0"
+            style={{ position: 'absolute', width: '100%', height: '100%' }}
           />
           <View className="flex-row items-center gap-3 mb-4">
             <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center border border-red-100">
               <AlertTriangle size={20} color="#EF4444" />
             </View>
             <Text className="text-[11px] font-label uppercase tracking-widest text-[#EF4444]">
-              Total Penalty
+              {t('penalties.total')}
             </Text>
           </View>
 
@@ -175,7 +174,7 @@ export default function PenaltiesScreen() {
 
           <View className="p-3 rounded-xl bg-red-50 border border-red-100">
             <Text className="text-[10px] font-bold uppercase tracking-wide text-center text-[#EF4444]">
-              {stats.count} {stats.count === 1 ? 'Record' : 'Records'} Found
+              {t(stats.count === 1 ? 'penalties.recordsFound' : 'penalties.recordsFound_plural', { count: stats.count })}
             </Text>
           </View>
         </View>
@@ -184,7 +183,7 @@ export default function PenaltiesScreen() {
         {penalties.length > 0 ? (
           <View>
             <Text className="font-label text-[10px] uppercase tracking-widest mb-4 ml-1 text-clay-secondary/80">
-              Detailed Log
+              {t('penalties.detailedLog')}
             </Text>
             {penalties.map((penalty) => (
               <PenaltyCard key={penalty.id} penalty={penalty} />
@@ -195,8 +194,8 @@ export default function PenaltiesScreen() {
             <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-4 border border-green-100">
               <AlertTriangle size={32} color="#10B981" />
             </View>
-            <Text className="font-heading text-lg text-clay-text mb-1">No Penalties</Text>
-            <Text className="text-xs font-body text-clay-secondary">Great work! Keep it up.</Text>
+            <Text className="font-heading text-lg text-clay-text mb-1">{t('penalties.noPenalties')}</Text>
+            <Text className="text-xs font-body text-clay-secondary">{t('penalties.keepItUp')}</Text>
           </View>
         )}
       </ScrollView>

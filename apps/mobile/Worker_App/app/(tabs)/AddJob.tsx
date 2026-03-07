@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,11 @@ import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Camera, ArrowLeft, User, Phone, Car, Info, MapPin } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import api from '../../src/api/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface InputFieldProps {
@@ -65,6 +66,7 @@ const InputField = ({
 export default function AddJob() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [image, setImage] = useState<ImagePickerAsset | null>(null);
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
@@ -77,6 +79,19 @@ export default function AddJob() {
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [showTypePicker, setShowTypePicker] = useState(false);
+
+  // Clear fields whenever this screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setImage(null);
+      setOwnerName('');
+      setOwnerPhone('');
+      setCarNumber('');
+      setCarModel('');
+      setCarColor('');
+      setCarType('');
+    }, [])
+  );
 
   useEffect(() => {
     (async () => {
@@ -119,16 +134,16 @@ export default function AddJob() {
 
   const submit = async () => {
     if (!image || !ownerName || !ownerPhone || !carNumber || !carType || !carModel) {
-      return Alert.alert('Missing Info', 'Please fill all required fields and add a photo.');
+      return Alert.alert(t('addJob.missingInfo'), t('addJob.missingInfoMessage'));
     }
 
     const finalColor = carColor.trim() || 'Standard';
     const finalModel = carModel.trim();
 
-    Alert.alert('Submit Job', 'Confirm all details are correct?', [
-      { text: 'Review', style: 'cancel' },
+    Alert.alert(t('addJob.confirmTitle'), t('addJob.confirmMessage'), [
+      { text: t('addJob.review'), style: 'cancel' },
       {
-        text: 'Confirm',
+        text: t('common.confirm'),
         onPress: async () => {
           try {
             setLoading(true);
@@ -140,8 +155,8 @@ export default function AddJob() {
               setGettingLocation(false);
               setLoading(false);
               return Alert.alert(
-                'Permission Denied',
-                'GPS permission is required to create tasks.'
+                t('addJob.permissionDenied'),
+                t('addJob.gpsRequired')
               );
             }
 
@@ -164,6 +179,16 @@ export default function AddJob() {
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
             });
+
+            // Reset all state fields on success
+            setImage(null);
+            setOwnerName('');
+            setOwnerPhone('');
+            setCarNumber('');
+            setCarModel('');
+            setCarColor('');
+            setCarType('');
+
             router.replace('/(tabs)/Homepage');
           } catch (error: unknown) {
             console.error('Task submission error:', error);
@@ -185,7 +210,7 @@ export default function AddJob() {
     <View className="flex-1 bg-[#E0F2FE]">
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute w-full h-full"
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
       />
 
       {/* Custom Type Picker Modal */}
@@ -195,15 +220,15 @@ export default function AddJob() {
         animationType="slide"
         onRequestClose={() => setShowTypePicker(false)}
       >
-        <BlurView intensity={20} className="flex-1 justify-end">
+        <BlurView intensity={20} style={{ flex: 1, justifyContent: 'flex-end' }}>
           <View
             className="rounded-t-[40px] pb-8 bg-white/90"
             style={{ paddingBottom: insets.bottom + 20 }}
           >
             <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
-              <Text className="text-xl font-heading text-clay-text">Select Car Type</Text>
+              <Text className="text-xl font-heading text-clay-text">{t('addJob.selectType')}</Text>
               <Pressable onPress={() => setShowTypePicker(false)}>
-                <Text className="font-heading text-base text-[#0EA5E9]">Done</Text>
+                <Text className="font-heading text-base text-[#0EA5E9]">{t('common.confirm')}</Text>
               </Pressable>
             </View>
             <ScrollView className="max-h-96">
@@ -214,14 +239,12 @@ export default function AddJob() {
                     setCarType(type);
                     setShowTypePicker(false);
                   }}
-                  className={`px-6 py-5 border-b border-gray-100 ${
-                    carType === type ? 'bg-[#E0F2FE]' : 'transparent'
-                  }`}
+                  className={`px-6 py-5 border-b border-gray-100 ${carType === type ? 'bg-[#E0F2FE]' : 'transparent'
+                    }`}
                 >
                   <Text
-                    className={`text-lg font-heading ${
-                      carType === type ? 'text-[#0EA5E9]' : 'text-clay-text'
-                    }`}
+                    className={`text-lg font-heading ${carType === type ? 'text-[#0EA5E9]' : 'text-clay-text'
+                      }`}
                   >
                     {type}
                   </Text>
@@ -248,7 +271,7 @@ export default function AddJob() {
               <ArrowLeft size={24} color="#1E293B" />
             </Pressable>
             <Text className="text-xl font-heading tracking-tight text-clay-text">
-              New Job Entry
+              {t('addJob.entry')}
             </Text>
             <View className="w-10" />
           </View>
@@ -271,14 +294,14 @@ export default function AddJob() {
                   <Camera size={40} color="#0EA5E9" />
                 </View>
                 <Text className="font-heading text-xs uppercase tracking-widest text-clay-secondary">
-                  Take Vehicle Photo
+                  {t('addJob.takePhoto')}
                 </Text>
               </View>
             )}
             <View className="absolute bottom-4 right-4 bg-white/80 px-3 py-1 rounded-full">
               <View className="flex-row items-center gap-1">
                 <MapPin size={12} color="#0EA5E9" />
-                <Text className="text-[10px] font-bold text-clay-secondary">Tagging Location</Text>
+                <Text className="text-[10px] font-bold text-clay-secondary">{t('addJob.taggingLocation')}</Text>
               </View>
             </View>
           </Pressable>
@@ -286,14 +309,14 @@ export default function AddJob() {
           <View className="gap-2">
             <InputField
               icon={<User size={20} color="#0EA5E9" />}
-              label="Customer Name"
+              label={t('addJob.ownerName')}
               placeholder="Eg: Rahul Sharma"
               value={ownerName}
               onChange={setOwnerName}
             />
             <InputField
               icon={<Phone size={20} color="#0EA5E9" />}
-              label="Contact Number"
+              label={t('addJob.ownerPhone')}
               placeholder="99000 00000"
               value={ownerPhone}
               onChange={setOwnerPhone}
@@ -301,7 +324,7 @@ export default function AddJob() {
             />
             <InputField
               icon={<Car size={20} color="#0EA5E9" />}
-              label="Vehicle Number"
+              label={t('addJob.carNumber')}
               placeholder="DL 01 AB 1234"
               value={carNumber}
               onChange={setCarNumber}
@@ -311,7 +334,7 @@ export default function AddJob() {
               <View className="flex-[1.2]">
                 <InputField
                   icon={<Info size={20} color="#0EA5E9" />}
-                  label="Model/Color"
+                  label={t('addJob.modelColor')}
                   placeholder="White Nexon"
                   value={carColor && carModel ? `${carColor} ${carModel}` : carColor || carModel}
                   onChange={(txt: string) => {
@@ -328,7 +351,7 @@ export default function AddJob() {
               </View>
               <View className="flex-1 mb-6">
                 <Text className="text-[10px] font-label uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
-                  Car Type
+                  {t('addJob.carType')}
                 </Text>
                 <Pressable
                   onPress={() => setShowTypePicker(true)}
@@ -338,11 +361,10 @@ export default function AddJob() {
                     <ActivityIndicator size="small" color="#0EA5E9" />
                   ) : (
                     <Text
-                      className={`text-base font-heading ${
-                        carType ? 'text-clay-text' : 'text-gray-400'
-                      }`}
+                      className={`text-base font-heading ${carType ? 'text-clay-text' : 'text-gray-400'
+                        }`}
                     >
-                      {carType || 'Select Type'}
+                      {carType || t('addJob.selectType')}
                     </Text>
                   )}
                 </Pressable>
@@ -359,12 +381,12 @@ export default function AddJob() {
               <View className="flex-row items-center gap-2">
                 <ActivityIndicator color="white" size="small" />
                 <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
-                  {gettingLocation ? 'Getting Location...' : 'Submitting...'}
+                  {gettingLocation ? t('addJob.gettingLocation') : t('addJob.submitting')}
                 </Text>
               </View>
             ) : (
               <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
-                Submit Job
+                {t('addJob.submitJob')}
               </Text>
             )}
           </Pressable>

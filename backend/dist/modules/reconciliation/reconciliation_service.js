@@ -10,9 +10,9 @@ const getBuildingReconciliation = async (cycleId) => {
     const result = await connectDatabase_1.pool.query(`
     SELECT 
       b.id,
-      b.name AS building_name,
+      b.building_name AS building_name,
 
-      COALESCE(SUM(t.task_amount),0) AS expected_collection,
+      COALESCE(SUM(t.amount_charged),0) AS expected_collection,
 
       (
         SELECT COALESCE(SUM(c.amount),0)
@@ -54,7 +54,7 @@ const getCompanyReconciliationSummary = async (cycleId) => {
     const { start_date, end_date } = cycleRes.rows[0];
     // Total Expected
     const expectedRes = await connectDatabase_1.pool.query(`
-    SELECT COALESCE(SUM(task_amount),0) AS total_expected
+    SELECT COALESCE(SUM(amount_charged),0) AS total_expected
     FROM tasks
     WHERE completed_at BETWEEN $1 AND $2
     `, [start_date, end_date]);
