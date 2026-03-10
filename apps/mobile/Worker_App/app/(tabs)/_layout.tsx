@@ -7,7 +7,8 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getUserRole } from '../../src/api/tokenStorage';
+import { getUserRole, getAccessToken } from '../../src/api/tokenStorage';
+import { usePushNotifications } from '../../hooks/usePushnotification';
 
 const ACTIVE = '#ffffff'; // White for active text
 const INACTIVE = '#9ca3af'; // Gray for inactive
@@ -15,14 +16,22 @@ const { width } = Dimensions.get('window');
 const CONTAINER_WIDTH = width * 0.9;
 
 export default function TabLayout() {
+  const { expoPushToken, sendTokenToBackend } = usePushNotifications();
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
+    const checkAuthAndRegister = async () => {
       const r = await getUserRole();
       setRole(r);
-    })();
-  }, []);
+
+      const token = await getAccessToken();
+      if (token && expoPushToken) {
+        console.log(' [PUSH] Registering token from Worker TabLayout...');
+        await sendTokenToBackend(expoPushToken, token);
+      }
+    };
+    checkAuthAndRegister();
+  }, [expoPushToken, sendTokenToBackend]);
 
   return (
     <Tabs
@@ -35,9 +44,18 @@ export default function TabLayout() {
       <Tabs.Screen name="Analytics" />
 
       {/* Supervisor specific */}
-      <Tabs.Screen name="SupervisorDashboard" options={{ href: role === 'supervisor' ? '/(tabs)/SupervisorDashboard' : null }} />
-      <Tabs.Screen name="FraudReview" options={{ href: role === 'supervisor' ? '/(tabs)/FraudReview' : null }} />
-      <Tabs.Screen name="Collections" options={{ href: role === 'supervisor' ? '/(tabs)/Collections' : null }} />
+      <Tabs.Screen
+        name="SupervisorDashboard"
+        options={{ href: role === 'supervisor' ? '/(tabs)/SupervisorDashboard' : null }}
+      />
+      <Tabs.Screen
+        name="FraudReview"
+        options={{ href: role === 'supervisor' ? '/(tabs)/FraudReview' : null }}
+      />
+      <Tabs.Screen
+        name="Collections"
+        options={{ href: role === 'supervisor' ? '/(tabs)/Collections' : null }}
+      />
 
       {/* Detail screens */}
       <Tabs.Screen name="AddJob" options={{ href: null }} />
@@ -67,7 +85,11 @@ function CustomTabBar({ state, descriptors, navigation, role }: any) {
   ];
 
   const supervisorTabs = [
-    { name: 'Dashboard', icon: <LayoutDashboard size={22} />, route: '/(tabs)/SupervisorDashboard' },
+    {
+      name: 'Dashboard',
+      icon: <LayoutDashboard size={22} />,
+      route: '/(tabs)/SupervisorDashboard',
+    },
     { name: 'Fraud', icon: <ShieldAlert size={22} />, route: '/(tabs)/FraudReview' },
     { name: 'Money', icon: <Banknote size={22} />, route: '/(tabs)/Collections' },
     { name: 'Profile', icon: <User size={22} />, route: '/(tabs)/Profile' },
@@ -77,7 +99,7 @@ function CustomTabBar({ state, descriptors, navigation, role }: any) {
   const tabCount = tabs.length;
   const tabWidth = CONTAINER_WIDTH / tabCount;
 
-  const activeIndex = tabs.findIndex(t => t.route === pathname);
+  const activeIndex = tabs.findIndex((t) => t.route === pathname);
   const safeActiveIndex = activeIndex === -1 ? (isSupervisor ? 0 : 1) : activeIndex;
 
   const [slideAnim] = useState(() => new Animated.Value(safeActiveIndex * tabWidth));
@@ -100,7 +122,7 @@ function CustomTabBar({ state, descriptors, navigation, role }: any) {
     '/Wallet',
     '/PaymentSummary',
     '/MyRatings',
-    '/Salary'
+    '/Salary',
   ];
   if (hiddenScreens.includes(pathname)) return null;
 
@@ -109,7 +131,13 @@ function CustomTabBar({ state, descriptors, navigation, role }: any) {
       <BlurView
         intensity={Platform.OS === 'ios' ? 30 : 100}
         tint="light"
-        style={{ width: CONTAINER_WIDTH, height: 72, overflow: 'hidden', borderRadius: 9999, elevation: 20 }}
+        style={{
+          width: CONTAINER_WIDTH,
+          height: 72,
+          overflow: 'hidden',
+          borderRadius: 9999,
+          elevation: 20,
+        }}
       >
         <LinearGradient
           colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}

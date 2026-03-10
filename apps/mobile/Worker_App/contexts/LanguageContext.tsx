@@ -2,7 +2,7 @@ import i18nConfig from '../src/i18n/i18n';
 
 // ... (code omitted for brevity, but I will replace the whole file since it's short or use multi_replace)
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '../src/utils/storage';
 import i18n, { changeLanguage as i18nChangeLanguage } from '../src/i18n/i18n';
 import { useTranslation } from 'react-i18next';
 
@@ -25,7 +25,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     (async () => {
       try {
-        const storedLang = await AsyncStorage.getItem(LANGUAGE_KEY);
+        const storedLang = await storage.getItem(LANGUAGE_KEY);
         if (storedLang && (storedLang === 'en' || storedLang === 'hi' || storedLang === 'ar')) {
           setLanguageState(storedLang as Language);
           await i18nChangeLanguage(storedLang);
@@ -38,7 +38,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
 
   const setLanguage = async (lang: Language) => {
     try {
-      await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+      await storage.setItem(LANGUAGE_KEY, lang);
       setLanguageState(lang);
       await i18nChangeLanguage(lang);
     } catch (e) {

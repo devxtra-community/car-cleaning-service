@@ -78,13 +78,17 @@ export const usePushNotifications = () => {
 
   async function sendTokenToBackend(pushToken: string, authToken?: string): Promise<void> {
     try {
-      const response = await api.post('/api/notifications/register', {
-        expoPushToken: pushToken,
-      }, {
-        // If authToken is provided (e.g. during login), use it. 
-        // Otherwise the interceptor will use the one from SecureStore.
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
-      });
+      const response = await api.post(
+        '/api/auth/register-push-token',
+        {
+          pushToken: pushToken,
+        },
+        {
+          // If authToken is provided (e.g. during login), use it.
+          // Otherwise the interceptor will use the one from SecureStore.
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        }
+      );
 
       if (!response.data.success) {
         throw new Error('Failed to register push token');

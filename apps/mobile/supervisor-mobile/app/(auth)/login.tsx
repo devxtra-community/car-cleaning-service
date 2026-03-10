@@ -22,60 +22,88 @@ import { saveTokens } from '../../src/tokenStorage';
 const { height, width } = Dimensions.get('window');
 
 // Topographic Pattern for Headers
-const TopoPattern = () => (
-  <Svg
-    height="100%"
-    width="100%"
-    className="absolute inset-0"
-    viewBox="0 0 400 400"
-    preserveAspectRatio="xMidYMid slice"
-    pointerEvents="none"
-  >
-    <Path
-      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
-      stroke="rgba(255,255,255,0.1)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
-      stroke="rgba(255,255,255,0.08)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Circle cx="320" cy="100" r="30" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
-    <Circle cx="320" cy="100" r="45" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" />
-  </Svg>
-);
+const TopoPattern = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
 
-const WavyHeader = () => (
-  <View className="absolute inset-0" pointerEvents="none">
-    <Svg
-      height={height * 0.45}
-      width={width}
-      viewBox={`0 0 ${width} 320`}
-      preserveAspectRatio="none"
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+      pointerEvents="none"
     >
-      <Defs>
-        <SvgGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#0EA5E9" />
-          <Stop offset="1" stopColor="#0284C7" />
-        </SvgGradient>
-      </Defs>
-      <Path
-        d={`M0,0 L${width},0 L${width},250 C${width * 0.75},320 ${width * 0.25},180 0,250 Z`}
-        fill="url(#grad)"
+      <PathComponent
+        d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
       />
-    </Svg>
-    <TopoPattern />
-  </View>
-);
+      <PathComponent
+        d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="30"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="45"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth="2"
+        fill="none"
+      />
+    </SvgComponent>
+  );
+};
+
+const WavyHeader = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const SvgGradientComponent = SvgGradient as any;
+  const StopComponent = Stop as any;
+  const DefsComponent = Defs as any;
+
+  return (
+    <View className="absolute inset-0" pointerEvents="none">
+      <SvgComponent
+        height={height * 0.45}
+        width={width}
+        viewBox={`0 0 ${width} 320`}
+        preserveAspectRatio="none"
+      >
+        <DefsComponent>
+          <SvgGradientComponent id="grad" x1="0" y1="0" x2="1" y2="1">
+            <StopComponent offset="0" stopColor="#0EA5E9" />
+            <StopComponent offset="1" stopColor="#0284C7" />
+          </SvgGradientComponent>
+        </DefsComponent>
+        <PathComponent
+          d={`M0,0 L${width},0 L${width},250 C${width * 0.75},320 ${width * 0.25},180 0,250 Z`}
+          fill="url(#grad)"
+        />
+      </SvgComponent>
+      <TopoPattern />
+    </View>
+  );
+};
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -206,23 +234,28 @@ export default function LoginScreen() {
               onPress={handleLogin}
               disabled={loading}
             >
-              <LinearGradient
-                colors={['#0EA5E9', '#0284C7']}
-                className="flex-1 flex-row justify-center items-center gap-2.5"
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Text className="text-white text-[15px] font-antigravity-bold tracking-[1.5px] uppercase">
-                      SIGN IN NOW
-                    </Text>
-                    <ChevronRight size={18} color="#fff" opacity={0.6} />
-                  </>
-                )}
-              </LinearGradient>
+              {(() => {
+                const LinearGradientComponent = LinearGradient as any;
+                return (
+                  <LinearGradientComponent
+                    colors={['#0EA5E9', '#0284C7']}
+                    className="flex-1 flex-row justify-center items-center gap-2.5"
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Text className="text-white text-[15px] font-antigravity-bold tracking-[1.5px] uppercase">
+                          SIGN IN NOW
+                        </Text>
+                        <ChevronRight size={18} color="#fff" opacity={0.6} />
+                      </>
+                    )}
+                  </LinearGradientComponent>
+                );
+              })()}
             </Pressable>
           </KeyboardAvoidingView>
         </View>

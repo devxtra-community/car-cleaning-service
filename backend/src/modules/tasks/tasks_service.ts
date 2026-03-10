@@ -26,10 +26,10 @@ export const createTaskService = async (data: TaskInput) => {
     const query = `
       INSERT INTO tasks (
         owner_name, owner_phone, car_number, car_model, car_type, car_color, 
-        car_image_url, cleaner_id, task_amount, amount_charged, status,
+        car_image_url, car_location, cleaner_id, task_amount, amount_charged, status,
         latitude, longitude
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13)
       RETURNING *;
     `;
 
@@ -41,6 +41,7 @@ export const createTaskService = async (data: TaskInput) => {
       data.car_type,
       data.car_color,
       data.car_image_url,
+      data.car_location || null,
       data.cleaner_id,
       data.task_amount || 0,
       data.amount_charged || data.task_amount || 0, // Fallback to task_amount if amount_charged is missing

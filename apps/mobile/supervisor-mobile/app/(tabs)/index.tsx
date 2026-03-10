@@ -17,45 +17,51 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { API } from '../../src/api/api';
 
 /* -------------------- DECORATIVE PATTERN -------------------- */
-const TopoPattern = () => (
-  <Svg
-    height="100%"
-    width="100%"
-    className="absolute inset-0"
-    viewBox="0 0 400 400"
-    preserveAspectRatio="xMidYMid slice"
-    pointerEvents="none"
-  >
-    <Path
-      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
-      stroke="rgba(14, 165, 233, 0.08)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
-      stroke="rgba(14, 165, 233, 0.06)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Circle
-      cx="320"
-      cy="100"
-      r="30"
-      stroke="rgba(14, 165, 233, 0.08)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Circle
-      cx="320"
-      cy="100"
-      r="45"
-      stroke="rgba(14, 165, 233, 0.06)"
-      strokeWidth="2"
-      fill="none"
-    />
-  </Svg>
-);
+const TopoPattern = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
+
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+      pointerEvents="none"
+    >
+      <PathComponent
+        d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+        stroke="rgba(14, 165, 233, 0.08)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+        stroke="rgba(14, 165, 233, 0.06)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="30"
+        stroke="rgba(14, 165, 233, 0.08)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="45"
+        stroke="rgba(14, 165, 233, 0.06)"
+        strokeWidth="2"
+        fill="none"
+      />
+    </SvgComponent>
+  );
+};
 
 /* -------------------- ACTION CARD COMPONENT -------------------- */
 const ActionCard = ({
@@ -132,11 +138,16 @@ export default function HomePage() {
   return (
     <View className="flex-1">
       <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-        className="absolute inset-0"
-        pointerEvents="none"
-      />
+      {(() => {
+        const LinearGradientComponent = LinearGradient as any;
+        return (
+          <LinearGradientComponent
+            colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+            className="absolute inset-0"
+            pointerEvents="none"
+          />
+        );
+      })()}
       <TopoPattern />
 
       <ScrollView
@@ -231,18 +242,23 @@ export default function HomePage() {
             className="flex-[1.6] h-[60px] rounded-[20px] overflow-hidden shadow-lg"
             onPress={() => router.push('/(tabs)/supervisor/add-task')}
           >
-            <LinearGradient
-              colors={['#0EA5E9', '#0284C7']}
-              className="flex-1 flex-row items-center px-5 justify-between"
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <UserCog size={22} color="#FFF" />
-              <Text className="text-white text-base font-antigravity-bold flex-1 ml-3">
-                Add Tasks
-              </Text>
-              <ChevronRight size={18} color="#FFF" opacity={0.6} />
-            </LinearGradient>
+            {(() => {
+              const LinearGradientComponent = LinearGradient as any;
+              return (
+                <LinearGradientComponent
+                  colors={['#0EA5E9', '#0284C7']}
+                  className="flex-1 flex-row items-center px-5 justify-between"
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <UserCog size={22} color="#FFF" />
+                  <Text className="text-white text-base font-antigravity-bold flex-1 ml-3">
+                    Add Tasks
+                  </Text>
+                  <ChevronRight size={18} color="#FFF" opacity={0.6} />
+                </LinearGradientComponent>
+              );
+            })()}
           </Pressable>
 
           <Pressable

@@ -89,10 +89,15 @@ export default function DailyTasksScreen() {
           </Text>
 
           <View className="h-3 rounded-full bg-[#E5E7EB] overflow-hidden mt-2">
-            <LinearGradient
-              colors={['#3DA2CE', '#8ED6F8']}
-              style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 6 }}
-            />
+            {(() => {
+              const LinearGradientComponent = LinearGradient as any;
+              return (
+                <LinearGradientComponent
+                  colors={['#3DA2CE', '#8ED6F8']}
+                  style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 6 } as any}
+                />
+              );
+            })()}
           </View>
 
           <Text className="text-xs text-[#6B7280] font-antigravity-semibold mt-3 text-right">

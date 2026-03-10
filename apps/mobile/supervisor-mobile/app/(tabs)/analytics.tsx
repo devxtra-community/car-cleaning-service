@@ -14,89 +14,138 @@ import {
 } from 'lucide-react-native';
 
 // Topographic Pattern
-const TopoPattern = () => (
-  <Svg
-    height="100%"
-    width="100%"
-    className="absolute inset-0"
-    viewBox="0 0 400 400"
-    preserveAspectRatio="xMidYMid slice"
-  >
-    <Path
-      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
+const TopoPattern = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
 
-    <Circle cx="320" cy="100" r="30" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
-    <Circle cx="320" cy="100" r="45" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
-    <Circle cx="320" cy="100" r="60" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <PathComponent
+        d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
 
-    <Path
-      d="M 60 180 Q 40 160, 60 140 Q 80 120, 100 140 Q 120 160, 100 180 Q 80 200, 60 180 Z"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 50 180 Q 28 160, 50 135 Q 72 110, 110 135 Q 132 160, 110 185 Q 88 210, 50 180 Z"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="30"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="45"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="60"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
 
-    <Path
-      d="M 0 240 Q 60 220, 120 240 T 240 240 T 360 240 T 400 240"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 260 Q 60 245, 120 260 T 240 260 T 360 260 T 400 260"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
+      <PathComponent
+        d="M 60 180 Q 40 160, 60 140 Q 80 120, 100 140 Q 120 160, 100 180 Q 80 200, 60 180 Z"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 50 180 Q 28 160, 50 135 Q 72 110, 110 135 Q 132 160, 110 185 Q 88 210, 50 180 Z"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
 
-    <Circle cx="80" cy="320" r="25" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
-    <Circle cx="80" cy="320" r="38" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
-  </Svg>
-);
+      <PathComponent
+        d="M 0 240 Q 60 220, 120 240 T 240 240 T 360 240 T 400 240"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 260 Q 60 245, 120 260 T 240 260 T 360 260 T 400 260"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
+
+      <CircleComponent
+        cx="80"
+        cy="320"
+        r="25"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="80"
+        cy="320"
+        r="38"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
+    </SvgComponent>
+  );
+};
 
 export default function AnalyticsView() {
   return (
     <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       {/* HEADER WITH TOPOGRAPHIC BACKGROUND */}
       <View className="h-[140px] mb-5">
-        <LinearGradient colors={['#0EA5E9', '#0284C7']} className="flex-1 pt-3 overflow-hidden">
-          <TopoPattern />
-          <View className="flex-row justify-between items-center px-5 z-10">
-            <View>
-              <Text className="text-[32px] font-antigravity-bold text-white tracking-tighter">
-                Analytics
-              </Text>
-              <Text className="text-sm text-white/90 font-antigravity-medium mt-1">
-                Track your performance metrics
-              </Text>
-            </View>
-            <TouchableOpacity className="w-11 h-11 rounded-full bg-white justify-center items-center shadow-md">
-              <Calendar size={20} color="#0EA5E9" />
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+        {(() => {
+          const LinearGradientComponent = LinearGradient as any;
+          return (
+            <LinearGradientComponent
+              colors={['#0EA5E9', '#0284C7']}
+              className="flex-1 pt-3 overflow-hidden"
+            >
+              <TopoPattern />
+              <View className="flex-row justify-between items-center px-5 z-10">
+                <View>
+                  <Text className="text-[32px] font-antigravity-bold text-white tracking-tighter">
+                    Analytics
+                  </Text>
+                  <Text className="text-sm text-white/90 font-antigravity-medium mt-1">
+                    Track your performance metrics
+                  </Text>
+                </View>
+                <TouchableOpacity className="w-11 h-11 rounded-full bg-white justify-center items-center shadow-md">
+                  <Calendar size={20} color="#0EA5E9" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradientComponent>
+          );
+        })()}
       </View>
 
       <ScrollView
@@ -110,34 +159,39 @@ export default function AnalyticsView() {
             onPress={() => router.push('/(tabs)/analytics/earnings')}
             className="mb-3 rounded-[20px] overflow-hidden shadow-xl"
           >
-            <LinearGradient
-              colors={['#0EA5E9', '#0284C7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="p-5 min-h-[160px]"
-            >
-              <View className="flex-row justify-between items-center mb-3">
-                <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center">
-                  <DollarSign size={24} color="#fff" strokeWidth={2.5} />
-                </View>
-                <View className="flex-row items-center bg-white px-2.5 py-1.5 rounded-full">
-                  <TrendingUp size={12} color="#10B981" strokeWidth={3} />
-                  <Text className="text-[#10B981] text-[12px] font-antigravity-bold ml-1">
-                    +12.5%
+            {(() => {
+              const LinearGradientComponent = LinearGradient as any;
+              return (
+                <LinearGradientComponent
+                  colors={['#0EA5E9', '#0284C7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  className="p-5 min-h-[160px]"
+                >
+                  <View className="flex-row justify-between items-center mb-3">
+                    <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center">
+                      <DollarSign size={24} color="#fff" strokeWidth={2.5} />
+                    </View>
+                    <View className="flex-row items-center bg-white px-2.5 py-1.5 rounded-full">
+                      <TrendingUp size={12} color="#10B981" strokeWidth={3} />
+                      <Text className="text-[#10B981] text-[12px] font-antigravity-bold ml-1">
+                        +12.5%
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className="text-4xl font-antigravity-bold text-white mb-1 tracking-tighter">
+                    ₹1,245
                   </Text>
-                </View>
-              </View>
-              <Text className="text-4xl font-antigravity-bold text-white mb-1 tracking-tighter">
-                ₹1,245
-              </Text>
-              <Text className="text-base text-white font-antigravity-semibold opacity-95">
-                Total Earnings
-              </Text>
-              <Text className="text-xs text-white opacity-75 mt-0.5">This month</Text>
-              <View className="absolute right-5 bottom-5 opacity-50">
-                <ChevronRight size={20} color="#fff" />
-              </View>
-            </LinearGradient>
+                  <Text className="text-base text-white font-antigravity-semibold opacity-95">
+                    Total Earnings
+                  </Text>
+                  <Text className="text-xs text-white opacity-75 mt-0.5">This month</Text>
+                  <View className="absolute right-5 bottom-5 opacity-50">
+                    <ChevronRight size={20} color="#fff" />
+                  </View>
+                </LinearGradientComponent>
+              );
+            })()}
           </Pressable>
 
           {/* COMPLETED TASKS CARD - NOW FULL WIDTH */}
@@ -145,35 +199,42 @@ export default function AnalyticsView() {
             className="mb-3 rounded-2xl overflow-hidden shadow-md"
             onPress={() => router.push('/(tabs)/analytics/tasks')}
           >
-            <LinearGradient
-              colors={['#0EA5E9', '#0284C7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="p-[18px] flex-row justify-between items-center"
-            >
-              <View className="flex-row items-center flex-1">
-                <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-3.5">
-                  <CheckCircle size={24} color="#fff" strokeWidth={2.5} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-[28px] font-antigravity-bold text-white mb-0.5">67</Text>
-                  <Text className="text-[13px] text-white font-antigravity-semibold opacity-90">
-                    Tasks Completed
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <View className="flex-row items-center bg-white px-2 py-1.5 rounded-xl">
-                  <TrendingUp size={10} color="#10B981" />
-                  <Text className="text-[#10B981] text-[11px] font-antigravity-bold ml-1">
-                    +8.3%
-                  </Text>
-                </View>
-                <View className="opacity-70">
-                  <ChevronRight size={20} color="#fff" />
-                </View>
-              </View>
-            </LinearGradient>
+            {(() => {
+              const LinearGradientComponent = LinearGradient as any;
+              return (
+                <LinearGradientComponent
+                  colors={['#0EA5E9', '#0284C7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  className="p-[18px] flex-row justify-between items-center"
+                >
+                  <View className="flex-row items-center flex-1">
+                    <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-3.5">
+                      <CheckCircle size={24} color="#fff" strokeWidth={2.5} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-[28px] font-antigravity-bold text-white mb-0.5">
+                        67
+                      </Text>
+                      <Text className="text-[13px] text-white font-antigravity-semibold opacity-90">
+                        Tasks Completed
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <View className="flex-row items-center bg-white px-2 py-1.5 rounded-xl">
+                      <TrendingUp size={10} color="#10B981" />
+                      <Text className="text-[#10B981] text-[11px] font-antigravity-bold ml-1">
+                        +8.3%
+                      </Text>
+                    </View>
+                    <View className="opacity-70">
+                      <ChevronRight size={20} color="#fff" />
+                    </View>
+                  </View>
+                </LinearGradientComponent>
+              );
+            })()}
           </Pressable>
 
           {/* PENALTY CARD */}
@@ -234,13 +295,18 @@ export default function AnalyticsView() {
                   <Text className="text-[11px] font-antigravity-bold text-[#0EA5E9] mb-1">
                     {item.tasks}
                   </Text>
-                  <LinearGradient
-                    colors={['#0EA5E9', '#0284C7']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    className="w-full max-w-[32px] rounded-lg shadow-sm"
-                    style={{ height: `${item.value}%` }}
-                  />
+                  {(() => {
+                    const LinearGradientComponent = LinearGradient as any;
+                    return (
+                      <LinearGradientComponent
+                        colors={['#0EA5E9', '#0284C7']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        className="w-full max-w-[32px] rounded-lg shadow-sm"
+                        style={{ height: `${item.value}%` } as any}
+                      />
+                    );
+                  })()}
                   <Text
                     className={`text-[11px] mt-2 font-antigravity-semibold ${
                       i === new Date().getDay() - 1

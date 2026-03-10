@@ -204,7 +204,9 @@ export const updateCleanerAssignment = async (req: AuthRequest, res: Response) =
     );
 
     if (check.rows.length === 0) {
-      return res.status(403).json({ success: false, message: 'Not authorized to manage this cleaner' });
+      return res
+        .status(403)
+        .json({ success: false, message: 'Not authorized to manage this cleaner' });
     }
 
     const updated = await updateWorkerAssignmentService(cleaner_id, floor_id || null);
@@ -279,6 +281,7 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
       car_color,
       task_amount,
       car_image_url,
+      car_location,
     } = req.body;
 
     console.log('Assign Task Request:', { worker_id, supervisorId, owner_name, car_number });
@@ -319,6 +322,7 @@ export const assignTaskToWorker = async (req: AuthRequest, res: Response) => {
       car_type,
       car_color,
       car_image_url: car_image_url || null,
+      car_location: car_location || null,
       cleaner_id: realCleanerId,
       task_amount: task_amount ? parseFloat(task_amount) : 0,
     });
@@ -379,6 +383,7 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       car_color,
       task_amount,
       car_image_url,
+      car_location,
     } = req.body;
 
     // Verify task belongs to a worker managed by this supervisor
@@ -409,8 +414,9 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         car_type = COALESCE($5, car_type),
         car_color = COALESCE($6, car_color),
         amount_charged = COALESCE($7, amount_charged),
-        car_image_url = COALESCE($8, car_image_url)
-      WHERE id = $9
+        car_image_url = COALESCE($8, car_image_url),
+        car_location = COALESCE($9, car_location)
+      WHERE id = $10
       RETURNING *
       `,
       [
@@ -422,6 +428,7 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         car_color || null,
         task_amount ? parseFloat(task_amount) : null,
         car_image_url || null,
+        car_location || null,
         taskId,
       ]
     );
@@ -571,9 +578,7 @@ export const getAdminSupervisorDetails = async (req: AuthRequest, res: Response)
         is_active: sup.is_active,
         joining_date: sup.joining_date,
         age: sup.age,
-        building: sup.building_id
-          ? { id: sup.building_id, name: sup.building_name }
-          : null,
+        building: sup.building_id ? { id: sup.building_id, name: sup.building_name } : null,
         cleaners: cleanersResult.rows.map((c) => ({
           id: c.id,
           full_name: c.full_name,
@@ -612,7 +617,11 @@ export const updateAdminSupervisor = async (req: AuthRequest, res: Response) => 
     if (!supCheck.rows.length) {
       return res.status(404).json({ success: false, message: 'Supervisor not found' });
     }
-    const { user_id: userId, supervisor_id: existingSupId, building_id: currentBuildingId } = supCheck.rows[0];
+    const {
+      user_id: userId,
+      supervisor_id: existingSupId,
+      building_id: currentBuildingId,
+    } = supCheck.rows[0];
 
     const {
       full_name,
@@ -632,15 +641,42 @@ export const updateAdminSupervisor = async (req: AuthRequest, res: Response) => 
     const userUpdates: string[] = [];
     const userValues: (string | number | null)[] = [];
     let pi = 1;
-    if (full_name) { userUpdates.push(`full_name = $${pi++}`); userValues.push(full_name); }
-    if (email) { userUpdates.push(`email = $${pi++}`); userValues.push(email); }
-    if (phone) { userUpdates.push(`phone = $${pi++}`); userValues.push(phone); }
-    if (document_id) { userUpdates.push(`document_id = $${pi++}`); userValues.push(document_id); }
-    if (profile_image) { userUpdates.push(`profile_image = $${pi++}`); userValues.push(profile_image); }
-    if (document) { userUpdates.push(`document = $${pi++}`); userValues.push(document); }
-    if (nationality !== undefined) { userUpdates.push(`nationality = $${pi++}`); userValues.push(nationality); }
-    if (age !== undefined) { userUpdates.push(`age = $${pi++}`); userValues.push(Number(age)); }
-    if (base_salary !== undefined) { userUpdates.push(`base_salary = $${pi++}`); userValues.push(Number(base_salary)); }
+    if (full_name) {
+      userUpdates.push(`full_name = $${pi++}`);
+      userValues.push(full_name);
+    }
+    if (email) {
+      userUpdates.push(`email = $${pi++}`);
+      userValues.push(email);
+    }
+    if (phone) {
+      userUpdates.push(`phone = $${pi++}`);
+      userValues.push(phone);
+    }
+    if (document_id) {
+      userUpdates.push(`document_id = $${pi++}`);
+      userValues.push(document_id);
+    }
+    if (profile_image) {
+      userUpdates.push(`profile_image = $${pi++}`);
+      userValues.push(profile_image);
+    }
+    if (document) {
+      userUpdates.push(`document = $${pi++}`);
+      userValues.push(document);
+    }
+    if (nationality !== undefined) {
+      userUpdates.push(`nationality = $${pi++}`);
+      userValues.push(nationality);
+    }
+    if (age !== undefined) {
+      userUpdates.push(`age = $${pi++}`);
+      userValues.push(Number(age));
+    }
+    if (base_salary !== undefined) {
+      userUpdates.push(`base_salary = $${pi++}`);
+      userValues.push(Number(base_salary));
+    }
 
     if (password) {
       const bcrypt = await import('bcrypt');
@@ -751,4 +787,3 @@ export const deleteAdminSupervisor = async (req: AuthRequest, res: Response) => 
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
-

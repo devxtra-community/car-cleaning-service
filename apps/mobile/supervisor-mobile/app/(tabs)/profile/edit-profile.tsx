@@ -18,30 +18,51 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { API } from '@/src/api/api';
 
 // Topographic Pattern
-const TopoPattern = () => (
-  <Svg
-    height="100%"
-    width="100%"
-    className="absolute inset-0"
-    viewBox="0 0 400 200"
-    preserveAspectRatio="xMidYMid slice"
-  >
-    <Path
-      d="M 0 50 Q 50 30, 100 50 T 200 50 T 300 50 T 400 50"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 70 Q 50 55, 100 70 T 200 70 T 300 70 T 400 70"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Circle cx="320" cy="60" r="25" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
-    <Circle cx="320" cy="60" r="40" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
-  </Svg>
-);
+// Topographic Pattern
+const TopoPattern = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
+
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 200"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <PathComponent
+        d="M 0 50 Q 50 30, 100 50 T 200 50 T 300 50 T 400 50"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 70 Q 50 55, 100 70 T 200 70 T 300 70 T 400 70"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="60"
+        r="25"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="60"
+        r="40"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+    </SvgComponent>
+  );
+};
 
 export default function MyAccountScreen() {
   const [profileImage, setProfileImage] = useState('https://i.pravatar.cc/300?img=12');
@@ -197,19 +218,27 @@ export default function MyAccountScreen() {
     <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       {/* HEADER */}
       <View className="h-[100px]">
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} className="flex-1 overflow-hidden">
-          <TopoPattern />
-          <View className="flex-row items-center justify-between px-5 pt-3 z-10">
-            <Pressable
-              onPress={() => router.back()}
-              className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
+        {(() => {
+          const LinearGradientComponent = LinearGradient as any;
+          return (
+            <LinearGradientComponent
+              colors={['#5AB9E0', '#3DA2CE']}
+              className="flex-1 overflow-hidden"
             >
-              <ArrowLeft size={24} color="#fff" />
-            </Pressable>
-            <Text className="text-xl font-antigravity-bold text-white">My Account</Text>
-            <View className="w-10" />
-          </View>
-        </LinearGradient>
+              <TopoPattern />
+              <View className="flex-row items-center justify-between px-5 pt-3 z-10">
+                <Pressable
+                  onPress={() => router.back()}
+                  className="w-10 h-10 rounded-full bg-white/20 justify-center items-center"
+                >
+                  <ArrowLeft size={24} color="#fff" />
+                </Pressable>
+                <Text className="text-xl font-antigravity-bold text-white">My Account</Text>
+                <View className="w-10" />
+              </View>
+            </LinearGradientComponent>
+          );
+        })()}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">

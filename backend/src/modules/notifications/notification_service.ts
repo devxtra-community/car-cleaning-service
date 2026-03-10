@@ -10,8 +10,12 @@ export const sendNotificationToUser = async (
   data?: Record<string, unknown>
 ): Promise<boolean> => {
   const PUSH_ENABLED = process.env.PUSH_NOTIFICATIONS_ENABLED === 'true';
+  console.log(
+    `[PushService] Attempting to notify ${userId}. PUSH_ENABLED=${PUSH_ENABLED} (process.env.PUSH_NOTIFICATIONS_ENABLED=${process.env.PUSH_NOTIFICATIONS_ENABLED})`
+  );
+
   if (!PUSH_ENABLED) {
-    console.log('Push notifications disabled');
+    console.log('[PushService] Push notifications disabled in .env');
     return false;
   }
 
@@ -21,7 +25,7 @@ export const sendNotificationToUser = async (
     ]);
 
     if (!result.rows.length) {
-      console.log(`User not found: ${userId}`);
+      console.log(`[PushService] User not found: ${userId}`);
       return false;
     }
 
@@ -29,12 +33,14 @@ export const sendNotificationToUser = async (
     const userName = result.rows[0].full_name;
 
     if (!pushToken) {
-      console.log(`No push token for user ${userId} (${userName})`);
+      console.log(`[PushService] No push token for user ${userId} (${userName})`);
       return false;
     }
 
+    console.log(`[PushService] Found token for ${userName}: ${pushToken.substring(0, 20)}...`);
+
     if (!Expo.isExpoPushToken(pushToken)) {
-      console.log(`Invalid push token: ${pushToken}`);
+      console.log(`[PushService] Invalid push token format: ${pushToken}`);
       return false;
     }
 
@@ -59,26 +65,48 @@ export const sendNotificationToUser = async (
 
     const ticket = tickets[0];
     if (ticket.status === 'error') {
-      console.error('Push notification error:', ticket.message);
+      const errorMsg = ticket.message || 'Unknown error';
+      console.error('[PushService] Push notification error:', errorMsg);
+
+      // Log failure to DB
+      try {
+        await pool.query(
+          `INSERT INTO notification_logs (user_id, title, message, data, push_token, status, error_details, sent_at)
+           VALUES ($1, $2, $3, $4, $5, 'failed', $6, NOW())`,
+          [userId, title, message, JSON.stringify(data || {}), pushToken, errorMsg]
+        );
+      } catch (dbError) {
+        console.error('[PushService] Failed to log failure to DB:', dbError);
+      }
 
       if (ticket.details?.error === 'DeviceNotRegistered') {
         await pool.query('UPDATE users SET push_token = NULL WHERE push_token = $1', [pushToken]);
-        console.log('Cleared invalid push token');
+        console.log('[PushService] Cleared invalid push token');
       }
 
       return false;
     }
 
-    await pool.query(
-      `INSERT INTO notification_logs (user_id, title, message, data, push_token, status, sent_at)
-       VALUES ($1, $2, $3, $4, $5, 'sent', NOW())`,
-      [userId, title, message, JSON.stringify(data || {}), pushToken]
-    );
+    try {
+      await pool.query(
+        `INSERT INTO notification_logs (user_id, title, message, data, push_token, status, sent_at)
+         VALUES ($1, $2, $3, $4, $5, 'sent', NOW())`,
+        [userId, title, message, JSON.stringify(data || {}), pushToken]
+      );
+      console.log(`[PushService] Logged notification for ${userName}`);
+    } catch (logError) {
+      console.error(
+        '[PushService] Failed to write to notification_logs table. Is the table missing?',
+        logError
+      );
+      // We don't return false here because the notification WAS sent to Expo,
+      // just the logging failed.
+    }
 
-    console.log(`Push notification sent to ${userName}`);
+    console.log(`[PushService] Successfully sent to ${userName}`);
     return true;
   } catch (error) {
-    console.error('Error sending notification:', error);
+    console.error('[PushService] Critical error in sendNotificationToUser:', error);
     return false;
   }
 };

@@ -18,29 +18,42 @@ import * as SecureStore from 'expo-secure-store';
 import { clearTokens } from '../../src/tokenStorage';
 
 // Topographic Pattern for Header
-const TopoPattern = () => (
-  <Svg
-    height="100%"
-    width="100%"
-    className="absolute inset-0"
-    viewBox="0 0 400 400"
-    preserveAspectRatio="xMidYMid slice"
-  >
-    <Path
-      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
-      stroke="rgba(255,255,255,0.1)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Circle cx="320" cy="100" r="30" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
-  </Svg>
-);
+const TopoPattern = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
+
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <PathComponent
+        d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="30"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+    </SvgComponent>
+  );
+};
 
 export default function ProfileView() {
   const { width } = useWindowDimensions();
@@ -106,12 +119,17 @@ export default function ProfileView() {
       >
         {/* HEADER SECTION */}
         <View className="h-[320px] items-center mb-5">
-          <LinearGradient
-            colors={['#0EA5E9', '#0284C7']}
-            className="absolute top-0 inset-x-0 h-[240px] rounded-b-[60px]"
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
+          {(() => {
+            const LinearGradientComponent = LinearGradient as any;
+            return (
+              <LinearGradientComponent
+                colors={['#0EA5E9', '#0284C7']}
+                className="absolute top-0 inset-x-0 h-[240px] rounded-b-[60px]"
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+            );
+          })()}
           <TopoPattern />
 
           <View

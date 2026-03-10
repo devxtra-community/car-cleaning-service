@@ -30,7 +30,12 @@ router.get('/report', protect, allowRoles('supervisor'), supervisorReport);
 router.get('/tasks', protect, allowRoles('supervisor'), getSupervisorTasks);
 router.post('/tasks', protect, allowRoles('supervisor'), assignTaskToWorker);
 router.patch('/tasks/:id', protect, allowRoles('supervisor'), updateTask);
-router.get('/dashboard-summary', protect, allowRoles('supervisor'), getSupervisorDashboardSummary);
+router.get(
+  '/dashboard-summary',
+  protect,
+  allowRoles('supervisor', 'super_admin'),
+  getSupervisorDashboardSummary
+);
 
 // Profile (supervisor self-update)
 router.patch('/profile', protect, allowRoles('supervisor'), updateSupervisorProfile);
@@ -43,8 +48,12 @@ router.get('/penalties', protect, allowRoles('supervisor'), getSupervisorPenalti
 // ── Admin CRUD routes ─────────────────────────────────────────────────────────
 router.get('/:id', protect, allowRoles('admin', 'super_admin'), getAdminSupervisorDetails);
 router.put('/:id', protect, allowRoles('admin', 'super_admin'), updateAdminSupervisor);
-router.patch('/:id/status', protect, allowRoles('admin', 'super_admin'), toggleAdminSupervisorStatus);
+router.patch(
+  '/:id/status',
+  protect,
+  allowRoles('admin', 'super_admin'),
+  toggleAdminSupervisorStatus
+);
 router.delete('/:id', protect, allowRoles('admin', 'super_admin'), deleteAdminSupervisor);
 
 export default router;
-

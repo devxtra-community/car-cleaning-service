@@ -25,29 +25,35 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { API } from '@/src/api/api';
 
 // Topographic Pattern for Headers
-const TopoPattern = ({ color = 'rgba(14, 165, 233, 0.08)' }: { color?: string }) => (
-  <Svg
-    height="100%"
-    width="100%"
-    className="absolute inset-0"
-    viewBox="0 0 400 400"
-    preserveAspectRatio="xMidYMid slice"
-  >
-    <Path
-      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
-      stroke={color}
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
-      stroke={color}
-      strokeWidth="2"
-      fill="none"
-    />
-    <Circle cx="320" cy="100" r="30" stroke={color} strokeWidth="2" fill="none" />
-  </Svg>
-);
+const TopoPattern = ({ color = 'rgba(14, 165, 233, 0.08)' }: { color?: string }) => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
+
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <PathComponent
+        d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+        stroke={color}
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+        stroke={color}
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent cx="320" cy="100" r="30" stroke={color} strokeWidth="2" fill="none" />
+    </SvgComponent>
+  );
+};
 
 interface Worker {
   id: string;
@@ -303,9 +309,13 @@ export default function AddTaskScreen() {
   };
 
   if (loading) {
+    const LinearGradientComponent = LinearGradient as any;
     return (
       <View className="flex-1 justify-center items-center">
-        <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} className="absolute inset-0" />
+        <LinearGradientComponent
+          colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+          className="absolute inset-0"
+        />
         <TopoPattern />
         <ActivityIndicator size="large" color="#0EA5E9" />
         <Text className="mt-3 text-sm text-[#64748B] z-10 font-antigravity-medium">
@@ -315,9 +325,15 @@ export default function AddTaskScreen() {
     );
   }
 
+  const LinearGradientComponent = LinearGradient as any;
+  const BlurViewComponent = BlurView as any;
+
   return (
     <View className="flex-1">
-      <LinearGradient colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']} className="absolute inset-0" />
+      <LinearGradientComponent
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        className="absolute inset-0"
+      />
       <TopoPattern />
 
       {/* HEADER SECTION */}
@@ -374,7 +390,7 @@ export default function AddTaskScreen() {
             </View>
 
             {item.status === 'working' && (
-              <BlurView
+              <BlurViewComponent
                 intensity={20}
                 className="bg-white/50 rounded-[24px] p-4 mb-4 overflow-hidden border border-white/50"
               >
@@ -406,7 +422,7 @@ export default function AddTaskScreen() {
                     </Text>
                   </View>
                 </View>
-              </BlurView>
+              </BlurViewComponent>
             )}
 
             <View className="flex-row">
