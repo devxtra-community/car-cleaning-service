@@ -6,3 +6,4 @@ backend/dist/
 frontend/dist/
 apps/**/dist/
 *.log
+*.apk
