@@ -7,9 +7,10 @@
     "icon": "./assets/images/icon.png",
     "scheme": "workerapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.Worker-App"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +21,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Worker_App"
+      "package": "com.anonymous.Worker_App",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -57,6 +59,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ed161c88-cb36-4d98-94c6-e3496207e93d"
+      }
     }
   }
 }
