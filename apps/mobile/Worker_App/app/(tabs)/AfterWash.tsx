@@ -17,7 +17,8 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker'; // Keep native picker for now, or replace if desired
 import { Camera, ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient as _LinearGradient } from 'expo-linear-gradient';
+const LinearGradient = _LinearGradient as any;
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -51,7 +52,10 @@ export default function AfterWash() {
 
   useEffect(() => {
     const loadPricing = async () => {
-      if (!carType) return;
+      if (!carType) {
+        setLoadingPricing(false);
+        return;
+      }
       try {
         const res = await api.get(`/api/vehicle/${carType}/pricing`);
         if (res.data?.success) {
@@ -65,6 +69,12 @@ export default function AfterWash() {
           setPricing(cleanData);
           // Set initial price to base price
           setFinalPrice(cleanData.base_price.toString());
+        } else {
+          console.warn('Pricing not found for type:', carType);
+          Alert.alert(
+            'Warning',
+            'Pricing details not found for this vehicle type. Please enter price manually.'
+          );
         }
       } catch (err) {
         console.error('Failed to load pricing:', err);
@@ -74,6 +84,7 @@ export default function AfterWash() {
       }
     };
 
+    console.log('[AfterWash] jobId:', jobId, 'carType:', carType);
     loadPricing();
   }, [carType]);
 
@@ -82,11 +93,8 @@ export default function AfterWash() {
   useEffect(() => {
     if (!jobId || !carType) {
       console.error('Missing required params:', { jobId, carType });
-      Alert.alert('Error', 'Invalid job details', [
-        { text: 'Go Back', onPress: () => router.back() },
-      ]);
     }
-  }, [jobId, carType, router]);
+  }, [jobId, carType]);
 
   if (!jobId || !carType) {
     return (
@@ -94,8 +102,10 @@ export default function AfterWash() {
         className="flex-1 justify-center items-center bg-[#E0F2FE]"
         style={{ paddingTop: insets.top }}
       >
-        <ActivityIndicator size="large" color="#0EA5E9" />
-        <Text className="mt-4 font-heading text-clay-secondary">Loading details...</Text>
+        <Text className="mb-4 font-heading text-red-500">Invalid Job Details</Text>
+        <Pressable onPress={() => router.back()} className="bg-[#0EA5E9] px-6 py-3 rounded-2xl">
+          <Text className="text-white font-bold">Go Back</Text>
+        </Pressable>
       </View>
     );
   }
@@ -196,7 +206,7 @@ export default function AfterWash() {
   /* ================= UI ================= */
 
   return (
-    <View className="flex-1 bg-[#E0F2FE]">
+    <View className="flex-1" style={{ flex: 1, backgroundColor: '#E0F2FE' }}>
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
         style={{ position: 'absolute', width: '100%', height: '100%' }}
@@ -204,7 +214,7 @@ export default function AfterWash() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         <View
           className="pb-6 rounded-b-[40px] shadow-sm bg-white/80 z-10"
@@ -225,7 +235,8 @@ export default function AfterWash() {
         </View>
 
         <ScrollView
-          className="flex-1 px-6"
+          className="px-6"
+          style={{ flex: 1 }}
           contentContainerStyle={{ paddingTop: 24, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
@@ -332,8 +343,9 @@ export default function AfterWash() {
 
           {/* CONTINUE BUTTON */}
           <Pressable
-            className={`w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center mb-10 clay-button bg-[#0EA5E9] ${loading || !canSubmit ? 'opacity-50' : ''
-              }`}
+            className={`w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center mb-10 clay-button bg-[#0EA5E9] ${
+              loading || !canSubmit ? 'opacity-50' : ''
+            }`}
             disabled={loading || !canSubmit}
             onPress={handleContinue}
           >

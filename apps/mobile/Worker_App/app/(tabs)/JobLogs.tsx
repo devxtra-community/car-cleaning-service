@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { ChevronLeft, Calendar, X, Clock, Car } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient as _LinearGradient } from 'expo-linear-gradient';
+const LinearGradient = _LinearGradient as any;
 import { BlurView } from 'expo-blur';
 import api from '../../src/api/api';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -44,13 +45,7 @@ type Task = {
 // ─── Sub-components (defined OUTSIDE the screen component so they are never
 //     remounted on re-render, which was causing the flicker / loading loop) ────
 
-function TaskCard({
-  task,
-  onPress,
-}: {
-  task: Task;
-  onPress: (t: Task) => void;
-}) {
+function TaskCard({ task, onPress }: { task: Task; onPress: (t: Task) => void }) {
   const { t } = useLanguage();
   const timeStr = new Date(task.completed_at).toLocaleTimeString([], {
     hour: '2-digit',
@@ -121,14 +116,20 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-/** Returns today's date as a YYYY-MM-DD string (avoids Date object reference churn). */
+/** Returns today's date as a YYYY-MM-DD string in local time. */
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /** Formats a YYYY-MM-DD string for display. */
 function displayDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-IN', {
+  // Use local date for display
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -143,7 +144,7 @@ export default function JobLogs() {
   // reference instability that was triggering infinite useFocusEffect loops.
   const [selectedDateStr, setSelectedDateStr] = useState<string>(todayStr);
 
-  const [loading, setLoading] = useState(false);   // starts FALSE — no ghost spinner
+  const [loading, setLoading] = useState(false); // starts FALSE — no ghost spinner
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -155,7 +156,11 @@ export default function JobLogs() {
   const fetchTaskLogs = useCallback(async (dateStr: string) => {
     try {
       setLoading(true);
+      console.log(`[JobLogs] Fetching tasks for date: ${dateStr}`);
       const res = await api.get(`/workers/task-logs?date=${dateStr}`);
+      console.log(
+        `[JobLogs] API response success: ${res.data?.success}, count: ${res.data?.tasks?.length || 0}`
+      );
       if (res.data?.success) {
         setTasks(res.data.tasks || []);
       } else {
@@ -228,7 +233,9 @@ export default function JobLogs() {
           >
             <ChevronLeft size={24} color="#1E293B" />
           </Pressable>
-          <Text className="text-xl font-heading tracking-tight text-clay-text">{t('jobLogs.title')}</Text>
+          <Text className="text-xl font-heading tracking-tight text-clay-text">
+            {t('jobLogs.title')}
+          </Text>
           <View className="w-10" />
         </View>
 
@@ -288,7 +295,10 @@ export default function JobLogs() {
         ) : tasks.length > 0 ? (
           <>
             <Text className="font-label text-[10px] uppercase tracking-widest mb-4 ml-1 text-clay-secondary/80">
-              {t(tasks.length === 1 ? 'jobLogs.completed_count' : 'jobLogs.completed_count_plural', { count: tasks.length })}
+              {t(
+                tasks.length === 1 ? 'jobLogs.completed_count' : 'jobLogs.completed_count_plural',
+                { count: tasks.length }
+              )}
             </Text>
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onPress={openDetail} />

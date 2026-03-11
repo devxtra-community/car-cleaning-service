@@ -16,10 +16,9 @@ async function getOrCreateCleanerId(userId: string): Promise<string> {
 
   // Auto-create a minimal cleaners record linked to this user.
   // ON CONFLICT DO NOTHING handles the race condition if two requests arrive at the same time.
-  await pool.query(
-    `INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
-    [userId]
-  );
+  await pool.query(`INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [
+    userId,
+  ]);
 
   // Re-fetch after the insert (handles both success and conflict cases)
   const after = await pool.query('SELECT id FROM cleaners WHERE user_id = $1', [userId]);
@@ -47,7 +46,7 @@ export const getWorkerDashboard = async (req: AuthRequest, res: Response) => {
       dateCondition = `AND t2.completed_at >= date_trunc('month', $2::date) AND t2.completed_at < date_trunc('month', $2::date) + interval '1 month'`;
     } else {
       // Default 'day'
-      dateCondition = `AND t2.completed_at::date = $2::date`;
+      dateCondition = `AND t2.completed_at >= ($2::date + interval '0 hours') AND t2.completed_at < ($2::date + interval '24 hours')`;
     }
 
     // Revenue condition is same but on t3 alias
@@ -303,7 +302,7 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
     } else if (range === 'month') {
       dateCondition = `AND completed_at >= date_trunc('month', $2::date) AND completed_at < date_trunc('month', $2::date) + interval '1 month'`;
     } else {
-      dateCondition = `AND completed_at::date = $2::date`;
+      dateCondition = `AND completed_at >= ($2::date + interval '0 hours') AND completed_at < ($2::date + interval '24 hours')`;
     }
 
     // 1. Tasks Details - Only fetching tasks as per requirement
@@ -327,44 +326,49 @@ export const getWorkerWalletStats = async (req: AuthRequest, res: Response) => {
       FROM (
         SELECT amount FROM daily_incentive_breakdown dib
         JOIN daily_work_records dwr ON dib.daily_work_record_id = dwr.id
-        WHERE dwr.cleaner_id = $1 AND dwr.date ${range === 'day'
-        ? '= $2::date'
-        : range === 'week'
-          ? '>= date_trunc(\'week\', $2::date) AND dwr.date < date_trunc(\'week\', $2::date) + interval \'1 week\''
-          : '>= date_trunc(\'month\', $2::date) AND dwr.date < date_trunc(\'month\', $2::date) + interval \'1 month\''
-      }
+        WHERE dwr.cleaner_id = $1 AND dwr.date ${
+          range === 'day'
+            ? '= $2::date'
+            : range === 'week'
+              ? ">= date_trunc('week', $2::date) AND dwr.date < date_trunc('week', $2::date) + interval '1 week'"
+              : ">= date_trunc('month', $2::date) AND dwr.date < date_trunc('month', $2::date) + interval '1 month'"
+        }
         UNION ALL
-        SELECT amount FROM milestone_achievements WHERE cleaner_id = $1 AND achieved_at ${range === 'day'
-        ? '::date = $2::date'
-        : range === 'week'
-          ? '>= date_trunc(\'week\', $2::date) AND achieved_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-          : '>= date_trunc(\'month\', $2::date) AND achieved_at < date_trunc(\'month\', $2::date) + interval \'1 month\''
-      }
+        SELECT amount FROM milestone_achievements WHERE cleaner_id = $1 AND achieved_at ${
+          range === 'day'
+            ? '::date = $2::date'
+            : range === 'week'
+              ? ">= date_trunc('week', $2::date) AND achieved_at < date_trunc('week', $2::date) + interval '1 week'"
+              : ">= date_trunc('month', $2::date) AND achieved_at < date_trunc('month', $2::date) + interval '1 month'"
+        }
         UNION ALL
-        SELECT amount FROM cleaner_incentives WHERE cleaner_id = $1 AND created_at ${range === 'day'
-        ? '::date = $2::date'
-        : range === 'week'
-          ? '>= date_trunc(\'week\', $2::date) AND created_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-          : '>= date_trunc(\'month\', $2::date) AND created_at < date_trunc(\'month\', $2::date) + interval \'1 month\''
-      }
+        SELECT amount FROM cleaner_incentives WHERE cleaner_id = $1 AND created_at ${
+          range === 'day'
+            ? '::date = $2::date'
+            : range === 'week'
+              ? ">= date_trunc('week', $2::date) AND created_at < date_trunc('week', $2::date) + interval '1 week'"
+              : ">= date_trunc('month', $2::date) AND created_at < date_trunc('month', $2::date) + interval '1 month'"
+        }
       ) as all_incentives
     `;
     const milestoneQuery = `
       SELECT COALESCE(SUM(amount), 0)::float as total FROM milestone_achievements 
-      WHERE cleaner_id = $1 AND achieved_at ${range === 'day'
-        ? '::date = $2::date'
-        : range === 'week'
-          ? '>= date_trunc(\'week\', $2::date) AND achieved_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-          : '>= date_trunc(\'month\', $2::date) AND achieved_at < date_trunc(\'month\', $2::date) + interval \'1 month\''
+      WHERE cleaner_id = $1 AND achieved_at ${
+        range === 'day'
+          ? '::date = $2::date'
+          : range === 'week'
+            ? ">= date_trunc('week', $2::date) AND achieved_at < date_trunc('week', $2::date) + interval '1 week'"
+            : ">= date_trunc('month', $2::date) AND achieved_at < date_trunc('month', $2::date) + interval '1 month'"
       }
     `;
     const penaltyQuery = `
       SELECT COALESCE(SUM(amount), 0)::float as total FROM penalties 
-      WHERE cleaner_id = $1 AND created_at ${range === 'day'
-        ? '::date = $2::date'
-        : range === 'week'
-          ? '>= date_trunc(\'week\', $2::date) AND created_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-          : '>= date_trunc(\'month\', $2::date) AND created_at < date_trunc(\'month\', $2::date) + interval \'1 month\''
+      WHERE cleaner_id = $1 AND created_at ${
+        range === 'day'
+          ? '::date = $2::date'
+          : range === 'week'
+            ? ">= date_trunc('week', $2::date) AND created_at < date_trunc('week', $2::date) + interval '1 week'"
+            : ">= date_trunc('month', $2::date) AND created_at < date_trunc('month', $2::date) + interval '1 month'"
       }
     `;
 
@@ -452,7 +456,8 @@ export const getWorkerTaskLogs = async (req: AuthRequest, res: Response) => {
       FROM tasks
       WHERE cleaner_id = $1
         AND status = 'completed'
-        AND completed_at::date = $2::date
+        AND completed_at >= ($2::date + interval '0 hours') 
+        AND completed_at < ($2::date + interval '24 hours')
       ORDER BY completed_at DESC
     `;
 

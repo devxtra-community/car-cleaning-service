@@ -73,10 +73,7 @@ export const getSupervisorWorkersAttendanceService = async (supervisorId: string
   return result.rows;
 };
 
-export const updateWorkerAssignmentService = async (
-  cleanerId: string,
-  floorId: string | null
-) => {
+export const updateWorkerAssignmentService = async (cleanerId: string, floorId: string | null) => {
   const result = await pool.query(
     `UPDATE cleaners SET floor_id = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
     [floorId, cleanerId]
@@ -127,13 +124,21 @@ export const getSupervisorDashboardSummaryService = async (supervisorId: string)
             SELECT 1 FROM tasks t2 
             WHERE t2.cleaner_id = c.id AND t2.status != 'completed'
           )
-      ) as live_workers
+      ) as live_workers,
+      (
+        SELECT COUNT(t3.id)::int
+        FROM tasks t3
+        JOIN cleaners c2 ON c2.id = t3.cleaner_id
+        WHERE c2.supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
+          AND t3.status != 'completed'
+      ) as pending_jobs
     FROM tasks t
     JOIN cleaners c ON c.id = t.cleaner_id
     JOIN supervisors s ON c.supervisor_id = s.id
     LEFT JOIN reviews r ON r.task_id = t.id
     WHERE s.user_id = $1
       AND t.status = 'completed'
+      AND t.completed_at::date = CURRENT_DATE
     `,
     [supervisorId]
   );
@@ -206,9 +211,9 @@ export const getSupervisorDetailsService = async (supervisorId: string) => {
           incentive_target: Number(row.incentive_target) || 0,
           floor: row.floor_id
             ? {
-              id: row.floor_id,
-              floor_number: row.floor_number,
-            }
+                id: row.floor_id,
+                floor_number: row.floor_number,
+              }
             : null,
         });
       }
@@ -231,9 +236,9 @@ export const getSupervisorDetailsService = async (supervisorId: string) => {
       is_active: supervisorRow.is_active,
       building: supervisorRow.building_id
         ? {
-          id: supervisorRow.building_id,
-          name: supervisorRow.building_name,
-        }
+            id: supervisorRow.building_id,
+            name: supervisorRow.building_name,
+          }
         : null,
       cleaners,
     };
@@ -459,6 +464,96 @@ export const deleteSupervisorService = async (supervisorId: string) => {
     await client.query('ROLLBACK');
     console.error('Database error in deleteSupervisorService:', error);
     throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Get detailed analytics for supervisor
+export const getSupervisorAnalyticsService = async (supervisorUserId: string) => {
+  const client = await pool.connect();
+  try {
+    // Helper to get totals and car type breakdown for a period
+    const getDataForPeriod = async (periodFilter: string) => {
+      const overview = await client.query(
+        `SELECT 
+          COALESCE(SUM(t.final_price), 0)::float as total_earnings,
+          COUNT(t.id)::int as total_jobs
+         FROM tasks t
+         JOIN cleaners c ON t.cleaner_id = c.id
+         JOIN supervisors s ON c.supervisor_id = s.id
+         WHERE s.user_id = $1 AND t.status = 'completed' AND ${periodFilter}`,
+        [supervisorUserId]
+      );
+
+      const carTypeBreakdown = await client.query(
+        `SELECT 
+          t.car_type as type,
+          COUNT(*)::int as count,
+          COALESCE(SUM(t.final_price), 0)::float as amount
+         FROM tasks t
+         JOIN cleaners c ON t.cleaner_id = c.id
+         JOIN supervisors s ON c.supervisor_id = s.id
+         WHERE s.user_id = $1 AND t.status = 'completed' AND ${periodFilter}
+         GROUP BY t.car_type
+         ORDER BY count DESC`,
+        [supervisorUserId]
+      );
+
+      return {
+        total_earnings: overview.rows[0].total_earnings,
+        total_jobs: overview.rows[0].total_jobs,
+        carTypeBreakdown: carTypeBreakdown.rows,
+      };
+    };
+
+    const daily = await getDataForPeriod('t.completed_at::date = CURRENT_DATE');
+    const weekly = await getDataForPeriod("t.completed_at >= date_trunc('week', CURRENT_DATE)");
+    const monthly = await getDataForPeriod("t.completed_at >= date_trunc('month', CURRENT_DATE)");
+
+    // Weekly Performance (Last 7 Days) for the chart
+    const weeklyPerformance = await client.query(
+      `SELECT 
+        TO_CHAR(d.day, 'Dy') as day,
+        TO_CHAR(d.day, 'YYYY-MM-DD') as date,
+        COALESCE(COUNT(t.id), 0)::int as tasks
+       FROM (
+         SELECT generate_series(CURRENT_DATE - interval '6 days', CURRENT_DATE, '1 day')::date as day
+       ) d
+       LEFT JOIN tasks t ON DATE(t.completed_at) = d.day 
+         AND t.status = 'completed'
+         AND t.cleaner_id IN (
+           SELECT id FROM cleaners WHERE supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
+         )
+       GROUP BY d.day
+       ORDER BY d.day`,
+      [supervisorUserId]
+    );
+
+    // Task Breakdown (Overall/Monthly)
+    const taskBreakdown = await client.query(
+      `SELECT 
+        status,
+        COUNT(*)::int as count
+       FROM tasks t
+       JOIN cleaners c ON t.cleaner_id = c.id
+       JOIN supervisors s ON c.supervisor_id = s.id
+       WHERE s.user_id = $1
+         AND (
+           (t.status = 'completed' AND t.completed_at >= date_trunc('month', CURRENT_DATE))
+           OR t.status != 'completed'
+         )
+       GROUP BY status`,
+      [supervisorUserId]
+    );
+
+    return {
+      daily,
+      weekly,
+      monthly,
+      weeklyPerformance: weeklyPerformance.rows,
+      taskBreakdown: taskBreakdown.rows,
+    };
   } finally {
     client.release();
   }

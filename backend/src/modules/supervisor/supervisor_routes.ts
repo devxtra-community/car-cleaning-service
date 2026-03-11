@@ -16,6 +16,7 @@ import {
   deleteAdminSupervisor,
   getCleanersAttendance,
   updateCleanerAssignment,
+  getSupervisorAnalytics,
 } from './supervisor_controller';
 import { addPenalty, getSupervisorPenalties } from '../penalties/penalties_controller';
 
@@ -36,6 +37,8 @@ router.get(
   allowRoles('supervisor', 'super_admin'),
   getSupervisorDashboardSummary
 );
+
+router.get('/analytics', protect, allowRoles('supervisor'), getSupervisorAnalytics);
 
 // Profile (supervisor self-update)
 router.patch('/profile', protect, allowRoles('supervisor'), updateSupervisorProfile);

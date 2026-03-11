@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, CheckCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient as _LinearGradient } from 'expo-linear-gradient';
+const LinearGradient = _LinearGradient as any;
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -137,8 +138,9 @@ export default function PaymentSummary() {
 
           {/* COMPLETE JOB BUTTON */}
           <Pressable
-            className={`h-[64px] rounded-[24px] justify-center items-center mb-8 shadow-lg shadow-blue-200 clay-button bg-[#0EA5E9] ${loading || completed ? 'opacity-70' : ''
-              }`}
+            className={`h-[64px] rounded-[24px] justify-center items-center mb-8 shadow-lg shadow-blue-200 clay-button bg-[#0EA5E9] ${
+              loading || completed ? 'opacity-70' : ''
+            }`}
             disabled={loading || completed}
             onPress={handleCompleteJob}
           >

@@ -7,6 +7,7 @@ import {
   checkMilestoneIncentives,
 } from './tasks_service';
 import { pool } from '../../database/connectDatabase';
+import { sendNotificationToUser } from '../notifications/notification_service';
 
 /* ================= CREATE TASK ================= */
 
@@ -249,10 +250,44 @@ export const completeTaskController = async (req: AuthRequest, res: Response) =>
 
     const totalIncentiveAmount = allIncentives.reduce((sum, inc) => sum + inc.amount, 0);
 
-    console.log('🎉 Task Completion Summary:');
-    console.log('- Daily Incentives:', dailyIncentives.incentivesEarned.length);
-    console.log('- Milestone Incentives:', milestoneIncentives.length);
     console.log('- Total Incentive Amount:', totalIncentiveAmount);
+
+    /* ================= SEND PUSH NOTIFICATION TO SUPERVISOR ================= */
+
+    try {
+      // Fetch details for notification
+      const notifyRes = await pool.query(
+        `
+        SELECT 
+          u.full_name as worker_name, 
+          b.building_name as society_name, 
+          s.user_id as supervisor_user_id
+        FROM cleaners c
+        JOIN users u ON c.user_id = u.id
+        JOIN buildings b ON c.building_id = b.id
+        JOIN supervisors s ON c.supervisor_id = s.id
+        WHERE c.id = $1
+        `,
+        [cleanerId]
+      );
+
+      if (notifyRes.rows.length > 0) {
+        const { worker_name, society_name, supervisor_user_id } = notifyRes.rows[0];
+
+        await sendNotificationToUser(
+          supervisor_user_id,
+          '✅ Task Completed',
+          `${worker_name} has completed the task at ${society_name}`,
+          { type: 'task_completed', taskId, screen: 'TaskDetail' }
+        );
+      }
+    } catch (pushErr) {
+      console.error(
+        '[PushNotification] Failed to notify supervisor after task completion:',
+        pushErr
+      );
+      // Don't fail the response if notification fails
+    }
 
     return res.json({
       success: true,
@@ -354,6 +389,43 @@ export const verifyTaskController = async (req: AuthRequest, res: Response) => {
       `,
       [status || 'verified', remarks || null, taskId]
     );
+
+    /* ================= SEND PUSH NOTIFICATION TO WORKER ================= */
+
+    if (status === 'flagged' || status === 'rejected') {
+      try {
+        const notifyRes = await pool.query(
+          `
+          SELECT 
+            u.id as worker_user_id,
+            b.building_name as society_name
+          FROM tasks t
+          JOIN cleaners c ON t.cleaner_id = c.id
+          JOIN users u ON c.user_id = u.id
+          JOIN buildings b ON c.building_id = b.id
+          WHERE t.id = $1
+          `,
+          [taskId]
+        );
+
+        if (notifyRes.rows.length > 0) {
+          const { worker_user_id, society_name } = notifyRes.rows[0];
+          const title = status === 'flagged' ? '⚠️ Fraud Detected' : '❌ Task Rejected';
+
+          await sendNotificationToUser(
+            worker_user_id,
+            title,
+            `Your task at ${society_name} has been rejected. Reason: ${remarks || 'No reason provided'}`,
+            { type: 'task_rejected', taskId, screen: 'TaskDetail' }
+          );
+        }
+      } catch (pushErr) {
+        console.error(
+          '[PushNotification] Failed to notify worker after task rejection/flagging:',
+          pushErr
+        );
+      }
+    }
 
     return res.json({ success: true, data: result.rows[0] });
   } catch (err) {

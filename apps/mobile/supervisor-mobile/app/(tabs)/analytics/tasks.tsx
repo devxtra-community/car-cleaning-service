@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, Pressable, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Car } from 'lucide-react-native';
+import { API } from '../../../src/api/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 type TabType = 'daily' | 'weekly' | 'monthly';
 
@@ -11,36 +13,38 @@ interface CarStat {
   count: number;
 }
 
-const DATA: Record<TabType, { total: number; cars: CarStat[] }> = {
-  daily: {
-    total: 25,
-    cars: [
-      { id: '1', type: 'SUV', count: 12 },
-      { id: '2', type: 'Sedan', count: 8 },
-      { id: '3', type: 'Hatchback', count: 5 },
-    ],
-  },
-  weekly: {
-    total: 140,
-    cars: [
-      { id: '1', type: 'SUV', count: 62 },
-      { id: '2', type: 'Sedan', count: 48 },
-      { id: '3', type: 'Hatchback', count: 30 },
-    ],
-  },
-  monthly: {
-    total: 560,
-    cars: [
-      { id: '1', type: 'SUV', count: 260 },
-      { id: '2', type: 'Sedan', count: 190 },
-      { id: '3', type: 'Hatchback', count: 110 },
-    ],
-  },
-};
-
 export default function TaskSummaryScreen() {
   const [tab, setTab] = useState<TabType>('daily');
-  const current = DATA[tab];
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/api/supervisor/analytics');
+      if (res.data.success) {
+        setData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalytics();
+    }, [fetchAnalytics])
+  );
+
+  const currentData = data ? data[tab] : { total_jobs: 0, carTypeBreakdown: [] };
+  const total = currentData.total_jobs;
+  const cars = (currentData.carTypeBreakdown || []).map((item: any, index: number) => ({
+    id: index.toString(),
+    type: item.type,
+    count: item.count,
+  }));
 
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB] p-5">
@@ -73,14 +77,14 @@ export default function TaskSummaryScreen() {
         <Text className="text-xs text-[#6B7280] mb-1.5 font-antigravity-medium">
           Total Cars Cleaned
         </Text>
-        <Text className="text-4xl font-antigravity-bold text-[#2563EB]">{current.total}</Text>
+        <Text className="text-4xl font-antigravity-bold text-[#2563EB]">{total}</Text>
       </View>
 
       {/* CARS CLEANED */}
       <Text className="text-lg font-antigravity-bold mb-3.5 text-[#111827]">Cars Cleaned</Text>
 
       <FlatList
-        data={current.cars}
+        data={cars}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View className="flex-row items-center bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm border border-white">

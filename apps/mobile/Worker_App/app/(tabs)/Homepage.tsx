@@ -12,7 +12,8 @@ import {
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient as _LinearGradient } from 'expo-linear-gradient';
+const LinearGradient = _LinearGradient as any;
 import { BlurView } from 'expo-blur';
 import {
   Plus,
@@ -126,7 +127,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [worker, setWorker] = useState({ name: '', jobsDone: 0, totalRevenue: 0 });
-  const [supervisor, setSupervisor] = useState({ name: '', location: '', jobsDoneToday: 0, phone: '' });
+  const [supervisor, setSupervisor] = useState({
+    name: '',
+    location: '',
+    jobsDoneToday: 0,
+    phone: '',
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [workerInfo, setWorkerInfo] = useState<WorkerInfo | null>(null);
@@ -283,7 +289,13 @@ export default function HomeScreen() {
         <BlurView
           intensity={20}
           tint="light"
-          style={{ borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: 'hidden', paddingTop: insets.top + 10, paddingBottom: 30 }}
+          style={{
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
+            overflow: 'hidden',
+            paddingTop: insets.top + 10,
+            paddingBottom: 30,
+          }}
         >
           <View className="px-6 flex-row justify-between items-center mb-6">
             <View>
@@ -355,7 +367,18 @@ export default function HomeScreen() {
                   <BlurView
                     intensity={40}
                     tint="dark"
-                    style={{ position: 'absolute', bottom: 16, left: 16, right: 16, borderRadius: 16, overflow: 'hidden', padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                    style={{
+                      position: 'absolute',
+                      bottom: 16,
+                      left: 16,
+                      right: 16,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      padding: 16,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
                   >
                     <View>
                       <Text className="text-white font-heading text-xl tracking-tight">
@@ -418,7 +441,7 @@ export default function HomeScreen() {
                   <Pressable
                     onPress={() =>
                       router.push({
-                        pathname: '/AfterWash',
+                        pathname: '/(tabs)/AfterWash',
                         params: { jobId: activeJob.id, carType: activeJob.car_type },
                       })
                     }
@@ -435,7 +458,9 @@ export default function HomeScreen() {
                 <View className="w-16 h-16 rounded-3xl items-center justify-center bg-[#E0F2FE] mb-4 shadow-inner">
                   <Plus size={32} color="#0EA5E9" />
                 </View>
-                <Text className="font-heading text-lg text-clay-text mb-2">{t('home.noActiveJobs')}</Text>
+                <Text className="font-heading text-lg text-clay-text mb-2">
+                  {t('home.noActiveJobs')}
+                </Text>
                 <Text className="text-center font-label text-xs max-w-[200px] leading-5 mb-6">
                   {t('home.readyToWork')}
                 </Text>
@@ -526,9 +551,11 @@ export default function HomeScreen() {
                 title="GET HELP"
                 color="#8B5CF6"
                 onPress={() => {
-                  const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'default' | 'destructive' }[] = [
-                    { text: 'Cancel', style: 'cancel' },
-                  ];
+                  const buttons: {
+                    text: string;
+                    onPress?: () => void;
+                    style?: 'cancel' | 'default' | 'destructive';
+                  }[] = [{ text: 'Cancel', style: 'cancel' }];
                   if (supervisor.phone) {
                     buttons.push({
                       text: `Call ${supervisor.name}`,
@@ -544,7 +571,12 @@ export default function HomeScreen() {
                   );
                 }}
               />
-              <QuickAction icon={<Banknote />} title={t('home.salary')} color="#6366F1" onPress={() => router.push('/(tabs)/Salary')} />
+              <QuickAction
+                icon={<Banknote />}
+                title={t('home.salary')}
+                color="#6366F1"
+                onPress={() => router.push('/(tabs)/Salary')}
+              />
             </View>
           </View>
         </View>

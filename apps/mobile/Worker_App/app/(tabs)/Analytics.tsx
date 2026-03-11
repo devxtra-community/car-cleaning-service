@@ -51,8 +51,13 @@ export default function Analytics() {
 
   const loadAnalytics = useCallback(async () => {
     try {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
       const res = await api.get('/workers/dashboard', {
-        params: { range, date: date.toISOString() },
+        params: { range, date: dateStr },
       });
       if (res.data) setData(res.data);
     } catch (e) {
@@ -154,13 +159,13 @@ export default function Analytics() {
                 style={
                   range === r
                     ? {
-                      backgroundColor: '#fff',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.05,
-                      shadowRadius: 2,
-                      elevation: 1,
-                    }
+                        backgroundColor: '#fff',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 1,
+                      }
                     : {}
                 }
               >
@@ -264,7 +269,10 @@ export default function Analytics() {
               <Text className="text-white text-[12px] font-heading leading-5 flex-1">
                 {jobsDone >= target
                   ? t('analytics.goalAchieved', 'Goal achieved! Reward confirmed.')
-                  : t('analytics.washMore', { count: target - jobsDone, defaultValue: `Wash ${target - jobsDone} more to unlock bonus.` })}
+                  : t('analytics.washMore', {
+                      count: target - jobsDone,
+                      defaultValue: `Wash ${target - jobsDone} more to unlock bonus.`,
+                    })}
               </Text>
             </View>
           </LinearGradient>
@@ -295,7 +303,9 @@ export default function Analytics() {
                 <Text className="text-[10px] font-label uppercase tracking-widest mb-1 text-clay-secondary/80">
                   {t('analytics.rewardsSummary')}
                 </Text>
-                <Text className="text-xl font-heading text-clay-text">{t('analytics.incentiveAchieved')}</Text>
+                <Text className="text-xl font-heading text-clay-text">
+                  {t('analytics.incentiveAchieved')}
+                </Text>
               </View>
               <View className="w-10 h-10 rounded-2xl items-center justify-center bg-[#ECFDF5]">
                 <Award size={20} color="#10B981" />

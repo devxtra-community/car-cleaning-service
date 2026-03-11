@@ -7,6 +7,7 @@ import {
   getSupervisorDashboardSummaryService,
   getSupervisorWorkersAttendanceService,
   updateWorkerAssignmentService,
+  getSupervisorAnalyticsService,
 } from './supervisor_services';
 import { createTaskService } from '../tasks/tasks_service';
 import { sendNotificationToUser } from '../notifications/notification_service';
@@ -456,10 +457,10 @@ export const updateSupervisorProfile = async (req: AuthRequest, res: Response) =
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    const { full_name, profile_image } = req.body;
+    const { full_name, profile_image, phone } = req.body;
 
-    // Only full_name and profile_image can be updated
-    if (!full_name && !profile_image) {
+    // Only full_name, profile_image and phone can be updated
+    if (!full_name && !profile_image && !phone) {
       return res.status(400).json({ success: false, message: 'No fields to update' });
     }
 
@@ -477,13 +478,18 @@ export const updateSupervisorProfile = async (req: AuthRequest, res: Response) =
       values.push(profile_image);
     }
 
+    if (phone) {
+      updates.push(`phone = $${paramIndex++}`);
+      values.push(phone);
+    }
+
     values.push(userId);
 
     const query = `
       UPDATE users 
       SET ${updates.join(', ')}, updated_at = NOW()
       WHERE id = $${paramIndex}
-      RETURNING id, email, full_name, profile_image, role
+      RETURNING id, email, full_name, profile_image, phone, role
     `;
 
     const result = await pool.query(query, values);
@@ -785,5 +791,29 @@ export const deleteAdminSupervisor = async (req: AuthRequest, res: Response) => 
   } catch (err) {
     console.error('deleteAdminSupervisor error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/* ================= GET SUPERVISOR ANALYTICS ================= */
+export const getSupervisorAnalytics = async (req: AuthRequest, res: Response) => {
+  try {
+    const supervisorUserId = req.user?.userId;
+
+    if (!supervisorUserId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const data = await getSupervisorAnalyticsService(supervisorUserId);
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    console.error('getSupervisorAnalytics error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch analytics data',
+    });
   }
 };

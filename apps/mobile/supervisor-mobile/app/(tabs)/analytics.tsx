@@ -2,6 +2,9 @@ import { View, Text, ScrollView, Pressable, TouchableOpacity } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { API } from '../../src/api/api';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useState, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import {
@@ -120,6 +123,42 @@ const TopoPattern = () => {
 
 export default function AnalyticsView() {
   const { t } = useLanguage();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/api/supervisor/analytics');
+      if (res.data.success) {
+        setData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalytics();
+    }, [fetchAnalytics])
+  );
+
+  const overview = data?.monthly || { total_earnings: 0, total_jobs: 0 };
+  const weeklyPerformance = data?.weeklyPerformance || [];
+  const taskBreakdown = data?.taskBreakdown || [];
+
+  const getStatusCount = (status: string) => {
+    const item = taskBreakdown.find((b: any) => b.status === status);
+    return item ? item.count : 0;
+  };
+
+  const completedCount = getStatusCount('completed');
+  const inProgressCount = getStatusCount('working') + getStatusCount('started');
+  const pendingCount = getStatusCount('pending');
+  const totalTasksBreakdown = completedCount + inProgressCount + pendingCount;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F5F7FA]">
@@ -185,7 +224,7 @@ export default function AnalyticsView() {
                     </View>
                   </View>
                   <Text className="text-4xl font-antigravity-bold text-white mb-1 tracking-tighter">
-                    ₹1,245
+                    ₹{overview.total_earnings.toLocaleString()}
                   </Text>
                   <Text className="text-base text-white font-antigravity-semibold opacity-95">
                     {t('supervisor.totalEarnings', { defaultValue: 'Total Earnings' })}
@@ -221,7 +260,7 @@ export default function AnalyticsView() {
                     </View>
                     <View className="flex-1">
                       <Text className="text-[28px] font-antigravity-bold text-white mb-0.5">
-                        67
+                        {overview.total_jobs}
                       </Text>
                       <Text className="text-[13px] text-white font-antigravity-semibold opacity-90">
                         {t('supervisor.tasksCompleted', { defaultValue: 'Tasks Completed' })}
@@ -293,17 +332,9 @@ export default function AnalyticsView() {
               </Text>
             </View>
             <View className="flex-row justify-between items-end h-[180px]">
-              {[
-                { day: 'Mon', locKey: 'supervisor.mon', value: 40, tasks: 8 },
-                { day: 'Tue', locKey: 'supervisor.tue', value: 55, tasks: 11 },
-                { day: 'Wed', locKey: 'supervisor.wed', value: 62, tasks: 12 },
-                { day: 'Thu', locKey: 'supervisor.thu', value: 48, tasks: 9 },
-                { day: 'Fri', locKey: 'supervisor.fri', value: 75, tasks: 15 },
-                { day: 'Sat', locKey: 'supervisor.sat', value: 82, tasks: 16 },
-                { day: 'Sun', locKey: 'supervisor.sun', value: 68, tasks: 13 },
-              ].map((item, i) => (
+              {weeklyPerformance.map((item: any, i: number) => (
                 <TouchableOpacity
-                  key={item.day}
+                  key={item.date}
                   className="flex-1 items-center justify-end mx-1"
                   activeOpacity={0.7}
                 >
@@ -312,24 +343,28 @@ export default function AnalyticsView() {
                   </Text>
                   {(() => {
                     const LinearGradientComponent = LinearGradient as any;
+                    // Find max tasks to normalize height
+                    const maxTasks = Math.max(...weeklyPerformance.map((p: any) => p.tasks), 5);
+                    const heightPercent = (item.tasks / maxTasks) * 90 + 10;
+
                     return (
                       <LinearGradientComponent
                         colors={['#0EA5E9', '#0284C7']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
                         className="w-full max-w-[32px] rounded-lg shadow-sm"
-                        style={{ height: `${item.value}%` } as any}
+                        style={{ height: `${heightPercent}%` } as any}
                       />
                     );
                   })()}
                   <Text
                     className={`text-[11px] mt-2 font-antigravity-semibold ${
-                      i === new Date().getDay() - 1 // this logic has bug if getDay() is 0 (Sun), but keeping logic same
+                      i === weeklyPerformance.length - 1
                         ? 'text-[#0EA5E9] font-antigravity-bold'
                         : 'text-[#9CA3AF]'
                     }`}
                   >
-                    {t(item.locKey as any, { defaultValue: item.day })}
+                    {item.day}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -352,20 +387,20 @@ export default function AnalyticsView() {
           <View className="bg-white rounded-[20px] p-5 shadow-sm">
             <Breakdown
               label={t('supervisor.completed', { defaultValue: 'Completed' })}
-              value="67"
-              total={78}
+              value={completedCount.toString()}
+              total={totalTasksBreakdown || 1}
               color="#10B981"
             />
             <Breakdown
               label={t('supervisor.inProgress', { defaultValue: 'In Progress' })}
-              value="8"
-              total={78}
+              value={inProgressCount.toString()}
+              total={totalTasksBreakdown || 1}
               color="#F59E0B"
             />
             <Breakdown
               label={t('supervisor.pending', { defaultValue: 'Pending' })}
-              value="3"
-              total={78}
+              value={pendingCount.toString()}
+              total={totalTasksBreakdown || 1}
               color="#6B7280"
             />
           </View>

@@ -69,7 +69,6 @@ export default function MyAccountScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -85,7 +84,6 @@ export default function MyAccountScreen() {
         setName(user.full_name || '');
         setEmail(user.email || '');
         setPhone(user.phone || '');
-        setAddress(user.address || '');
         if (user.profile_image) {
           setProfileImage(user.profile_image);
         }
@@ -190,6 +188,7 @@ export default function MyAccountScreen() {
       const res = await API.patch('/api/supervisor/profile', {
         full_name: name,
         profile_image: profileImageUrl,
+        phone: phone,
       });
 
       if (res.data.success) {
@@ -316,39 +315,23 @@ export default function MyAccountScreen() {
             </View>
           </View>
 
-          {/* ADDRESS */}
-          <View className="mb-5">
-            <Text className="text-sm font-antigravity-bold text-[#4A4A4A] mb-2">Address</Text>
-            <View className="flex-row items-center bg-white rounded-xl px-4 py-1 border border-[#E5E7EB] shadow-sm">
-              <MapPin size={18} color="#A0A0A0" className="mr-3" />
-              <TextInput
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Enter your address"
-                placeholderTextColor="#B0B0B0"
-                multiline
-                className="flex-1 text-[15px] font-antigravity-medium text-[#2C2C2C] py-3 min-h-[44px]"
-              />
-            </View>
+          {/* SAVE BUTTON */}
+          <View className="px-5 mt-3">
+            <Pressable
+              className={`flex-row items-center justify-center py-4 rounded-xl gap-2 shadow-lg ${loading ? 'bg-[#4FB3D9] opacity-60' : 'bg-[#4FB3D9]'}`}
+              onPress={handleSave}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Save size={20} color="#fff" />
+                  <Text className="text-white text-base font-antigravity-bold">Save Changes</Text>
+                </>
+              )}
+            </Pressable>
           </View>
-        </View>
-
-        {/* SAVE BUTTON */}
-        <View className="px-5 mt-3">
-          <Pressable
-            className={`flex-row items-center justify-center py-4 rounded-xl gap-2 shadow-lg ${loading ? 'bg-[#4FB3D9] opacity-60' : 'bg-[#4FB3D9]'}`}
-            onPress={handleSave}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Save size={20} color="#fff" />
-                <Text className="text-white text-base font-antigravity-bold">Save Changes</Text>
-              </>
-            )}
-          </Pressable>
         </View>
 
         <View className="h-10" />

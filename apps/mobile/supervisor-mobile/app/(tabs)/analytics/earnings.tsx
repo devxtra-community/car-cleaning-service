@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, Pressable, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DollarSign, TrendingUp } from 'lucide-react-native';
+import { API } from '../../../src/api/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 type TabType = 'daily' | 'weekly' | 'monthly';
 
@@ -13,36 +15,49 @@ interface ServiceStat {
   icon: string;
 }
 
-const DATA: Record<TabType, { total: number; services: ServiceStat[] }> = {
-  daily: {
-    total: 2450,
-    services: [
-      { id: '1', type: 'SUV', count: 3, amount: 1200, icon: '🚙' },
-      { id: '2', type: 'Sedan', count: 5, amount: 800, icon: '🚗' },
-      { id: '3', type: 'Premium', count: 1, amount: 450, icon: '✨' },
-    ],
-  },
-  weekly: {
-    total: 15780,
-    services: [
-      { id: '1', type: 'SUV', count: 18, amount: 7200, icon: '🚙' },
-      { id: '2', type: 'Sedan', count: 32, amount: 5120, icon: '🚗' },
-      { id: '3', type: 'Premium', count: 8, amount: 3460, icon: '✨' },
-    ],
-  },
-  monthly: {
-    total: 68420,
-    services: [
-      { id: '1', type: 'SUV', count: 82, amount: 32800, icon: '🚙' },
-      { id: '2', type: 'Sedan', count: 145, amount: 23200, icon: '🚗' },
-      { id: '3', type: 'Premium', count: 35, amount: 12420, icon: '✨' },
-    ],
-  },
+const getIconForCarType = (type: string) => {
+  const t = type.toLowerCase();
+  if (t.includes('suv')) return '🚙';
+  if (t.includes('sedan')) return '🚗';
+  if (t.includes('premium')) return '✨';
+  if (t.includes('hatchback')) return '🚗';
+  return '🧼';
 };
 
 export default function EarningsScreen() {
   const [tab, setTab] = useState<TabType>('daily');
-  const current = DATA[tab];
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/api/supervisor/analytics');
+      if (res.data.success) {
+        setData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalytics();
+    }, [fetchAnalytics])
+  );
+
+  const currentData = data ? data[tab] : { total_earnings: 0, total_jobs: 0, carTypeBreakdown: [] };
+  const total = currentData.total_earnings;
+  const services = (currentData.carTypeBreakdown || []).map((item: any, index: number) => ({
+    id: index.toString(),
+    type: item.type,
+    count: item.count,
+    amount: item.amount,
+    icon: getIconForCarType(item.type),
+  }));
 
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB] p-5">
@@ -76,15 +91,13 @@ export default function EarningsScreen() {
           Total Earnings
         </Text>
         <Text className="text-4xl font-antigravity-bold text-[#2563EB] mb-2">
-          ₹{current.total.toLocaleString()}
+          ₹{total.toLocaleString()}
         </Text>
 
         {/* TREND INDICATOR */}
         <View className="flex-row items-center gap-1 bg-[#D1FAE5] px-2.5 py-1 rounded-xl">
           <TrendingUp size={14} color="#10B981" />
-          <Text className="text-xs font-antigravity-bold text-[#10B981]">
-            {tab === 'daily' ? '+12.5%' : tab === 'weekly' ? '+8.3%' : '+15.7%'}
-          </Text>
+          <Text className="text-xs font-antigravity-bold text-[#10B981]">Real-time</Text>
         </View>
       </View>
 
@@ -92,7 +105,7 @@ export default function EarningsScreen() {
       <Text className="text-lg font-antigravity-bold mb-3.5 text-[#111827]">Service Breakdown</Text>
 
       <FlatList
-        data={current.services}
+        data={services}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View className="flex-row items-center bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm border border-white">
