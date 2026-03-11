@@ -27,8 +27,8 @@ import {
   Camera,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-
 import { API } from '@/src/api/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Worker {
   id: string;
@@ -54,6 +54,7 @@ interface VehicleType {
 }
 
 export default function LiveWorker() {
+  const { t } = useLanguage();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -252,7 +253,7 @@ export default function LiveWorker() {
       <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
         <ActivityIndicator size="large" color="#3DA2CE" />
         <Text className="mt-3 text-sm text-[#6B7280] font-antigravity-medium">
-          Loading workers...
+          {t('addJob.loadingWorkers', { defaultValue: 'Loading workers...' })}
         </Text>
       </View>
     );
@@ -271,9 +272,13 @@ export default function LiveWorker() {
   return (
     <SafeAreaView className="flex-1 bg-[#F5F7FA] p-4">
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-xl font-antigravity-bold text-[#2C2C2C]">Worker Status</Text>
+        <Text className="text-xl font-antigravity-bold text-[#2C2C2C]">
+          {t('supervisor.workerStatus', { defaultValue: 'Worker Status' })}
+        </Text>
         <TouchableOpacity className="px-3 py-1.5 bg-[#E8F4F8] rounded-lg" onPress={loadWorkers}>
-          <Text className="text-[#3DA2CE] text-[13px] font-antigravity-bold">Refresh</Text>
+          <Text className="text-[#3DA2CE] text-[13px] font-antigravity-bold">
+            {t('common.refresh', { defaultValue: 'Refresh' })}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -283,7 +288,7 @@ export default function LiveWorker() {
         contentContainerStyle={{ paddingBottom: 40 }}
         ListEmptyComponent={
           <Text className="text-center mt-10 text-[#9CA3AF] font-antigravity-medium">
-            No workers assigned to you
+            {t('supervisor.noWorkers', { defaultValue: 'No workers assigned to you' })}
           </Text>
         }
         renderItem={({ item }) => (
@@ -310,11 +315,16 @@ export default function LiveWorker() {
                 <Text
                   className={`text-[12px] font-antigravity-bold ${item.status === 'working' ? 'text-[#16A34A]' : 'text-[#6B7280]'}`}
                 >
-                  {item.status === 'working' ? 'WORKING' : 'IDLE'}
+                  {item.status === 'working'
+                    ? t('supervisor.working', { defaultValue: 'Working' }).toUpperCase()
+                    : t('supervisor.idle', { defaultValue: 'Idle' }).toUpperCase()}
                 </Text>
                 {item.status === 'working' && item.task_started_at && (
                   <Text className="text-xs text-[#6B7280] font-antigravity-medium ml-1.5">
-                    • Since {formatTime(item.task_started_at)}
+                    {t('supervisor.sinceTime', {
+                      time: formatTime(item.task_started_at),
+                      defaultValue: `• Since ${formatTime(item.task_started_at)}`,
+                    })}
                   </Text>
                 )}
               </View>
@@ -322,7 +332,9 @@ export default function LiveWorker() {
 
             {item.status === 'working' && (
               <View className="bg-[#E8F4F8] px-2 py-1 rounded">
-                <Text className="text-[10px] text-[#3DA2CE] font-antigravity-bold">View Task</Text>
+                <Text className="text-[10px] text-[#3DA2CE] font-antigravity-bold">
+                  {t('supervisor.viewTask', { defaultValue: 'View Task' })}
+                </Text>
               </View>
             )}
           </Pressable>
@@ -338,7 +350,9 @@ export default function LiveWorker() {
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl max-h-[85%] min-h-[40%]">
             <View className="flex-row justify-between items-center p-5 border-b border-[#F3F4F6]">
-              <Text className="text-lg font-antigravity-bold text-[#2C2C2C]">Worker Details</Text>
+              <Text className="text-lg font-antigravity-bold text-[#2C2C2C]">
+                {t('supervisor.workerDetails', { defaultValue: 'Worker Details' })}
+              </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <X size={24} color="#6B7280" />
               </TouchableOpacity>
@@ -361,7 +375,9 @@ export default function LiveWorker() {
                   <Text
                     className={`text-[12px] font-antigravity-bold ${selectedWorker?.status === 'working' ? 'text-[#16A34A]' : 'text-[#6B7280]'}`}
                   >
-                    {selectedWorker?.status === 'working' ? 'Currently Working' : 'Currently Idle'}
+                    {selectedWorker?.status === 'working'
+                      ? t('supervisor.currentlyWorking', { defaultValue: 'Currently Working' })
+                      : t('supervisor.currentlyIdle', { defaultValue: 'Currently Idle' })}
                   </Text>
                 </View>
               </View>
@@ -369,37 +385,37 @@ export default function LiveWorker() {
               {selectedWorker?.status === 'working' ? (
                 <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-5 shadow-sm border border-[#F3F4F6]">
                   <Text className="text-[15px] font-antigravity-bold text-[#2C2C2C] mb-4">
-                    Current Task Info
+                    {t('supervisor.currentTaskInfo', { defaultValue: 'Current Task Info' })}
                   </Text>
 
                   <DetailRow
                     icon={<Car size={18} color="#3DA2CE" />}
-                    label="Vehicle"
+                    label={t('addJob.vehicle', { defaultValue: 'Vehicle' })}
                     value={`${selectedWorker.car_number} (${selectedWorker.car_model})`}
                   />
                   <DetailRow
                     icon={<Hash size={18} color="#3DA2CE" />}
-                    label="Type"
+                    label={t('supervisor.type', { defaultValue: 'Type' })}
                     value={selectedWorker.car_type || 'N/A'}
                   />
                   <DetailRow
                     icon={<User size={18} color="#3DA2CE" />}
-                    label="Owner"
+                    label={t('addJob.owner', { defaultValue: 'Owner' })}
                     value={selectedWorker.owner_name || 'N/A'}
                   />
                   <DetailRow
                     icon={<Phone size={18} color="#3DA2CE" />}
-                    label="Phone"
+                    label={t('supervisor.phone', { defaultValue: 'Phone' })}
                     value={selectedWorker.owner_phone || 'N/A'}
                   />
                   <DetailRow
                     icon={<DollarSign size={18} color="#3DA2CE" />}
-                    label="Amount"
+                    label={t('supervisor.amount', { defaultValue: 'Amount' })}
                     value={`₹${selectedWorker.task_amount}`}
                   />
                   <DetailRow
                     icon={<Clock size={18} color="#3DA2CE" />}
-                    label="Started At"
+                    label={t('supervisor.startedAt', { defaultValue: 'Started At' })}
                     value={formatTime(selectedWorker.task_started_at!)}
                   />
                 </View>
@@ -407,7 +423,7 @@ export default function LiveWorker() {
                 <View className="items-center py-6">
                   <Clock size={40} color="#9CA3AF" className="mb-2.5" />
                   <Text className="text-sm text-[#9CA3AF] font-antigravity-medium">
-                    No active task at the moment
+                    {t('supervisor.noActiveTask', { defaultValue: 'No active task at the moment' })}
                   </Text>
                 </View>
               )}
@@ -415,11 +431,13 @@ export default function LiveWorker() {
               {/* TASK MANAGEMENT FORM */}
               <View className="pt-2 px-1 border-t border-[#F3F4F6] mt-2">
                 <Text className="text-[15px] font-antigravity-bold text-[#2C2C2C] mb-4">
-                  {isUpdating ? 'Update Task Details' : 'Assign New Task'}
+                  {isUpdating
+                    ? t('supervisor.updateTaskDetails', { defaultValue: 'Update Task Details' })
+                    : t('supervisor.assignNewTask', { defaultValue: 'Assign New Task' })}
                 </Text>
 
                 <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
-                  Owner Name
+                  {t('addJob.ownerName', { defaultValue: 'Owner Name' })}
                 </Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
@@ -429,7 +447,7 @@ export default function LiveWorker() {
                 />
 
                 <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
-                  Owner Phone
+                  {t('addJob.ownerPhone', { defaultValue: 'Owner Phone' })}
                 </Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
@@ -440,7 +458,7 @@ export default function LiveWorker() {
                 />
 
                 <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
-                  Car Number
+                  {t('addJob.carNumber', { defaultValue: 'Car Number' })}
                 </Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
@@ -450,7 +468,9 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, car_number: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Model</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
+                  {t('addJob.modelColor', { defaultValue: 'Car Model' })}
+                </Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: Honda City"
@@ -458,7 +478,9 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, car_model: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Type</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
+                  {t('addJob.carType', { defaultValue: 'Car Type' })}
+                </Text>
                 <Pressable
                   className="flex-row items-center justify-between bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 mb-4"
                   onPress={() => setShowTypePicker(true)}
@@ -466,13 +488,14 @@ export default function LiveWorker() {
                   <Text
                     className={`text-[15px] font-antigravity-medium ${!formData.car_type ? 'text-[#9CA3AF]' : 'text-[#1F2937]'}`}
                   >
-                    {formData.car_type || 'Select Car Type'}
+                    {formData.car_type ||
+                      t('addJob.selectType', { defaultValue: 'Select Car Type' })}
                   </Text>
                   <ChevronDown size={20} color="#6B7280" />
                 </Pressable>
 
                 <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
-                  Car Location (Optional)
+                  {t('addJob.location', { defaultValue: 'Car Location (Optional)' })}
                 </Text>
                 <View className="flex-row items-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 mb-4">
                   <MapPin size={18} color="#9CA3AF" className="mr-2" />
@@ -484,7 +507,9 @@ export default function LiveWorker() {
                   />
                 </View>
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Color</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
+                  {t('supervisor.carColor', { defaultValue: 'Car Color' })}
+                </Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-4"
                   placeholder="Ex: White"
@@ -492,7 +517,9 @@ export default function LiveWorker() {
                   onChangeText={(text) => setFormData({ ...formData, car_color: text })}
                 />
 
-                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">Car Photo</Text>
+                <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
+                  {t('supervisor.carPhoto', { defaultValue: 'Car Photo' })}
+                </Text>
                 <Pressable
                   className="bg-[#F9FAFB] border border-[#E5E7EB] border-dashed rounded-xl p-4 mb-4 items-center justify-center min-h-[100px]"
                   onPress={showImageOptions}
@@ -509,7 +536,7 @@ export default function LiveWorker() {
                       <View className="absolute inset-0 bg-black/30 justify-center items-center">
                         <Camera size={24} color="#FFF" />
                         <Text className="text-white text-xs font-antigravity-bold mt-1">
-                          Change Photo
+                          {t('supervisor.changePhoto', { defaultValue: 'Change Photo' })}
                         </Text>
                       </View>
                     </View>
@@ -517,14 +544,14 @@ export default function LiveWorker() {
                     <>
                       <ImageIcon size={28} color="#3DA2CE" />
                       <Text className="text-[#3DA2CE] text-sm font-antigravity-bold mt-2">
-                        Upload Car Photo
+                        {t('supervisor.uploadCarPhoto', { defaultValue: 'Upload Car Photo' })}
                       </Text>
                     </>
                   )}
                 </Pressable>
 
                 <Text className="text-sm font-antigravity-bold text-[#4B5563] mb-2">
-                  Task Amount (₹)
+                  {t('supervisor.taskAmount', { defaultValue: 'Task Amount (₹)' })}
                 </Text>
                 <TextInput
                   className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3.5 py-3 text-[15px] font-antigravity-medium text-[#1F2937] mb-6"
@@ -543,7 +570,9 @@ export default function LiveWorker() {
                     <ActivityIndicator color="#FFF" />
                   ) : (
                     <Text className="text-white text-base font-antigravity-bold">
-                      {isUpdating ? 'Update Task' : 'Assign Task'}
+                      {isUpdating
+                        ? t('addJob.updateTask', { defaultValue: 'Update Task' })
+                        : t('addJob.assignTask', { defaultValue: 'Assign Task' })}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -567,7 +596,7 @@ export default function LiveWorker() {
           <View className="bg-white rounded-2xl w-full max-h-[70%]">
             <View className="flex-row justify-between items-center p-4 border-b border-[#F3F4F6]">
               <Text className="text-base font-antigravity-bold text-[#1F2937]">
-                Select Car Type
+                {t('addJob.selectType', { defaultValue: 'Select Car Type' })}
               </Text>
               <Pressable onPress={() => setShowTypePicker(false)}>
                 <X size={20} color="#6B7280" />

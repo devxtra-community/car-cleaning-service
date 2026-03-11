@@ -15,6 +15,7 @@ import {
 import { router } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { API } from '../../src/api/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 /* -------------------- DECORATIVE PATTERN -------------------- */
 const TopoPattern = () => {
@@ -90,6 +91,7 @@ const ActionCard = ({
 /* -------------------- MAIN SCREEN -------------------- */
 export default function HomePage() {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [user, setUser] = React.useState<{
     full_name?: string;
     role?: string;
@@ -169,9 +171,11 @@ export default function HomePage() {
             )}
           </View>
           <View className="flex-1">
-            <Text className="text-sm text-[#64748B] font-antigravity-medium">Welcome back,</Text>
+            <Text className="text-sm text-[#64748B] font-antigravity-medium">
+              {t('dashboard.welcomeBack', { defaultValue: 'Welcome back,' })}
+            </Text>
             <Text className="text-xl font-antigravity-bold text-[#1E293B]">
-              {user?.full_name || 'Supervisor'}
+              {user?.full_name || t('profile.supervisor', { defaultValue: 'Supervisor' })}
             </Text>
           </View>
           <Pressable className="w-12 h-12 rounded-full bg-white justify-center items-center border border-[#F1F5F9]">
@@ -193,7 +197,7 @@ export default function HomePage() {
           <View className="flex-row items-center gap-2 mb-3">
             <TrendingUp size={14} color="#0EA5E9" />
             <Text className="text-[11px] font-antigravity-bold text-[#0EA5E9] uppercase tracking-widest">
-              Daily Performance
+              {t('supervisor.dailyPerformance', { defaultValue: 'Daily Performance' })}
             </Text>
           </View>
 
@@ -216,13 +220,13 @@ export default function HomePage() {
                 {summary.total_jobs}
               </Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
-                Jobs Done
+                {t('supervisor.jobsDone', { defaultValue: 'Jobs Done' })}
               </Text>
             </View>
             <View className="items-center">
               <Text className="text-base font-antigravity-bold text-[#1E293B]">--</Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
-                Pending
+                {t('supervisor.pending', { defaultValue: 'Pending' })}
               </Text>
             </View>
             <View className="items-center">
@@ -230,7 +234,7 @@ export default function HomePage() {
                 {summary.avg_rating > 0 ? summary.avg_rating.toFixed(1) : '5.0'}
               </Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
-                Rating
+                {t('supervisor.rating', { defaultValue: 'Rating' })}
               </Text>
             </View>
           </View>
@@ -253,7 +257,7 @@ export default function HomePage() {
                 >
                   <UserCog size={22} color="#FFF" />
                   <Text className="text-white text-base font-antigravity-bold flex-1 ml-3">
-                    Add Tasks
+                    {t('supervisor.addTasks', { defaultValue: 'Add Tasks' })}
                   </Text>
                   <ChevronRight size={18} color="#FFF" opacity={0.6} />
                 </LinearGradientComponent>
@@ -268,43 +272,49 @@ export default function HomePage() {
             <View className="w-10 h-10 rounded-full bg-[#FEF2F2] justify-center items-center">
               <AlertCircle size={22} color="#EF4444" strokeWidth={2.5} />
             </View>
-            <Text className="text-sm font-antigravity-bold text-[#1E293B]">Penalties</Text>
+            <Text className="text-sm font-antigravity-bold text-[#1E293B]">
+              {t('supervisor.penalties', { defaultValue: 'Penalties' })}
+            </Text>
           </Pressable>
         </View>
 
         {/* QUICK ACTIONS SECTION */}
         <View className="flex-row justify-between items-center mb-5 px-1">
-          <Text className="text-xl font-antigravity-bold text-[#1E293B]">Dashboard</Text>
+          <Text className="text-xl font-antigravity-bold text-[#1E293B]">
+            {t('tabs.dashboard', { defaultValue: 'Dashboard' })}
+          </Text>
           <Pressable>
-            <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">Manage</Text>
+            <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">
+              {t('common.manage', { defaultValue: 'Manage' })}
+            </Text>
           </Pressable>
         </View>
 
         <View className="flex-row flex-wrap gap-4 justify-center">
           <ActionCard
             icon={<UserCog size={24} color="#0EA5E9" />}
-            title="Live Workers"
-            subtitle={`${summary.live_workers} Active Crew`}
+            title={t('supervisor.liveWorkers', { defaultValue: 'Live Workers' })}
+            subtitle={`${summary.live_workers} ${t('supervisor.activeCrew', { defaultValue: 'Active Crew' })}`}
             onPress={() => router.push('/supervisor/live-worker')}
           />
 
           <ActionCard
             icon={<Calendar size={24} color="#0EA5E9" />}
-            title="Attendance"
-            subtitle="Check-in/Out"
+            title={t('tabs.attendance', { defaultValue: 'Attendance' })}
+            subtitle={t('attendance.checkInOut', { defaultValue: 'Check-in/Out' })}
           />
 
           <ActionCard
             icon={<ClipboardList size={24} color="#0EA5E9" />}
-            title="Task Feed"
-            subtitle="History"
+            title={t('supervisor.taskFeed', { defaultValue: 'Task Feed' })}
+            subtitle={t('supervisor.history', { defaultValue: 'History' })}
             onPress={() => router.push('/(tabs)/supervisor/tasks-summary')}
           />
 
           <ActionCard
             icon={<AlertCircle size={24} color="#0EA5E9" />}
-            title="Support"
-            subtitle="Get Help"
+            title={t('common.support', { defaultValue: 'Support' })}
+            subtitle={t('home.getHelp', { defaultValue: 'Get Help' })}
           />
         </View>
       </ScrollView>

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { API } from '@/src/api/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Worker {
   id: string;
@@ -12,6 +13,7 @@ interface Worker {
 }
 
 export default function SelectWorkerScreen() {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -42,13 +44,15 @@ export default function SelectWorkerScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB]">
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-        <Text className="text-2xl font-antigravity-bold text-[#1E293B] mb-4">Select Worker</Text>
+        <Text className="text-2xl font-antigravity-bold text-[#1E293B] mb-4">
+          {t('supervisor.selectWorker', { defaultValue: 'Select Worker' })}
+        </Text>
 
         {/* SEARCH */}
         <View className="flex-row items-center bg-white rounded-2xl px-3 py-2.5 mb-4 border border-[#F1F5F9] shadow-sm">
           <Search size={18} color="#6B7280" />
           <TextInput
-            placeholder="Search worker"
+            placeholder={t('supervisor.searchWorker', { defaultValue: 'Search worker' })}
             value={search}
             onChangeText={setSearch}
             className="flex-1 text-sm font-antigravity-medium ml-2"
@@ -82,7 +86,7 @@ export default function SelectWorkerScreen() {
 
             {filteredWorkers.length === 0 && (
               <Text className="text-center text-[#9CA3AF] mt-5 font-antigravity-medium">
-                No workers found
+                {t('supervisor.noWorkersFound', { defaultValue: 'No workers found' })}
               </Text>
             )}
           </>
@@ -101,7 +105,9 @@ export default function SelectWorkerScreen() {
             })
           }
         >
-          <Text className="text-white text-base font-antigravity-bold">Continue</Text>
+          <Text className="text-white text-base font-antigravity-bold">
+            {t('supervisor.continueBtn', { defaultValue: 'Continue' })}
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

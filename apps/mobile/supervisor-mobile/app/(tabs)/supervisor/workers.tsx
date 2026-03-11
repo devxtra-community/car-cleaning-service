@@ -2,6 +2,7 @@ import { View, Text, Image, FlatList, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API } from '@/src/api/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Worker {
   id: string;
@@ -13,6 +14,7 @@ interface Worker {
 export default function WorkersList() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchWorkers = async () => {
@@ -33,7 +35,7 @@ export default function WorkersList() {
       <View className="flex-1 justify-center items-center bg-[#F5F7FA]">
         <ActivityIndicator size="large" color="#3DA2CE" />
         <Text className="mt-3 text-sm text-[#6B7280] font-antigravity-medium">
-          Loading workers...
+          {t('addJob.loadingWorkers', { defaultValue: 'Loading workers...' })}
         </Text>
       </View>
     );
@@ -42,9 +44,14 @@ export default function WorkersList() {
   return (
     <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       <View className="px-5 pt-4 pb-2">
-        <Text className="text-xl font-antigravity-bold text-[#2C2C2C]">Workers</Text>
+        <Text className="text-xl font-antigravity-bold text-[#2C2C2C]">
+          {t('supervisor.workers', { defaultValue: 'Workers' })}
+        </Text>
         <Text className="text-sm text-[#6B7280] font-antigravity-medium mt-1">
-          {workers.length} workers assigned
+          {t('supervisor.workersAssigned', {
+            count: workers.length,
+            defaultValue: `${workers.length} workers assigned`,
+          })}
         </Text>
       </View>
 
@@ -77,7 +84,7 @@ export default function WorkersList() {
         )}
         ListEmptyComponent={
           <Text className="text-center mt-10 text-[#9CA3AF] font-antigravity-medium">
-            No workers found
+            {t('supervisor.noWorkersFound', { defaultValue: 'No workers found' })}
           </Text>
         }
       />

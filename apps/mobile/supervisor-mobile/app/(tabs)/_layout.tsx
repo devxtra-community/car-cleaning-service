@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import React from 'react';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { getAccessToken } from '../../src/tokenStorage';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const ACTIVE = '#ffffff'; // White for active text
 const INACTIVE = '#9ca3af'; // Gray for inactive
@@ -14,10 +15,23 @@ const { width } = Dimensions.get('window');
 const CONTAINER_WIDTH = width * 0.9;
 
 function CustomTabBar({ state, _descriptors, navigation }: any) {
+  const { t } = useLanguage();
   const tabs = [
-    { name: 'Analytics', icon: <PieChart size={22} />, routeName: 'analytics' },
-    { name: 'Home', icon: <Home size={22} />, routeName: 'index' },
-    { name: 'Profile', icon: <User size={22} />, routeName: 'profile' },
+    {
+      name: t('tabs.analytics', { defaultValue: 'Analytics' }),
+      icon: <PieChart size={22} />,
+      routeName: 'analytics',
+    },
+    {
+      name: t('tabs.home', { defaultValue: 'Home' }),
+      icon: <Home size={22} />,
+      routeName: 'index',
+    },
+    {
+      name: t('tabs.profile', { defaultValue: 'Profile' }),
+      icon: <User size={22} />,
+      routeName: 'profile',
+    },
   ];
 
   const tabCount = tabs.length;
@@ -41,7 +55,6 @@ function CustomTabBar({ state, _descriptors, navigation }: any) {
 
   return (
     <View className="absolute bottom-6 w-full items-center" pointerEvents="box-none">
-      {/* @ts-expect-error: BlurView intensity type mismatch or missing props in some environments */}
       <BlurView
         intensity={Platform.OS === 'ios' ? 30 : 100}
         tint="light"
@@ -55,7 +68,6 @@ function CustomTabBar({ state, _descriptors, navigation }: any) {
           } as any
         }
       >
-        {/* @ts-expect-error: LinearGradient types can be tricky with NativeWind or version mismatches */}
         <LinearGradient
           colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
           style={{ position: 'absolute', width: '100%', height: '100%' } as any}
@@ -72,7 +84,6 @@ function CustomTabBar({ state, _descriptors, navigation }: any) {
               left: 0,
             }}
           >
-            {/* @ts-expect-error: LinearGradient styling and types mismatch with Animated.View */}
             <LinearGradient
               colors={['#0EA5E9', '#0284C7']}
               style={{ width: '100%', height: '100%', borderRadius: 24, elevation: 10 } as any}

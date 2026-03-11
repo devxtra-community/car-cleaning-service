@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, Pressable, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import {
@@ -118,6 +119,8 @@ const TopoPattern = () => {
 };
 
 export default function AnalyticsView() {
+  const { t } = useLanguage();
+
   return (
     <SafeAreaView className="flex-1 bg-[#F5F7FA]">
       {/* HEADER WITH TOPOGRAPHIC BACKGROUND */}
@@ -133,10 +136,12 @@ export default function AnalyticsView() {
               <View className="flex-row justify-between items-center px-5 z-10">
                 <View>
                   <Text className="text-[32px] font-antigravity-bold text-white tracking-tighter">
-                    Analytics
+                    {t('supervisor.analytics', { defaultValue: 'Analytics' })}
                   </Text>
                   <Text className="text-sm text-white/90 font-antigravity-medium mt-1">
-                    Track your performance metrics
+                    {t('supervisor.trackPerformance', {
+                      defaultValue: 'Track your performance metrics',
+                    })}
                   </Text>
                 </View>
                 <TouchableOpacity className="w-11 h-11 rounded-full bg-white justify-center items-center shadow-md">
@@ -183,9 +188,11 @@ export default function AnalyticsView() {
                     ₹1,245
                   </Text>
                   <Text className="text-base text-white font-antigravity-semibold opacity-95">
-                    Total Earnings
+                    {t('supervisor.totalEarnings', { defaultValue: 'Total Earnings' })}
                   </Text>
-                  <Text className="text-xs text-white opacity-75 mt-0.5">This month</Text>
+                  <Text className="text-xs text-white opacity-75 mt-0.5">
+                    {t('supervisor.thisMonth', { defaultValue: 'This month' })}
+                  </Text>
                   <View className="absolute right-5 bottom-5 opacity-50">
                     <ChevronRight size={20} color="#fff" />
                   </View>
@@ -217,7 +224,7 @@ export default function AnalyticsView() {
                         67
                       </Text>
                       <Text className="text-[13px] text-white font-antigravity-semibold opacity-90">
-                        Tasks Completed
+                        {t('supervisor.tasksCompleted', { defaultValue: 'Tasks Completed' })}
                       </Text>
                     </View>
                   </View>
@@ -248,9 +255,11 @@ export default function AnalyticsView() {
                   <AlertCircle size={20} color="#EF4444" strokeWidth={2.5} />
                 </View>
                 <View>
-                  <Text className="text-base font-antigravity-bold text-[#111827]">Penalties</Text>
+                  <Text className="text-base font-antigravity-bold text-[#111827]">
+                    {t('supervisor.penalties', { defaultValue: 'Penalties' })}
+                  </Text>
                   <Text className="text-xs text-[#6B7280] font-antigravity-medium mt-0.5">
-                    Review history
+                    {t('supervisor.reviewHistory', { defaultValue: 'Review history' })}
                   </Text>
                 </View>
               </View>
@@ -262,9 +271,13 @@ export default function AnalyticsView() {
         {/* WEEKLY PERFORMANCE */}
         <View className="mt-6 px-5">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-xl font-antigravity-bold text-[#111827]">Weekly Performance</Text>
+            <Text className="text-xl font-antigravity-bold text-[#111827]">
+              {t('supervisor.weeklyPerformance', { defaultValue: 'Weekly Performance' })}
+            </Text>
             <TouchableOpacity>
-              <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">View All</Text>
+              <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">
+                {t('supervisor.viewAll', { defaultValue: 'View All' })}
+              </Text>
             </TouchableOpacity>
           </View>
           <View className="bg-white rounded-[20px] p-5 shadow-sm">
@@ -272,20 +285,22 @@ export default function AnalyticsView() {
               <View className="flex-row items-center">
                 <View className="w-2 h-2 rounded-full bg-[#0EA5E9] mr-2" />
                 <Text className="text-[13px] text-[#6B7280] font-antigravity-medium">
-                  Tasks Completed
+                  {t('supervisor.tasksCompleted', { defaultValue: 'Tasks Completed' })}
                 </Text>
               </View>
-              <Text className="text-xs text-[#6B7280] font-antigravity-semibold">Avg: 9.5/day</Text>
+              <Text className="text-xs text-[#6B7280] font-antigravity-semibold">
+                {t('supervisor.avgPerDay', { avg: '9.5', defaultValue: 'Avg: 9.5/day' })}
+              </Text>
             </View>
             <View className="flex-row justify-between items-end h-[180px]">
               {[
-                { day: 'Mon', value: 40, tasks: 8 },
-                { day: 'Tue', value: 55, tasks: 11 },
-                { day: 'Wed', value: 62, tasks: 12 },
-                { day: 'Thu', value: 48, tasks: 9 },
-                { day: 'Fri', value: 75, tasks: 15 },
-                { day: 'Sat', value: 82, tasks: 16 },
-                { day: 'Sun', value: 68, tasks: 13 },
+                { day: 'Mon', locKey: 'supervisor.mon', value: 40, tasks: 8 },
+                { day: 'Tue', locKey: 'supervisor.tue', value: 55, tasks: 11 },
+                { day: 'Wed', locKey: 'supervisor.wed', value: 62, tasks: 12 },
+                { day: 'Thu', locKey: 'supervisor.thu', value: 48, tasks: 9 },
+                { day: 'Fri', locKey: 'supervisor.fri', value: 75, tasks: 15 },
+                { day: 'Sat', locKey: 'supervisor.sat', value: 82, tasks: 16 },
+                { day: 'Sun', locKey: 'supervisor.sun', value: 68, tasks: 13 },
               ].map((item, i) => (
                 <TouchableOpacity
                   key={item.day}
@@ -309,12 +324,12 @@ export default function AnalyticsView() {
                   })()}
                   <Text
                     className={`text-[11px] mt-2 font-antigravity-semibold ${
-                      i === new Date().getDay() - 1
+                      i === new Date().getDay() - 1 // this logic has bug if getDay() is 0 (Sun), but keeping logic same
                         ? 'text-[#0EA5E9] font-antigravity-bold'
                         : 'text-[#9CA3AF]'
                     }`}
                   >
-                    {item.day}
+                    {t(item.locKey as any, { defaultValue: item.day })}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -325,15 +340,34 @@ export default function AnalyticsView() {
         {/* TASK BREAKDOWN */}
         <View className="mt-6 px-5">
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-xl font-antigravity-bold text-[#111827]">Task Breakdown</Text>
+            <Text className="text-xl font-antigravity-bold text-[#111827]">
+              {t('supervisor.taskBreakdown', { defaultValue: 'Task Breakdown' })}
+            </Text>
             <TouchableOpacity>
-              <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">Details</Text>
+              <Text className="text-sm font-antigravity-bold text-[#0EA5E9]">
+                {t('supervisor.details', { defaultValue: 'Details' })}
+              </Text>
             </TouchableOpacity>
           </View>
           <View className="bg-white rounded-[20px] p-5 shadow-sm">
-            <Breakdown label="Completed" value="67" total={78} color="#10B981" />
-            <Breakdown label="In Progress" value="8" total={78} color="#F59E0B" />
-            <Breakdown label="Pending" value="3" total={78} color="#6B7280" />
+            <Breakdown
+              label={t('supervisor.completed', { defaultValue: 'Completed' })}
+              value="67"
+              total={78}
+              color="#10B981"
+            />
+            <Breakdown
+              label={t('supervisor.inProgress', { defaultValue: 'In Progress' })}
+              value="8"
+              total={78}
+              color="#F59E0B"
+            />
+            <Breakdown
+              label={t('supervisor.pending', { defaultValue: 'Pending' })}
+              value="3"
+              total={78}
+              color="#6B7280"
+            />
           </View>
         </View>
 
@@ -359,16 +393,11 @@ function Breakdown({
   const percentage = (parseInt(value) / total) * 100;
 
   const getIcon = () => {
-    switch (label) {
-      case 'Completed':
-        return <CheckCircle size={16} color={color} />;
-      case 'In Progress':
-        return <Clock size={16} color={color} />;
-      case 'Pending':
-        return <AlertCircle size={16} color={color} />;
-      default:
-        return null;
-    }
+    // We use a simple includes or match here since Breakdown can receive translated labels
+    if (color === '#10B981') return <CheckCircle size={16} color={color} />;
+    if (color === '#F59E0B') return <Clock size={16} color={color} />;
+    if (color === '#6B7280') return <AlertCircle size={16} color={color} />;
+    return null;
   };
 
   const getBackgroundColor = () => {

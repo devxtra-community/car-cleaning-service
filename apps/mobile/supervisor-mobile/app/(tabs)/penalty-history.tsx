@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertCircle, User } from 'lucide-react-native';
 import { API } from '@/src/api/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type TabType = 'daily' | 'weekly' | 'monthly';
 
@@ -14,6 +15,7 @@ interface PenaltyItem {
 }
 
 export default function PenaltyHistory() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('daily');
   const [penalties, setPenalties] = useState<PenaltyItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,13 +59,15 @@ export default function PenaltyHistory() {
 
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB] p-4">
-      <Text className="text-xl font-antigravity-bold text-[#1E293B] mb-3">Penalty History</Text>
+      <Text className="text-xl font-antigravity-bold text-[#1E293B] mb-3">
+        {t('supervisor.penaltyHistory', { defaultValue: 'Penalty History' })}
+      </Text>
 
       {/* SEGMENTED TABS */}
       <View className="flex-row bg-[#E5E7EB] rounded-xl p-1 mb-3">
-        <Segment label="Daily" type="daily" />
-        <Segment label="Weekly" type="weekly" />
-        <Segment label="Monthly" type="monthly" />
+        <Segment label={t('supervisor.daily', { defaultValue: 'Daily' })} type="daily" />
+        <Segment label={t('supervisor.weekly', { defaultValue: 'Weekly' })} type="weekly" />
+        <Segment label={t('supervisor.monthly', { defaultValue: 'Monthly' })} type="monthly" />
       </View>
 
       {/* LIST */}
@@ -78,7 +82,9 @@ export default function PenaltyHistory() {
           contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
           ListEmptyComponent={
             <Text className="text-center text-[#9CA3AF] mt-10 text-[13px] font-antigravity-medium">
-              No penalties found for this period
+              {t('supervisor.noPenaltiesFound', {
+                defaultValue: 'No penalties found for this period',
+              })}
             </Text>
           }
           renderItem={({ item }) => (
@@ -96,7 +102,10 @@ export default function PenaltyHistory() {
                 </View>
 
                 <Text className="text-xs text-[#6B7280] font-antigravity-medium mt-1">
-                  {item.count} penalties
+                  {t('supervisor.penaltiesCount', {
+                    count: item.count,
+                    defaultValue: `${item.count} penalties`,
+                  })}
                 </Text>
               </View>
 

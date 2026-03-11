@@ -23,6 +23,7 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { API } from '@/src/api/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Topographic Pattern for Headers
 const TopoPattern = ({ color = 'rgba(14, 165, 233, 0.08)' }: { color?: string }) => {
@@ -112,6 +113,7 @@ const InputField = ({
 
 export default function AddTaskScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -319,7 +321,7 @@ export default function AddTaskScreen() {
         <TopoPattern />
         <ActivityIndicator size="large" color="#0EA5E9" />
         <Text className="mt-3 text-sm text-[#64748B] z-10 font-antigravity-medium">
-          Loading workers...
+          {t('addJob.loadingWorkers', { defaultValue: 'Loading workers...' })}
         </Text>
       </View>
     );
@@ -349,7 +351,7 @@ export default function AddTaskScreen() {
             <ArrowLeft size={22} color="#1E293B" />
           </Pressable>
           <Text className="text-lg font-antigravity-bold text-[#1E293B] tracking-tighter">
-            ASSIGN TASKS
+            {t('supervisor.addTasks', { defaultValue: 'Assign Tasks' }).toUpperCase()}
           </Text>
           <View className="w-10" />
         </View>
@@ -361,7 +363,7 @@ export default function AddTaskScreen() {
         contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
         ListEmptyComponent={
           <Text className="text-center mt-[60px] text-base text-[#94A3B8] font-antigravity-medium">
-            No workers assigned to you
+            {t('supervisor.noWorkers', { defaultValue: 'No workers assigned to you' })}
           </Text>
         }
         onRefresh={loadWorkers}
@@ -383,7 +385,9 @@ export default function AddTaskScreen() {
                   <Text
                     className={`text-[13px] font-antigravity-semibold ${item.status === 'working' ? 'text-[#10B981]' : 'text-[#64748B]'}`}
                   >
-                    {item.status === 'working' ? 'Working' : 'Idle'}
+                    {item.status === 'working'
+                      ? t('supervisor.working', { defaultValue: 'Working' })
+                      : t('supervisor.idle', { defaultValue: 'Idle' })}
                   </Text>
                 </View>
               </View>
@@ -397,14 +401,14 @@ export default function AddTaskScreen() {
                 <View className="flex-row items-center gap-2 mb-3">
                   <Car size={16} color="#0EA5E9" />
                   <Text className="text-xs font-antigravity-bold text-[#0EA5E9] uppercase tracking-widest">
-                    Current Task
+                    {t('addJob.currentTask', { defaultValue: 'Current Task' })}
                   </Text>
                 </View>
 
                 <View className="flex-row justify-between">
                   <View className="flex-1">
                     <Text className="text-[10px] text-[#94A3B8] uppercase font-antigravity-bold mb-1">
-                      Vehicle
+                      {t('addJob.vehicle', { defaultValue: 'Vehicle' })}
                     </Text>
                     <Text className="text-sm font-antigravity-bold text-[#1E293B]">
                       {item.car_model}
@@ -415,7 +419,7 @@ export default function AddTaskScreen() {
                   </View>
                   <View className="flex-1">
                     <Text className="text-[10px] text-[#94A3B8] uppercase font-antigravity-bold mb-1">
-                      Owner
+                      {t('addJob.owner', { defaultValue: 'Owner' })}
                     </Text>
                     <Text className="text-sm font-antigravity-bold text-[#1E293B]">
                       {item.owner_name || 'N/A'}
@@ -439,7 +443,9 @@ export default function AddTaskScreen() {
                     item.status === 'working' ? 'text-[#0EA5E9]' : 'text-white'
                   }`}
                 >
-                  {item.status === 'working' ? 'Update Task' : 'Assign Task'}
+                  {item.status === 'working'
+                    ? t('addJob.updateTask', { defaultValue: 'Update Task' })
+                    : t('addJob.assignTask', { defaultValue: 'Assign Task' })}
                 </Text>
               </Pressable>
             </View>
@@ -464,7 +470,9 @@ export default function AddTaskScreen() {
             >
               <View className="flex-row items-center justify-between mb-6">
                 <Text className="text-xl font-antigravity-bold text-[#1E293B]">
-                  {isUpdating ? 'Update Task' : 'New Job Entry'}
+                  {isUpdating
+                    ? t('addJob.updateTask', { defaultValue: 'Update Task' })
+                    : t('addJob.entry', { defaultValue: 'New Job Entry' })}
                 </Text>
                 <Pressable onPress={() => setModalVisible(false)}>
                   <X size={24} color="#1E293B" />
@@ -490,7 +498,7 @@ export default function AddTaskScreen() {
                           <Camera size={40} color="#0EA5E9" />
                         </View>
                         <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] uppercase tracking-widest">
-                          Take Vehicle Photo
+                          {t('addJob.takePhoto', { defaultValue: 'Take Vehicle Photo' })}
                         </Text>
                       </View>
                     )}
@@ -498,7 +506,7 @@ export default function AddTaskScreen() {
 
                   <InputField
                     icon={<User size={18} color="#0EA5E9" />}
-                    label="Customer Name"
+                    label={t('addJob.ownerName', { defaultValue: 'Customer Name' })}
                     placeholder="Eg: Rahul Sharma"
                     value={formData.owner_name}
                     onChange={(txt) => setFormData({ ...formData, owner_name: txt })}
@@ -506,7 +514,7 @@ export default function AddTaskScreen() {
 
                   <InputField
                     icon={<Phone size={18} color="#0EA5E9" />}
-                    label="Contact Number"
+                    label={t('addJob.ownerPhone', { defaultValue: 'Contact Number' })}
                     placeholder="99000 00000"
                     value={formData.owner_phone}
                     onChange={(txt) => setFormData({ ...formData, owner_phone: txt })}
@@ -515,7 +523,7 @@ export default function AddTaskScreen() {
 
                   <InputField
                     icon={<Car size={18} color="#0EA5E9" />}
-                    label="Vehicle Number"
+                    label={t('addJob.carNumber', { defaultValue: 'Vehicle Number' })}
                     placeholder="DL 01 AB 1234"
                     value={formData.car_number}
                     onChange={(txt) => setFormData({ ...formData, car_number: txt })}
@@ -525,7 +533,7 @@ export default function AddTaskScreen() {
                     <View className="flex-[1.2]">
                       <InputField
                         icon={<Info size={18} color="#0EA5E9" />}
-                        label="Model/Color"
+                        label={t('addJob.modelColor', { defaultValue: 'Model/Color' })}
                         placeholder="White Nexon"
                         value={
                           formData.car_color && formData.car_model
@@ -548,7 +556,7 @@ export default function AddTaskScreen() {
                     </View>
                     <View className="flex-1 mb-6">
                       <Text className="text-[10px] font-antigravity-bold text-[#94A3B8CC] uppercase tracking-widest mb-1.5 ml-1">
-                        Car Type
+                        {t('addJob.carType', { defaultValue: 'Car Type' })}
                       </Text>
                       <Pressable
                         onPress={() => setShowTypePicker(true)}
@@ -565,7 +573,7 @@ export default function AddTaskScreen() {
 
                   <InputField
                     icon={<MapPin size={18} color="#0EA5E9" />}
-                    label="Location (Optional)"
+                    label={t('addJob.location', { defaultValue: 'Location (Optional)' })}
                     placeholder="Parking Level 2..."
                     value={formData.car_location}
                     onChange={(txt) => setFormData({ ...formData, car_location: txt })}
@@ -582,7 +590,9 @@ export default function AddTaskScreen() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white text-sm font-antigravity-bold uppercase tracking-widest">
-                    {isUpdating ? 'Update Task' : 'Submit Job'}
+                    {isUpdating
+                      ? t('addJob.updateTask', { defaultValue: 'Update Task' })
+                      : t('addJob.submitJob', { defaultValue: 'Submit Job' })}
                   </Text>
                 )}
               </Pressable>
@@ -605,7 +615,7 @@ export default function AddTaskScreen() {
           <View className="bg-white mx-5 rounded-[20px] p-5 max-h-[60%]">
             <View className="flex-row justify-between items-center mb-4 pb-[10px] border-b border-[#F3F4F6]">
               <Text className="text-base font-antigravity-bold text-[#1F2937]">
-                Select Car Type
+                {t('addJob.selectType', { defaultValue: 'Select Car Type' })}
               </Text>
               <Pressable onPress={() => setShowTypePicker(false)}>
                 <X size={20} color="#6B7280" />

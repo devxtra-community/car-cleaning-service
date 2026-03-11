@@ -16,8 +16,13 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../lib/nativewind-interop';
 import '../global.css';
 
+import { initI18n } from '../src/i18n/i18n';
+import { LanguageProvider } from '../contexts/LanguageContext';
+
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+initI18n();
 
 export default function RootLayout() {
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
@@ -96,14 +101,15 @@ export default function RootLayout() {
   }
 
   return (
-    // @ts-expect-error: React 19 types omit implicit children, but it's valid at runtime
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)/login" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </SafeAreaProvider>
+      <LanguageProvider>
+        <SafeAreaProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)/login" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </SafeAreaProvider>
+      </LanguageProvider>
     </GestureHandlerRootView>
   );
 }

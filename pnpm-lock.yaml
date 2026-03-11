@@ -270,10 +270,10 @@ importers:
         version: 0.73.0(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
       eslint:
         specifier: ^9.25.0
-        version: 9.39.2(jiti@1.21.7)
+        version: 9.39.2(jiti@2.6.1)
       eslint-config-expo:
         specifier: ~10.0.0
-        version: 10.0.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+        version: 10.0.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
@@ -337,6 +337,9 @@ importers:
       expo-linking:
         specifier: ~8.0.11
         version: 8.0.11(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+      expo-localization:
+        specifier: ~17.0.8
+        version: 17.0.8(expo@54.0.33)(react@19.1.0)
       expo-notifications:
         specifier: ~0.32.16
         version: 0.32.16(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -361,6 +364,9 @@ importers:
       expo-web-browser:
         specifier: ~15.0.10
         version: 15.0.10(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))
+      i18next:
+        specifier: ^25.8.13
+        version: 25.8.13(typescript@5.9.3)
       lucide-react-native:
         specifier: ^0.563.0
         version: 0.563.0(react-native-svg@15.15.3(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -373,6 +379,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      react-i18next:
+        specifier: ^16.5.4
+        version: 16.5.4(i18next@25.8.13(typescript@5.9.3))(react-dom@19.1.0(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       react-native:
         specifier: 0.81.5
         version: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
@@ -406,10 +415,10 @@ importers:
         version: 19.1.17
       eslint:
         specifier: ^9.25.0
-        version: 9.39.2(jiti@2.6.1)
+        version: 9.39.2(jiti@1.21.7)
       eslint-config-expo:
         specifier: ~10.0.0
-        version: 10.0.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+        version: 10.0.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
       postcss:
         specifier: ^8.5.6
         version: 8.5.6

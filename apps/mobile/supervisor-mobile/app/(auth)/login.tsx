@@ -18,6 +18,7 @@ import Checkbox from 'expo-checkbox';
 import { Mail, Lock, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { saveTokens } from '../../src/tokenStorage';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const { height, width } = Dimensions.get('window');
 
@@ -106,6 +107,7 @@ const WavyHeader = () => {
 };
 
 export default function LoginScreen() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -125,7 +127,7 @@ export default function LoginScreen() {
       const data = res.data;
 
       if (!data.success) {
-        Alert.alert('Login failed', data.message);
+        Alert.alert(t('auth.loginFailed', { defaultValue: 'Login failed' }), data.message);
         return;
       }
 
@@ -134,8 +136,8 @@ export default function LoginScreen() {
     } catch (error: unknown) {
       const errorMessage =
         (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
-        'Server error';
-      Alert.alert('Error', errorMessage);
+        t('common.serverError', { defaultValue: 'Server error' });
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -155,9 +157,11 @@ export default function LoginScreen() {
             <View className="w-20 h-20 rounded-3xl bg-white/20 justify-center items-center mb-5 border border-white/30">
               <Mail size={32} color="#fff" />
             </View>
-            <Text className="text-[28px] font-antigravity-bold text-white mb-2">Welcome Back</Text>
+            <Text className="text-[28px] font-antigravity-bold text-white mb-2">
+              {t('auth.welcomeBack', { defaultValue: 'Welcome Back' })}
+            </Text>
             <Text className="text-[15px] text-white/80 font-antigravity-medium">
-              Sign in to manage your team
+              {t('auth.signInToManage', { defaultValue: 'Sign in to manage your team' })}
             </Text>
           </View>
         </View>
@@ -166,7 +170,7 @@ export default function LoginScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             {/* EMAIL */}
             <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-2.5 ml-1 uppercase">
-              OFFICIAL EMAIL
+              {t('auth.officialEmail', { defaultValue: 'OFFICIAL EMAIL' })}
             </Text>
             <View className="flex-row items-center h-14 bg-[#F8FAFB] rounded-2xl px-3 border border-[#F1F5F9]">
               <View className="w-9 h-9 rounded-xl bg-white justify-center items-center mr-2.5 shadow-sm">
@@ -184,7 +188,7 @@ export default function LoginScreen() {
 
             {/* PASSWORD */}
             <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-2.5 ml-1 mt-6 uppercase">
-              SECURE PASSWORD
+              {t('auth.securePassword', { defaultValue: 'SECURE PASSWORD' })}
             </Text>
             <View className="flex-row items-center h-14 bg-[#F8FAFB] rounded-2xl px-3 border border-[#F1F5F9]">
               <View className="w-9 h-9 rounded-xl bg-white justify-center items-center mr-2.5 shadow-sm">
@@ -217,11 +221,13 @@ export default function LoginScreen() {
                   className="rounded-md w-5 h-5"
                 />
                 <Text className="text-[13px] text-[#64748B] font-antigravity-semibold">
-                  Remember me
+                  {t('auth.rememberMe', { defaultValue: 'Remember me' })}
                 </Text>
               </View>
               <Pressable>
-                <Text className="text-[13px] text-[#0EA5E9] font-antigravity-bold">Forgot?</Text>
+                <Text className="text-[13px] text-[#0EA5E9] font-antigravity-bold">
+                  {t('auth.forgot', { defaultValue: 'Forgot?' })}
+                </Text>
               </Pressable>
             </View>
 
@@ -248,7 +254,7 @@ export default function LoginScreen() {
                     ) : (
                       <>
                         <Text className="text-white text-[15px] font-antigravity-bold tracking-[1.5px] uppercase">
-                          SIGN IN NOW
+                          {t('auth.signInNow', { defaultValue: 'SIGN IN NOW' })}
                         </Text>
                         <ChevronRight size={18} color="#fff" opacity={0.6} />
                       </>
@@ -261,9 +267,13 @@ export default function LoginScreen() {
         </View>
 
         <View className="flex-row justify-center items-center mt-10 pb-10">
-          <Text className="text-sm text-[#64748B] font-antigravity-medium">Need an account? </Text>
+          <Text className="text-sm text-[#64748B] font-antigravity-medium">
+            {t('auth.needAccount', { defaultValue: 'Need an account?' })}{' '}
+          </Text>
           <Pressable>
-            <Text className="text-sm text-[#0EA5E9] font-antigravity-bold">Contact Admin</Text>
+            <Text className="text-sm text-[#0EA5E9] font-antigravity-bold">
+              {t('auth.contactAdmin', { defaultValue: 'Contact Admin' })}
+            </Text>
           </Pressable>
         </View>
       </ScrollView>

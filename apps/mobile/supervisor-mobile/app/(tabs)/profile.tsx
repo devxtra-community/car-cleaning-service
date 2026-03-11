@@ -13,9 +13,18 @@ import { API } from '../../src/api/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
-import { User, Settings, HelpCircle, LogOut, ChevronRight, MapPin } from 'lucide-react-native';
+import {
+  User,
+  Settings,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
+  MapPin,
+  Globe,
+} from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 import { clearTokens } from '../../src/tokenStorage';
+import { useLanguage, Language } from '../../contexts/LanguageContext';
 
 // Topographic Pattern for Header
 const TopoPattern = () => {
@@ -64,6 +73,7 @@ export default function ProfileView() {
     building_name?: string;
   } | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const { t, language, setLanguage } = useLanguage();
 
   React.useEffect(() => {
     fetchUserProfile();
@@ -85,12 +95,12 @@ export default function ProfileView() {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('profile.logout', { defaultValue: 'Logout' }),
+      t('profile.logout_confirm', { defaultValue: 'Are you sure you want to exit?' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: 'Logout',
+          text: t('profile.logout', { defaultValue: 'Logout' }),
           style: 'destructive',
           onPress: async () => {
             await clearTokens();
@@ -101,6 +111,31 @@ export default function ProfileView() {
       ],
       { cancelable: true }
     );
+  };
+
+  const changeLanguage = () => {
+    Alert.alert(
+      t('profile.language', { defaultValue: 'Language' }),
+      t('profile.selectLanguage', { defaultValue: 'Select your preferred language' }),
+      [
+        { text: 'English', onPress: () => setLanguage('en') },
+        { text: 'Hindi (हिंदी)', onPress: () => setLanguage('hi') },
+        { text: 'Arabic (العربية)', onPress: () => setLanguage('ar') },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+      ]
+    );
+  };
+
+  const getLanguageLabel = (lang: Language) => {
+    switch (lang) {
+      case 'ar':
+        return 'Arabic (العربية)';
+      case 'hi':
+        return 'Hindi (हिंदी)';
+      case 'en':
+      default:
+        return 'English';
+    }
   };
 
   if (loading) {
@@ -169,37 +204,46 @@ export default function ProfileView() {
         {/* MENU SECTION */}
         <View className="px-6 pt-[10px]">
           <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-4 mt-[10px]">
-            ACCOUNT SETTINGS
+            {t('profile.accountSettings', { defaultValue: 'ACCOUNT SETTINGS' })}
           </Text>
 
           <MenuItem
             onPress={() => router.push('/(tabs)/profile/edit-profile')}
             icon={<User size={20} color="#0EA5E9" />}
-            title="Personal Details"
-            subtitle="Updates Name, Photo & Info"
+            title={t('profile.personalDetails', { defaultValue: 'Personal Details' })}
+            subtitle={t('profile.personalDetailsSubtitle', {
+              defaultValue: 'Updates Name, Photo & Info',
+            })}
+          />
+
+          <MenuItem
+            onPress={changeLanguage}
+            icon={<Globe size={20} color="#0EA5E9" />}
+            title={t('profile.language', { defaultValue: 'Language' })}
+            subtitle={getLanguageLabel(language)}
           />
 
           <MenuItem
             icon={<Settings size={20} color="#0EA5E9" />}
-            title="App Preferences"
-            subtitle="Notifications & Mode"
+            title={t('profile.appPreferences', { defaultValue: 'App Preferences' })}
+            subtitle={t('profile.appPreferencesSubtitle', { defaultValue: 'Notifications & Mode' })}
           />
 
           <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-4 mt-[10px]">
-            SUPPORT & INFO
+            {t('profile.supportInfo', { defaultValue: 'SUPPORT & INFO' })}
           </Text>
 
           <MenuItem
             icon={<HelpCircle size={20} color="#0EA5E9" />}
-            title="Help Center"
-            subtitle="FAQs & Support"
+            title={t('profile.helpCenter', { defaultValue: 'Help Center' })}
+            subtitle={t('profile.helpCenterSubtitle', { defaultValue: 'FAQs & Support' })}
           />
 
           <MenuItem
             onPress={handleLogout}
             icon={<LogOut size={20} color="#EF4444" />}
-            title="Logout"
-            subtitle="Securely exit app"
+            title={t('profile.logout', { defaultValue: 'Logout' })}
+            subtitle={t('profile.logoutSubtitle', { defaultValue: 'Securely exit app' })}
             danger
           />
         </View>
