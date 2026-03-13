@@ -150,6 +150,14 @@ export default function AnalyticsView() {
   const weeklyPerformance = data?.weeklyPerformance || [];
   const taskBreakdown = data?.taskBreakdown || [];
 
+  const avgPerDay =
+    weeklyPerformance.length > 0
+      ? (
+          weeklyPerformance.reduce((sum: number, p: any) => sum + p.tasks, 0) /
+          weeklyPerformance.length
+        ).toFixed(1)
+      : '0.0';
+
   const getStatusCount = (status: string) => {
     const item = taskBreakdown.find((b: any) => b.status === status);
     return item ? item.count : 0;
@@ -216,21 +224,22 @@ export default function AnalyticsView() {
                     <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center">
                       <DollarSign size={24} color="#fff" strokeWidth={2.5} />
                     </View>
-                    <View className="flex-row items-center bg-white px-2.5 py-1.5 rounded-full">
-                      <TrendingUp size={12} color="#10B981" strokeWidth={3} />
-                      <Text className="text-[#10B981] text-[12px] font-antigravity-bold ml-1">
-                        +12.5%
-                      </Text>
-                    </View>
                   </View>
                   <Text className="text-4xl font-antigravity-bold text-white mb-1 tracking-tighter">
                     ₹{overview.total_earnings.toLocaleString()}
                   </Text>
+                  <View className="flex-row items-center gap-1.5 mb-1">
+                    <TrendingUp size={16} color="#fff" />
+                    <Text className="text-sm font-antigravity-bold text-white">
+                      {overview.earnings_growth >= 0 ? '+' : ''}
+                      {overview.earnings_growth}%
+                    </Text>
+                    <Text className="text-xs text-white/70 font-antigravity-medium">
+                      {t('supervisor.vsLastMonth', { defaultValue: 'vs last month' })}
+                    </Text>
+                  </View>
                   <Text className="text-base text-white font-antigravity-semibold opacity-95">
                     {t('supervisor.totalEarnings', { defaultValue: 'Total Earnings' })}
-                  </Text>
-                  <Text className="text-xs text-white opacity-75 mt-0.5">
-                    {t('supervisor.thisMonth', { defaultValue: 'This month' })}
                   </Text>
                   <View className="absolute right-5 bottom-5 opacity-50">
                     <ChevronRight size={20} color="#fff" />
@@ -262,18 +271,21 @@ export default function AnalyticsView() {
                       <Text className="text-[28px] font-antigravity-bold text-white mb-0.5">
                         {overview.total_jobs}
                       </Text>
-                      <Text className="text-[13px] text-white font-antigravity-semibold opacity-90">
+                      <View className="flex-row items-center gap-1.5">
+                        <Text className="text-xs font-antigravity-bold text-white">
+                          {overview.jobs_growth >= 0 ? '+' : ''}
+                          {overview.jobs_growth}%
+                        </Text>
+                        <Text className="text-[11px] text-white/70 font-antigravity-medium">
+                          {t('supervisor.vsLastMonth', { defaultValue: 'vs last month' })}
+                        </Text>
+                      </View>
+                      <Text className="text-[13px] text-white font-antigravity-semibold opacity-90 mt-1">
                         {t('supervisor.tasksCompleted', { defaultValue: 'Tasks Completed' })}
                       </Text>
                     </View>
                   </View>
                   <View className="flex-row items-center gap-2">
-                    <View className="flex-row items-center bg-white px-2 py-1.5 rounded-xl">
-                      <TrendingUp size={10} color="#10B981" />
-                      <Text className="text-[#10B981] text-[11px] font-antigravity-bold ml-1">
-                        +8.3%
-                      </Text>
-                    </View>
                     <View className="opacity-70">
                       <ChevronRight size={20} color="#fff" />
                     </View>
@@ -328,7 +340,10 @@ export default function AnalyticsView() {
                 </Text>
               </View>
               <Text className="text-xs text-[#6B7280] font-antigravity-semibold">
-                {t('supervisor.avgPerDay', { avg: '9.5', defaultValue: 'Avg: 9.5/day' })}
+                {t('supervisor.avgPerDay', {
+                  avg: avgPerDay,
+                  defaultValue: `Avg: ${avgPerDay}/day`,
+                })}
               </Text>
             </View>
             <View className="flex-row justify-between items-end h-[180px]">

@@ -1,31 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Banknote, Smartphone, AlertCircle } from 'lucide-react-native';
+import { Banknote, Smartphone, CreditCard } from 'lucide-react-native';
 import api from '../../src/api/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-interface CleanerCollection {
-  cleaner_id: string;
-  cleaner_name: string;
-  cash: number;
-  upi: number;
-  card: number;
-  total: number;
-  pending_count: number;
+interface CollectionData {
+  total_collected: number;
+  payment_method: string;
+  task_count: number;
 }
 
 export default function Collections() {
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
-  const [collections, setCollections] = useState<CleanerCollection[]>([]);
+  const [collections, setCollections] = useState<CollectionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadCollections = async () => {
     try {
       const res = await api.get('/tasks/collections/supervisor');
-      const data = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+      const data = res.data?.success ? res.data.data : [];
       setCollections(data);
     } catch (err) {
       console.error('Failed to load collections:', err);
@@ -38,14 +34,22 @@ export default function Collections() {
   useEffect(() => {
     loadCollections();
   }, []);
+
   const onRefresh = () => {
     setRefreshing(true);
     loadCollections();
   };
 
-  const totalCash = collections.reduce((s, c) => s + c.cash, 0);
-  const totalUPI = collections.reduce((s, c) => s + c.upi, 0);
-  const totalAll = collections.reduce((s, c) => s + c.total, 0);
+  // Safe getter for payment method totals
+  const getAmountForMethod = (method: string) => {
+    const item = collections.find((c) => c.payment_method?.toLowerCase() === method);
+    return item ? item.total_collected : 0;
+  };
+
+  const totalCash = getAmountForMethod('cash');
+  const totalUPI = getAmountForMethod('upi');
+  const totalCard = getAmountForMethod('card');
+  const totalAll = collections.reduce((s, c) => s + c.total_collected, 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC', paddingTop: insets.top }}>
@@ -63,7 +67,7 @@ export default function Collections() {
         </Text>
         <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
           {t('supervisor.paymentSummary', {
-            defaultValue: 'Payment summary across your cleaners (today)',
+            defaultValue: 'Payment summary across all your cleaners (today)',
           })}
         </Text>
       </View>
@@ -78,159 +82,181 @@ export default function Collections() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
         >
-          {/* Summary row */}
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-            {[
-              {
-                label: t('supervisor.cash', { defaultValue: 'Cash' }),
-                value: totalCash,
-                color: '#10B981',
-                bg: '#ECFDF5',
-                icon: <Banknote size={16} color="#10B981" />,
-              },
-              {
-                label: t('supervisor.upi', { defaultValue: 'UPI' }),
-                value: totalUPI,
-                color: '#1B86C6',
-                bg: '#EFF6FF',
-                icon: <Smartphone size={16} color="#1B86C6" />,
-              },
-              {
-                label: t('supervisor.total', { defaultValue: 'Total' }),
-                value: totalAll,
-                color: '#7C3AED',
-                bg: '#F5F3FF',
-                icon: <Banknote size={16} color="#7C3AED" />,
-              },
-            ].map(({ label, value, color, bg, icon }) => (
-              <View
-                key={label}
-                style={{
-                  flex: 1,
-                  backgroundColor: bg,
-                  borderRadius: 12,
-                  padding: 12,
-                  alignItems: 'center',
-                }}
+          {/* Summary Cards */}
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+            {/* Cash Card */}
+            <View
+              style={{
+                width: '48%',
+                backgroundColor: '#ECFDF5',
+                borderRadius: 12,
+                padding: 16,
+                alignItems: 'center',
+                marginBottom: 10,
+              }}
+            >
+              <Banknote size={24} color="#10B981" />
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#10B981', marginTop: 8 }}>
+                ₹{totalCash.toLocaleString('en-IN')}
+              </Text>
+              <Text
+                style={{ fontSize: 12, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}
               >
-                {icon}
-                <Text style={{ fontSize: 16, fontWeight: '800', color, marginTop: 4 }}>
-                  ₹{value.toLocaleString('en-IN')}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 10,
-                    color: '#94A3B8',
-                    marginTop: 2,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {label}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Per-cleaner cards */}
-          {collections.length === 0 ? (
-            <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Banknote size={48} color="#CBD5E1" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#94A3B8', marginTop: 16 }}>
-                {t('supervisor.noCollectionData', { defaultValue: 'No collection data yet' })}
+                {t('supervisor.cash', { defaultValue: 'Cash' })}
               </Text>
             </View>
-          ) : (
-            collections.map((c) => (
-              <View
-                key={c.cleaner_id}
-                style={{
-                  backgroundColor: '#fff',
-                  borderRadius: 14,
-                  padding: 16,
-                  marginBottom: 12,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.05,
-                  shadowRadius: 10,
-                  elevation: 2,
-                }}
+
+            {/* UPI Card */}
+            <View
+              style={{
+                width: '48%',
+                backgroundColor: '#EFF6FF',
+                borderRadius: 12,
+                padding: 16,
+                alignItems: 'center',
+                marginBottom: 10,
+              }}
+            >
+              <Smartphone size={24} color="#1B86C6" />
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#1B86C6', marginTop: 8 }}>
+                ₹{totalUPI.toLocaleString('en-IN')}
+              </Text>
+              <Text
+                style={{ fontSize: 12, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}
               >
+                {t('supervisor.upi', { defaultValue: 'UPI' })}
+              </Text>
+            </View>
+
+            {/* Card/Online Card */}
+            <View
+              style={{
+                width: '48%',
+                backgroundColor: '#FFF7ED',
+                borderRadius: 12,
+                padding: 16,
+                alignItems: 'center',
+              }}
+            >
+              <CreditCard size={24} color="#F97316" />
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#F97316', marginTop: 8 }}>
+                ₹{totalCard.toLocaleString('en-IN')}
+              </Text>
+              <Text
+                style={{ fontSize: 12, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}
+              >
+                {t('supervisor.card', { defaultValue: 'Card' })}
+              </Text>
+            </View>
+
+            {/* Total Card */}
+            <View
+              style={{
+                width: '48%',
+                backgroundColor: '#F5F3FF',
+                borderRadius: 12,
+                padding: 16,
+                alignItems: 'center',
+              }}
+            >
+              <Banknote size={24} color="#7C3AED" />
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#7C3AED', marginTop: 8 }}>
+                ₹{totalAll.toLocaleString('en-IN')}
+              </Text>
+              <Text
+                style={{ fontSize: 12, color: '#94A3B8', marginTop: 4, textTransform: 'uppercase' }}
+              >
+                {t('supervisor.total', { defaultValue: 'Total' })}
+              </Text>
+            </View>
+          </View>
+
+          {/* Breakdown Section */}
+          <View style={{ marginTop: 10 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: '#334155',
+                marginBottom: 12,
+                paddingHorizontal: 4,
+              }}
+            >
+              Transaction Breakdown
+            </Text>
+
+            {collections.length === 0 ? (
+              <View style={{ alignItems: 'center', marginTop: 20 }}>
+                <Banknote size={48} color="#CBD5E1" />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#94A3B8', marginTop: 16 }}>
+                  {t('supervisor.noCollectionData', { defaultValue: 'No collection data today' })}
+                </Text>
+              </View>
+            ) : (
+              collections.map((c, index) => (
                 <View
+                  key={c.payment_method || index.toString()}
                   style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 14,
+                    padding: 16,
+                    marginBottom: 12,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 10,
+                    elevation: 2,
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: 12,
                   }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E293B' }}>
-                    {c.cleaner_name}
-                  </Text>
-                  {c.pending_count > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 4,
-                        backgroundColor: '#FEF2F2',
+                        width: 40,
+                        height: 40,
                         borderRadius: 20,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
+                        backgroundColor:
+                          c.payment_method?.toLowerCase() === 'cash'
+                            ? '#ECFDF5'
+                            : c.payment_method?.toLowerCase() === 'upi'
+                              ? '#EFF6FF'
+                              : '#FFF7ED',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      <AlertCircle size={12} color="#EF4444" />
-                      <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700' }}>
-                        {t('supervisor.pendingCount', {
-                          count: c.pending_count,
-                          defaultValue: `${c.pending_count} pending`,
-                        })}
-                      </Text>
+                      {c.payment_method?.toLowerCase() === 'cash' ? (
+                        <Banknote size={20} color="#10B981" />
+                      ) : c.payment_method?.toLowerCase() === 'upi' ? (
+                        <Smartphone size={20} color="#1B86C6" />
+                      ) : (
+                        <CreditCard size={20} color="#F97316" />
+                      )}
                     </View>
-                  )}
-                </View>
-
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {[
-                    {
-                      label: t('supervisor.cash', { defaultValue: 'Cash' }),
-                      value: c.cash,
-                      color: '#10B981',
-                    },
-                    {
-                      label: t('supervisor.upi', { defaultValue: 'UPI' }),
-                      value: c.upi,
-                      color: '#1B86C6',
-                    },
-                    {
-                      label: t('supervisor.card', { defaultValue: 'Card' }),
-                      value: c.card,
-                      color: '#7C3AED',
-                    },
-                    {
-                      label: t('supervisor.total', { defaultValue: 'Total' }),
-                      value: c.total,
-                      color: '#1E293B',
-                    },
-                  ].map(({ label, value, color }) => (
-                    <View key={label} style={{ flex: 1, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color }}>
-                        ₹{value.toLocaleString('en-IN')}
-                      </Text>
+                    <View>
                       <Text
                         style={{
-                          fontSize: 9,
-                          color: '#94A3B8',
-                          marginTop: 2,
-                          textTransform: 'uppercase',
+                          fontSize: 16,
+                          fontWeight: '700',
+                          color: '#1E293B',
+                          textTransform: 'capitalize',
                         }}
                       >
-                        {label}
+                        {c.payment_method || 'Unknown'}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
+                        {c.task_count} {c.task_count === 1 ? 'Task' : 'Tasks'}
                       </Text>
                     </View>
-                  ))}
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>
+                    ₹{c.total_collected.toLocaleString('en-IN')}
+                  </Text>
                 </View>
-              </View>
-            ))
-          )}
+              ))
+            )}
+          </View>
         </ScrollView>
       )}
     </View>

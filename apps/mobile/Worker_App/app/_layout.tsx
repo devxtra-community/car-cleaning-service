@@ -17,7 +17,7 @@ import {
 import OfflineBanner from '../components/OfflineBanner';
 import NetInfo from '@react-native-community/netinfo';
 import { syncQueue } from '../src/api/offlineQueue';
-import { usePushNotifications } from '../hooks/usePushnotification';
+import { usePushNotifications } from '../src/hooks/usePushNotifications';
 
 export default function RootLayout() {
   const { expoPushToken, notification } = usePushNotifications();
@@ -34,7 +34,7 @@ export default function RootLayout() {
     syncQueue();
 
     // 2. Listen for connection changes
-    const unsubscribe = NetInfo.addEventListener(state => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
       if (state.isConnected && state.isInternetReachable) {
         console.log('[RootLayout] Connection restored, syncing queue...');
         syncQueue();
@@ -44,10 +44,7 @@ export default function RootLayout() {
     let mounted = true;
     (async () => {
       try {
-        await Promise.all([
-          SecureStore.getItemAsync('access_token'),
-          initI18n(),
-        ]);
+        await Promise.all([SecureStore.getItemAsync('access_token'), initI18n()]);
       } finally {
         if (mounted) setHydrated(true);
       }
@@ -58,7 +55,6 @@ export default function RootLayout() {
       unsubscribe();
     };
   }, []);
-
 
   // ✅ Prevent blank screen until fonts AND auth check are done
   if (!hydrated || !fontsLoaded) {

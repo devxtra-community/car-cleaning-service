@@ -18,7 +18,7 @@ import Checkbox from 'expo-checkbox';
 import { Mail, Lock, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { saveTokens, saveUserRole } from '../src/api/tokenStorage';
-import { usePushNotifications } from '../hooks/usePushnotification';
+import { usePushNotifications } from '../src/hooks/usePushNotifications';
 
 const { height, width } = Dimensions.get('window');
 
@@ -32,9 +32,24 @@ const TopoPattern = () => (
     viewBox="0 0 400 400"
     preserveAspectRatio="xMidYMid slice"
   >
-    <Path d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
-    <Path d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
-    <Path d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" />
+    <Path
+      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+      stroke="rgba(255,255,255,0.12)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+      stroke="rgba(255,255,255,0.1)"
+      strokeWidth="2"
+      fill="none"
+    />
+    <Path
+      d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
+      stroke="rgba(255,255,255,0.08)"
+      strokeWidth="2"
+      fill="none"
+    />
     <Circle cx="320" cy="100" r="30" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
     <Circle cx="320" cy="100" r="45" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" />
   </Svg>
@@ -42,7 +57,12 @@ const TopoPattern = () => (
 
 const WavyHeader = () => (
   <View className="absolute inset-0">
-    <Svg height={height * 0.45} width={width} viewBox={`0 0 ${width} 320`} preserveAspectRatio="none">
+    <Svg
+      height={height * 0.45}
+      width={width}
+      viewBox={`0 0 ${width} 320`}
+      preserveAspectRatio="none"
+    >
       <Defs>
         <SvgGradient id="grad" x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor="#0EA5E9" />
@@ -112,7 +132,6 @@ export default function LoginScreen() {
   return (
     <View className="flex-1 bg-slate-50">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-
         {/* HEADER */}
         <View style={{ height: height * 0.42 }} className="items-center justify-center">
           <WavyHeader />
@@ -129,7 +148,6 @@ export default function LoginScreen() {
         {/* CARD */}
         <View className="-mt-16 mx-6 bg-white rounded-[32px] p-6 border border-slate-100 shadow-xl">
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-
             {/* EMAIL */}
             <Text className="text-xs font-extrabold text-slate-400 tracking-widest mb-2 ml-2">
               OFFICIAL EMAIL
@@ -167,36 +185,55 @@ export default function LoginScreen() {
                 onChangeText={setPassword}
               />
               <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2">
-                {showPassword ? <EyeOff size={20} color="#94A3B8" /> : <Eye size={20} color="#94A3B8" />}
+                {showPassword ? (
+                  <EyeOff size={20} color="#94A3B8" />
+                ) : (
+                  <Eye size={20} color="#94A3B8" />
+                )}
               </Pressable>
             </View>
 
             {/* ACTIONS */}
             <View className="flex-row justify-between items-center mt-5 mb-8 px-1">
               <View className="flex-row items-center space-x-2">
-                <Checkbox value={remember} onValueChange={setRemember} color={remember ? '#0EA5E9' : '#CBD5E1'} />
+                <Checkbox
+                  value={remember}
+                  onValueChange={setRemember}
+                  color={remember ? '#0EA5E9' : '#CBD5E1'}
+                />
                 <Text className="text-xs font-semibold text-slate-600">Remember me</Text>
               </View>
               <Text className="text-xs font-bold text-sky-500">Forgot?</Text>
             </View>
 
             {/* BUTTON */}
-            <Pressable disabled={loading} onPress={handleLogin} className="h-16 rounded-2xl overflow-hidden shadow-lg shadow-sky-500/40">
+            <Pressable
+              disabled={loading}
+              onPress={handleLogin}
+              className="h-16 rounded-2xl overflow-hidden shadow-lg shadow-sky-500/40"
+            >
               <LinearGradient
                 colors={['#0EA5E9', '#0284C7']}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text className="text-white text-sm font-extrabold tracking-widest">SIGN IN NOW</Text>
+                    <Text className="text-white text-sm font-extrabold tracking-widest">
+                      SIGN IN NOW
+                    </Text>
                     <ChevronRight size={18} color="#fff" opacity={0.6} />
                   </>
                 )}
               </LinearGradient>
             </Pressable>
-
           </KeyboardAvoidingView>
         </View>
 
@@ -205,7 +242,6 @@ export default function LoginScreen() {
           <Text className="text-sm text-slate-500 font-medium">Need an account? </Text>
           <Text className="text-sm text-sky-500 font-extrabold">Contact Admin</Text>
         </View>
-
       </ScrollView>
     </View>
   );

@@ -8,7 +8,9 @@ import {
   getPeakActivity,
   getBuildingComparisonService,
   getFraudTrendsService,
-  getCustomerRatingSummaryService
+  getCustomerRatingSummaryService,
+  getAdminSummaryService,
+  getCustomerReportService,
 } from './analytics_service';
 
 export const dailyProgressController = async (req: Request, res: Response) => {
@@ -100,5 +102,22 @@ export const getFraudTrends = async (req: Request, res: Response) => {
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to fetch fraud trends' });
+  }
+};
+export const adminSummaryController = async (req: Request, res: Response) => {
+  try {
+    const data = await getAdminSummaryService();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch admin summary' });
+  }
+};
+
+export const customerReportController = async (req: Request, res: Response) => {
+  try {
+    const data = await getCustomerReportService();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch customer report' });
   }
 };

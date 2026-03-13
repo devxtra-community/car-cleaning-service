@@ -428,9 +428,11 @@ export const createSalary = async (salaryData: {
   return response.data.data;
 };
 
-export const getAllSalaries = async () => {
-  const response = await api.get('/salary');
-  return response.data.data;
+export const getAllSalaries = async (limit?: number, offset?: number) => {
+  const response = await api.get('/salary', {
+    params: { limit, offset },
+  });
+  return response.data;
 };
 
 export const getSalaryDetailsPerWorker = async (userId: string) => {
@@ -510,3 +512,7 @@ export const getAllFloors = async () => {
   return response.data;
 };
 
+export const getAdminSummary = async () => {
+  const response = await api.get('/api/analytics/summary');
+  return response.data;
+};

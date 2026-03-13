@@ -49,41 +49,30 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Get worker info (cleaner_id, building_id, supervisor_id)
-    let workerInfo = await attendanceService.getWorkerInfo(userId);
-
-    if (!workerInfo) {
-      // Auto-create a cleaners record for this user so next steps can proceed
-      try {
-        await pool.query(
-          `INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
-          [userId]
-        );
-        workerInfo = await attendanceService.getWorkerInfo(userId);
-      } catch (_e) {
-        // if insert fails (e.g. unique constraint not on user_id), just leave as null
-      }
-    }
+    // Get user info (cleaner_id, building_id, supervisor_id)
+    const role = req.user?.role || 'worker';
+    const workerInfo = await attendanceService.getUserAttendanceInfo(userId, role);
 
     if (!workerInfo) {
       return res.status(404).json({
         success: false,
-        message: 'Worker profile not found. Please contact your admin.',
+        message: `${role === 'supervisor' ? 'Supervisor' : 'Worker'} profile not found. Please contact your admin.`,
       });
     }
 
     if (!workerInfo.building_id) {
       return res.status(400).json({
         success: false,
-        message: 'No building is assigned to your profile yet. Please contact your supervisor or admin to assign a building.',
+        message:
+          'No building is assigned to your profile yet. Please contact your supervisor or admin to assign a building.',
       });
     }
 
     const attendance = await attendanceService.markAttendance({
       workerId: userId,
-      cleanerId: workerInfo.cleaner_id,
+      cleanerId: workerInfo.cleaner_id, // This will be null for supervisors
       buildingId: workerInfo.building_id,
-      supervisorId: workerInfo.supervisor_id,
+      supervisorId: workerInfo.supervisor_id, // This will be null for supervisors
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
     });
@@ -175,12 +164,13 @@ export const getWorkerInfo = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const info = await attendanceService.getWorkerInfo(userId);
+    const role = req.user?.role || 'worker';
+    const info = await attendanceService.getUserAttendanceInfo(userId, role);
 
     if (!info) {
       return res.status(404).json({
         success: false,
-        message: 'Worker info not found',
+        message: `${role === 'supervisor' ? 'Supervisor' : 'Worker'} info not found`,
       });
     }
 

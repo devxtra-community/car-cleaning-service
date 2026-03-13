@@ -2,7 +2,11 @@ import { pool } from '../../database/connectDatabase';
 import { sendNotificationToUser } from '../notifications/notification_service';
 import { getCache, setCache } from '../../config/redis';
 
-export const generateSalaryForUser = async (userId: string, cycleId: string, bypassLock: boolean = false) => {
+export const generateSalaryForUser = async (
+  userId: string,
+  cycleId: string,
+  bypassLock: boolean = false
+) => {
   const client = await pool.connect();
 
   try {
@@ -83,9 +87,7 @@ export const generateSalaryForUser = async (userId: string, cycleId: string, byp
       );
 
       totalIncentives =
-        Number(perfRes.rows[0].total) +
-        Number(milRes.rows[0].total) +
-        Number(manRes.rows[0].total);
+        Number(perfRes.rows[0].total) + Number(milRes.rows[0].total) + Number(manRes.rows[0].total);
 
       // Penalties
       const penaltyRes = await client.query(
@@ -167,8 +169,16 @@ export const getLatestOpenCycle = async () => {
 };
 
 /* ================= GET ALL SALARIES ================= */
-export const getAllSalaries = async () => {
-  const result = await pool.query(`
+export const getAllSalaries = async (limit?: number, offset?: number) => {
+  const params: any[] = [];
+  let pagination = '';
+
+  if (limit !== undefined && offset !== undefined) {
+    pagination = `LIMIT $1 OFFSET $2`;
+    params.push(limit, offset);
+  }
+
+  const query = `
     SELECT
       s.id,
       s.user_id,
@@ -192,7 +202,8 @@ export const getAllSalaries = async () => {
         ELSE COALESCE(u.base_salary, 0)
       END AS final_salary,
       s.payout_date,
-      s.status
+      s.status,
+      COUNT(*) OVER() as total_count
     FROM salaries s
     LEFT JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
     JOIN users u ON u.id = s.user_id
@@ -209,8 +220,16 @@ export const getAllSalaries = async () => {
         ELSE 0 END AS penalties
     ) live ON u.role = 'cleaner'
     ORDER BY sc.year DESC NULLS LAST, sc.month DESC NULLS LAST, u.full_name ASC
-  `);
-  return result.rows;
+    ${pagination}
+  `;
+
+  const result = await pool.query(query, params);
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
+
+  return {
+    rows: result.rows,
+    totalCount,
+  };
 };
 export const lockSalaryCycle = async (cycleId: string) => {
   const client = await pool.connect();
@@ -268,7 +287,10 @@ export const lockSalaryCycle = async (cycleId: string) => {
     // Send notifications to all affected users (non-blocking)
     (async () => {
       try {
-        const salaryMonthRes = await pool.query('SELECT month, year FROM salary_cycles WHERE id = $1', [cycleId]);
+        const salaryMonthRes = await pool.query(
+          'SELECT month, year FROM salary_cycles WHERE id = $1',
+          [cycleId]
+        );
         const { month, year } = salaryMonthRes.rows[0];
         const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
@@ -563,8 +585,8 @@ export const getSalaryTimeline = async (userId: string) => {
     const key = `${year}-${String(month).padStart(2, '0')}`;
     // Use open-ended range: >= first day of month AND < first day of NEXT month
     // This reliably captures every record regardless of timestamp precision
-    const monthStart = new Date(year, month - 1, 1);          // e.g. 2025-02-01 00:00:00
-    const nextMonthStart = new Date(year, month, 1);           // e.g. 2025-03-01 00:00:00
+    const monthStart = new Date(year, month - 1, 1); // e.g. 2025-02-01 00:00:00
+    const nextMonthStart = new Date(year, month, 1); // e.g. 2025-03-01 00:00:00
     const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
 
     let liveIncentives = 0;
@@ -595,7 +617,8 @@ export const getSalaryTimeline = async (userId: string) => {
         [cleanerId, monthStart, nextMonthStart]
       );
 
-      liveIncentives = Number(perfRes.rows[0].total) + Number(milRes.rows[0].total) + Number(manRes.rows[0].total);
+      liveIncentives =
+        Number(perfRes.rows[0].total) + Number(milRes.rows[0].total) + Number(manRes.rows[0].total);
       // Penalties stay on the penalties table (keyed by cleaner_id)
       const pRes = await pool.query(
         `SELECT COALESCE(SUM(amount), 0) AS total
@@ -621,8 +644,12 @@ export const getSalaryTimeline = async (userId: string) => {
       penalties: livePenalties,
       final_salary: finalSalary,
       status: existing
-        ? (existing.is_locked ? 'locked' : existing.status)
-        : (isCurrentMonth ? 'in_progress' : 'pending'),
+        ? existing.is_locked
+          ? 'locked'
+          : existing.status
+        : isCurrentMonth
+          ? 'in_progress'
+          : 'pending',
       is_current_month: isCurrentMonth,
       salary_id: existing?.id ?? null,
     });

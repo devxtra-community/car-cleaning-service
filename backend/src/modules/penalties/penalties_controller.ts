@@ -135,10 +135,16 @@ export const getSupervisorPenalties = async (req: AuthRequest, res: Response) =>
     if (period === 'day') {
       dateCondition = `AND p.created_at::date = CURRENT_DATE`;
     } else if (period === 'month') {
-      dateCondition = `AND p.created_at >= date_trunc('month', CURRENT_DATE)`;
+      dateCondition = `
+        AND p.created_at >= date_trunc('month', CURRENT_DATE)
+        AND p.created_at < date_trunc('month', CURRENT_DATE) + interval '1 month'
+      `;
     } else {
       // default: week
-      dateCondition = `AND p.created_at >= date_trunc('week', CURRENT_DATE)`;
+      dateCondition = `
+        AND p.created_at >= date_trunc('week', CURRENT_DATE)
+        AND p.created_at < date_trunc('week', CURRENT_DATE) + interval '1 week'
+      `;
     }
 
     const result = await pool.query(
@@ -170,4 +176,3 @@ export const getSupervisorPenalties = async (req: AuthRequest, res: Response) =>
     return res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
-

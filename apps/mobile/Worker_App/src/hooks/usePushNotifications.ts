@@ -3,21 +3,18 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import axios from 'axios'; // Or use your configured api instance
+import api from '../api/api';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
 });
-
-// Replace with your actual backend URL or import from config
-const BACKEND_URL = 'http://10.0.2.2:3033/api/users/push-token';
 
 export const usePushNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
@@ -51,35 +48,45 @@ export const usePushNotifications = () => {
         finalStatus = status;
       }
       if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!');
-        return;
+        console.log('Failed to get push token for push notification!');
+        return undefined;
       }
-      // Learn more about projectId:
-      // https://docs.expo.dev/push-notifications/push-notifications-setup/#configure-projectid
-      // You might need to add projectId here if using EAS
-      token = (
-        await Notifications.getExpoPushTokenAsync({
-          projectId: Constants.expoConfig?.extra?.eas?.projectId,
-        })
-      ).data;
-      console.log('Expo Push Token:', token);
+
+      try {
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        if (!projectId) {
+          console.log('Project ID not found in expoConfig');
+          return undefined;
+        }
+
+        token = (
+          await Notifications.getExpoPushTokenAsync({
+            projectId,
+          })
+        ).data;
+        console.log('Expo Push Token:', token);
+      } catch (error) {
+        console.error('Error getting push token:', error);
+        return undefined;
+      }
     } else {
-      alert('Must use physical device for Push Notifications');
+      console.log('Must use physical device for Push Notifications');
     }
 
     return token;
   }
 
-  const sendTokenToBackend = async (token: string, authToken: string) => {
+  const sendTokenToBackend = async (token: string, authToken?: string) => {
     try {
-      // Assuming you have an auth token to send in headers
-      await axios.post(
-        BACKEND_URL,
+      await api.post(
+        '/api/users/push-token',
         { token },
         {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
+          headers: authToken
+            ? {
+                Authorization: `Bearer ${authToken}`,
+              }
+            : {},
         }
       );
       console.log('Push token sent to backend');
@@ -89,10 +96,18 @@ export const usePushNotifications = () => {
   };
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
+    registerForPushNotificationsAsync().then(async (token) => {
       setExpoPushToken(token);
-      // TODO: Call sendTokenToBackend(token, userAuthToken) here
-      // or expose a function to do it when user logs in
+      if (token) {
+        try {
+          // Retrieve auth token from SecureStore to authorize the backend call
+          const SecureStore = await import('expo-secure-store');
+          const authToken = await SecureStore.getItemAsync('access_token');
+          await sendTokenToBackend(token, authToken ?? undefined);
+        } catch (err) {
+          console.error('[PushNotifications] Failed to send token to backend:', err);
+        }
+      }
     });
 
     notificationListener.current = Notifications.addNotificationReceivedListener(
@@ -103,7 +118,7 @@ export const usePushNotifications = () => {
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response: Notifications.NotificationResponse) => {
-        console.log(response);
+        console.log('Notification response received:', response);
       }
     );
 

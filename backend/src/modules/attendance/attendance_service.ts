@@ -28,7 +28,7 @@ export const checkTodayAttendance = async (workerId: string) => {
 
 export type MarkAttendanceData = {
   workerId: string;
-  cleanerId: string;
+  cleanerId: string | null;
   buildingId: string;
   supervisorId: string | null;
   latitude: number;
@@ -120,28 +120,46 @@ export const getAttendanceCalendar = async (workerId: string, month: number, yea
   return result.rows;
 };
 
-export const getWorkerInfo = async (workerId: string) => {
+export const getUserAttendanceInfo = async (userId: string, role: string) => {
   try {
-    const query = `
-      SELECT 
-        u.full_name as worker_name,
-        c.id as cleaner_id,
-        c.building_id,
-        b.building_name,
-        sup.full_name as supervisor_name,
-        c.supervisor_id
-      FROM users u
-      JOIN cleaners c ON u.id = c.user_id
-      LEFT JOIN buildings b ON c.building_id = b.id
-      LEFT JOIN users sup ON c.supervisor_id = sup.id
-      WHERE u.id = $1
-    `;
-
-    const result = await pool.query(query, [workerId]);
-    console.log('Worker info result:', result.rows[0]);
-    return result.rows[0] || null;
+    if (role === 'supervisor') {
+      const query = `
+        SELECT 
+          u.full_name as worker_name,
+          NULL as cleaner_id,
+          s.building_id,
+          b.building_name,
+          u.full_name as supervisor_name,
+          NULL as supervisor_id
+        FROM users u
+        JOIN supervisors s ON u.id = s.user_id
+        LEFT JOIN buildings b ON s.building_id = b.id
+        WHERE u.id = $1
+      `;
+      const result = await pool.query(query, [userId]);
+      console.log('Supervisor attendance info result:', result.rows[0]);
+      return result.rows[0] || null;
+    } else {
+      const query = `
+        SELECT 
+          u.full_name as worker_name,
+          c.id as cleaner_id,
+          c.building_id,
+          b.building_name,
+          sup.full_name as supervisor_name,
+          c.supervisor_id
+        FROM users u
+        JOIN cleaners c ON u.id = c.user_id
+        LEFT JOIN buildings b ON c.building_id = b.id
+        LEFT JOIN users sup ON c.supervisor_id = sup.id
+        WHERE u.id = $1
+      `;
+      const result = await pool.query(query, [userId]);
+      console.log('Worker attendance info result:', result.rows[0]);
+      return result.rows[0] || null;
+    }
   } catch (error) {
-    console.error('getWorkerInfo SQL Error:', error);
+    console.error('getUserAttendanceInfo SQL Error:', error);
     throw error;
   }
 };

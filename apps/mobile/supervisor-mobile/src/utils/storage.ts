@@ -45,7 +45,16 @@ const storage = {
   },
 
   clear: async (): Promise<void> => {
-    console.warn('[Storage] clear() not implemented for SecureStore shim');
+    try {
+      // Since SecureStore doesn't have a clearAll() method,
+      // we need to remove the known keys we use.
+      const knownKeys = ['access_token', 'refresh_token', 'user_role', 'app_language'];
+
+      await Promise.all(knownKeys.map((key) => storage.removeItem(key)));
+      console.log('[Storage] Known keys cleared successfully');
+    } catch (error) {
+      console.error('[Storage] Error clearing storage:', error);
+    }
   },
 };
 

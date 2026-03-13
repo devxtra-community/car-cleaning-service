@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, Pressable, ScrollView, StatusBar, Image } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  Image,
+  Modal,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import {
   User,
   UserCog,
@@ -11,9 +22,14 @@ import {
   ChevronRight,
   TrendingUp,
   LayoutGrid,
+  DollarSign,
+  Wallet,
+  MapPin,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Circle } from 'react-native-svg';
+// expo-location is lazily required inside markAttendance() so the app doesn't
+// crash at startup when the native module isn't compiled into the dev client yet.
 import { API } from '../../src/api/api';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -103,12 +119,20 @@ export default function HomePage() {
     total_jobs: number;
     avg_rating: number;
     live_workers: number;
+    earnings_growth: number;
+    pending_jobs: number;
   }>({
     total_earnings: 0,
     total_jobs: 0,
     avg_rating: 0,
     live_workers: 0,
+    earnings_growth: 0,
+    pending_jobs: 0,
   });
+
+  // ── Attendance modal state ──
+  const [showAttendanceModal, setShowAttendanceModal] = React.useState(false);
+  const [isMarkingAttendance, setIsMarkingAttendance] = React.useState(false);
 
   const fetchUserProfile = async () => {
     try {
@@ -132,10 +156,82 @@ export default function HomePage() {
     }
   };
 
-  React.useEffect(() => {
-    fetchUserProfile();
-    fetchDashboardSummary();
-  }, []);
+  // Check if supervisor has marked attendance today — show popup if not
+  const checkAttendanceStatus = async () => {
+    try {
+      const res = await API.get('/attendance/status');
+      if (res.data?.success && !res.data.marked) {
+        setShowAttendanceModal(true);
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number } };
+      if (err.response?.status !== 401) {
+        console.error('[Supervisor] Attendance check error:', e);
+      }
+    }
+  };
+
+  // Mark attendance with location verification (same backend endpoint as Worker)
+  const markAttendance = async () => {
+    try {
+      setIsMarkingAttendance(true);
+
+      // Lazy-require expo-location so the app doesn't crash at startup if the
+      // native module isn't compiled into the current dev client binary yet.
+      let Location: typeof import('expo-location') | null = null;
+      try {
+        Location = require('expo-location');
+      } catch {
+        Alert.alert(
+          t('common.error', { defaultValue: 'Error' }),
+          'Location module not available. Please rebuild the dev client.'
+        );
+        return;
+      }
+      // Safe to assert non-null here — we return early above if require() throws
+      const ExpoLocation = Location!;
+
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('common.error', { defaultValue: 'Error' }),
+          t('attendance.locationRequired', {
+            defaultValue: 'Location permission is required to mark attendance.',
+          })
+        );
+        return;
+      }
+      const position = await ExpoLocation.getCurrentPositionAsync({});
+      const res = await API.post('/attendance/mark', {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+      if (res.data?.success) {
+        Alert.alert(
+          t('common.success', { defaultValue: 'Success' }),
+          t('attendance.success_mark', { defaultValue: 'Attendance marked successfully!' })
+        );
+        setShowAttendanceModal(false);
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message =
+        err.response?.data?.message ||
+        t('attendance.failed_mark', { defaultValue: 'Could not mark attendance. Try again.' });
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), message);
+    } finally {
+      setIsMarkingAttendance(false);
+    }
+  };
+
+  // Re-check on every Home tab focus so the popup won't re-appear once marked
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserProfile();
+      fetchDashboardSummary();
+      checkAttendanceStatus();
+    }, [])
+  );
 
   return (
     <View className="flex-1">
@@ -206,10 +302,6 @@ export default function HomePage() {
             <Text className="text-[38px] font-antigravity-bold text-[#1E293B] tracking-tighter">
               {summary.total_earnings.toLocaleString()}
             </Text>
-            {/* Percentage is still dummy since we don't have historical comparison yet */}
-            <View className="bg-[#10B9811A] px-[10px] py-[4px] rounded-xl ml-3">
-              <Text className="text-xs font-antigravity-bold text-[#059669]">+0%</Text>
-            </View>
           </View>
 
           <View className="h-[1px] bg-[#94A3B41A] mb-4" />
@@ -224,7 +316,9 @@ export default function HomePage() {
               </Text>
             </View>
             <View className="items-center">
-              <Text className="text-base font-antigravity-bold text-[#1E293B]">--</Text>
+              <Text className="text-base font-antigravity-bold text-[#1E293B]">
+                {summary.pending_jobs}
+              </Text>
               <Text className="text-[10px] text-[#64748B] font-antigravity-semibold mt-[2px]">
                 {t('supervisor.pending', { defaultValue: 'Pending' })}
               </Text>
@@ -302,6 +396,7 @@ export default function HomePage() {
             icon={<Calendar size={24} color="#0EA5E9" />}
             title={t('tabs.attendance', { defaultValue: 'Attendance' })}
             subtitle={t('attendance.checkInOut', { defaultValue: 'Check-in/Out' })}
+            onPress={() => router.push('/(tabs)/attendance' as any)}
           />
 
           <ActionCard
@@ -312,12 +407,198 @@ export default function HomePage() {
           />
 
           <ActionCard
+            icon={<DollarSign size={24} color="#0EA5E9" />}
+            title={t('tabs.salary', { defaultValue: 'Salary' })}
+            subtitle={t('salary.earningsOverview', { defaultValue: 'Monthly overview' })}
+            onPress={() => router.push('/(tabs)/salary' as any)}
+          />
+
+          <ActionCard
+            icon={<Wallet size={24} color="#0EA5E9" />}
+            title={t('tabs.wallet', { defaultValue: 'Team Earnings' })}
+            subtitle={t('supervisor.totalEarnings', { defaultValue: 'By day / week / month' })}
+            onPress={() => router.push('/(tabs)/wallet' as any)}
+          />
+
+          <ActionCard
             icon={<AlertCircle size={24} color="#0EA5E9" />}
             title={t('common.support', { defaultValue: 'Support' })}
             subtitle={t('home.getHelp', { defaultValue: 'Get Help' })}
+            onPress={() => router.push('/(tabs)/profile')}
           />
         </View>
       </ScrollView>
+
+      {/* ── ATTENDANCE BOTTOM-SHEET MODAL ── */}
+      <Modal visible={showAttendanceModal} animationType="slide" transparent statusBarTranslucent>
+        {(() => {
+          const BlurViewComponent = BlurView as any;
+          return (
+            <BlurViewComponent
+              intensity={18}
+              tint="light"
+              style={{ flex: 1, justifyContent: 'flex-end' }}
+            >
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderTopLeftRadius: 36,
+                  borderTopRightRadius: 36,
+                  paddingHorizontal: 24,
+                  paddingTop: 16,
+                  paddingBottom: 40,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 20,
+                  elevation: 20,
+                }}
+              >
+                {/* Drag handle */}
+                <View
+                  style={{
+                    width: 48,
+                    height: 4,
+                    backgroundColor: '#E2E8F0',
+                    borderRadius: 4,
+                    alignSelf: 'center',
+                    marginBottom: 24,
+                  }}
+                />
+
+                {/* Icon */}
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: '#F0FDF4',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    alignSelf: 'center',
+                    marginBottom: 16,
+                  }}
+                >
+                  <Calendar size={32} color="#10B981" />
+                </View>
+
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: '800',
+                    color: '#0F172A',
+                    textAlign: 'center',
+                    marginBottom: 6,
+                  }}
+                >
+                  {t('attendance.markTitle', { defaultValue: "Mark Today's Attendance" })}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: '#64748B',
+                    textAlign: 'center',
+                    marginBottom: 24,
+                    lineHeight: 20,
+                  }}
+                >
+                  {t('attendance.locationNotice', {
+                    defaultValue:
+                      'Your location will be verified. You must be within the designated area to mark attendance.',
+                  })}
+                </Text>
+
+                {/* Supervisor name badge */}
+                {user?.full_name && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#F8FAFC',
+                      borderRadius: 16,
+                      padding: 14,
+                      marginBottom: 24,
+                      borderWidth: 1,
+                      borderColor: '#E2E8F0',
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: '#E0F2FE',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <User size={20} color="#0EA5E9" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: '#94A3B8',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        {t('profile.supervisor', { defaultValue: 'Supervisor' })}
+                      </Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E293B' }}>
+                        {user.full_name}
+                      </Text>
+                    </View>
+                    <MapPin size={16} color="#10B981" />
+                  </View>
+                )}
+
+                {/* Action buttons */}
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Pressable
+                    onPress={() => setShowAttendanceModal(false)}
+                    style={{
+                      flex: 1,
+                      height: 52,
+                      borderRadius: 18,
+                      backgroundColor: '#F1F5F9',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#64748B' }}>
+                      {t('common.later', { defaultValue: 'Later' })}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={markAttendance}
+                    disabled={isMarkingAttendance}
+                    style={{
+                      flex: 1,
+                      height: 52,
+                      borderRadius: 18,
+                      backgroundColor: '#10B981',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      opacity: isMarkingAttendance ? 0.7 : 1,
+                    }}
+                  >
+                    {isMarkingAttendance ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFF' }}>
+                        {t('attendance.markPresent', { defaultValue: 'Mark Present' })}
+                      </Text>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            </BlurViewComponent>
+          );
+        })()}
+      </Modal>
     </View>
   );
 }

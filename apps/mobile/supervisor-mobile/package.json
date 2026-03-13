@@ -1,7 +1,7 @@
 {
   "name": "supervisor-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -31,6 +31,7 @@
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.11",
     "expo-localization": "~17.0.8",
+    "expo-location": "~19.0.8",
     "expo-notifications": "~0.32.16",
     "expo-router": "~6.0.23",
     "expo-secure-store": "~15.0.8",
@@ -40,6 +41,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "i18next": "^25.8.13",
+    "jwt-decode": "^4.0.0",
     "lucide-react-native": "^0.563.0",
     "nativewind": "^4.2.2",
     "react": "19.1.0",
@@ -57,6 +59,9 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.17",
+    "@babel/core": "^7.20.0",
+    "@babel/plugin-transform-react-jsx": "^7.20.0",
+    "babel-preset-expo": "~54.0.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "postcss": "^8.5.6",

@@ -36,6 +36,12 @@ export const createTaskController = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Missing fields' });
     }
 
+    if (task_amount === undefined || task_amount <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Task amount must be greater than zero' });
+    }
+
     // Validate GPS coordinates if provided
     if (latitude !== undefined || longitude !== undefined) {
       if (!latitude || !longitude) {
@@ -447,16 +453,16 @@ export const getSupervisorCollections = async (req: AuthRequest, res: Response) 
     const result = await pool.query(
       `
       SELECT 
-        SUM(final_price) as total_collected,
-        payment_method,
-        COUNT(*) as task_count
+        COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as total_collected,
+        COALESCE(t.payment_method, 'cash') as payment_method,
+        COUNT(*)::int as task_count
       FROM tasks t
       JOIN cleaners c ON t.cleaner_id = c.id
       JOIN supervisors s ON c.supervisor_id = s.id
       WHERE s.user_id = $1 
         AND t.status = 'completed'
-        AND DATE(t.completed_at) = CURRENT_DATE
-      GROUP BY payment_method
+        AND (t.completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+      GROUP BY t.payment_method
       `,
       [supervisorId]
     );

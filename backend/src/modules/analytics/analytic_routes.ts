@@ -9,6 +9,8 @@ import {
   getBuildingComparison,
   getCustomerRatingSummary,
   getFraudTrends,
+  adminSummaryController,
+  customerReportController,
 } from './analytics_controller';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
@@ -25,5 +27,7 @@ router.get('/peak-activity', peakActivityController);
 router.get('/building-comparison', getBuildingComparison);
 router.get('/rating-summary', getCustomerRatingSummary);
 router.get('/fraud-trends', getFraudTrends);
+router.get('/summary', adminSummaryController);
+router.get('/customer-report', customerReportController);
 
 export default router;

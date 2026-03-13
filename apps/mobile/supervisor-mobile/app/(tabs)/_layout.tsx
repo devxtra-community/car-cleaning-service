@@ -207,6 +207,9 @@ export default function TabLayout() {
       <Tabs.Screen name="floor-overview" options={{ href: null }} />
       <Tabs.Screen name="collections" options={{ href: null }} />
       <Tabs.Screen name="fraud-review" options={{ href: null }} />
+      <Tabs.Screen name="salary" options={{ href: null }} />
+      <Tabs.Screen name="attendance" options={{ href: null }} />
+      <Tabs.Screen name="wallet" options={{ href: null }} />
     </Tabs>
   );
 }

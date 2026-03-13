@@ -24,8 +24,20 @@ type SalarySummaryMode = 'daily' | 'weekly' | 'monthly';
 /* ================= GET ALL SALARIES ================= */
 export const getAllSalariesController = async (req: Request, res: Response) => {
   try {
-    const rows = await getAllSalaries();
-    return res.json({ success: true, data: rows });
+    const { limit, offset } = req.query;
+    const result = await getAllSalaries(
+      limit ? parseInt(limit as string) : undefined,
+      offset ? parseInt(offset as string) : undefined
+    );
+    return res.json({
+      success: true,
+      data: result.rows,
+      meta: {
+        total: result.totalCount,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      },
+    });
   } catch (err: unknown) {
     console.error('GET ALL SALARIES ERROR:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch salaries' });
@@ -43,7 +55,9 @@ export const getSalaryTimelineController = async (req: Request, res: Response) =
     return res.json({ success: true, data: timeline });
   } catch (err: unknown) {
     console.error('SALARY TIMELINE ERROR:', err);
-    return res.status(500).json({ success: false, message: err instanceof Error ? err.message : 'Failed' });
+    return res
+      .status(500)
+      .json({ success: false, message: err instanceof Error ? err.message : 'Failed' });
   }
 };
 
@@ -259,7 +273,9 @@ export const getRoleBasedSalariesController = async (req: Request, res: Response
     return res.json({ success: true, data });
   } catch (err: unknown) {
     console.error('GET ROLE SALARIES ERROR:', err);
-    return res.status(500).json({ success: false, message: err instanceof Error ? err.message : String(err) });
+    return res
+      .status(500)
+      .json({ success: false, message: err instanceof Error ? err.message : String(err) });
   }
 };
 

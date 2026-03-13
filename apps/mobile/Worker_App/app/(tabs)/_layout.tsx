@@ -71,38 +71,61 @@ export default function TabLayout() {
   );
 }
 
-function CustomTabBar({ state, descriptors, navigation, role }: any) {
-  const router = useRouter();
-  const pathname = usePathname();
+function CustomTabBar({ state, navigation, role }: any) {
   const { t } = useLanguage();
-
   const isSupervisor = role === 'supervisor';
 
   const cleanerTabs = [
-    { name: 'Analytics', icon: <PieChart size={22} />, route: '/(tabs)/Analytics' },
-    { name: 'Homepage', icon: <Home size={22} />, route: '/(tabs)/Homepage' },
-    { name: 'Profile', icon: <User size={22} />, route: '/(tabs)/Profile' },
+    {
+      name: t('tabs.analytics', { defaultValue: 'Analytics' }),
+      icon: <PieChart size={22} />,
+      routeName: 'Analytics',
+    },
+    {
+      name: t('tabs.home', { defaultValue: 'Home' }),
+      icon: <Home size={22} />,
+      routeName: 'Homepage',
+    },
+    {
+      name: t('tabs.profile', { defaultValue: 'Profile' }),
+      icon: <User size={22} />,
+      routeName: 'Profile',
+    },
   ];
 
   const supervisorTabs = [
     {
-      name: 'Dashboard',
+      name: t('tabs.dashboard', { defaultValue: 'Dashboard' }),
       icon: <LayoutDashboard size={22} />,
-      route: '/(tabs)/SupervisorDashboard',
+      routeName: 'SupervisorDashboard',
     },
-    { name: 'Fraud', icon: <ShieldAlert size={22} />, route: '/(tabs)/FraudReview' },
-    { name: 'Money', icon: <Banknote size={22} />, route: '/(tabs)/Collections' },
-    { name: 'Profile', icon: <User size={22} />, route: '/(tabs)/Profile' },
+    {
+      name: t('tabs.fraud', { defaultValue: 'Fraud' }),
+      icon: <ShieldAlert size={22} />,
+      routeName: 'FraudReview',
+    },
+    {
+      name: t('tabs.money', { defaultValue: 'Money' }),
+      icon: <Banknote size={22} />,
+      routeName: 'Collections',
+    },
+    {
+      name: t('tabs.profile', { defaultValue: 'Profile' }),
+      icon: <User size={22} />,
+      routeName: 'Profile',
+    },
   ];
 
   const tabs = isSupervisor ? supervisorTabs : cleanerTabs;
   const tabCount = tabs.length;
   const tabWidth = CONTAINER_WIDTH / tabCount;
 
-  const activeIndex = tabs.findIndex((t) => t.route === pathname);
+  // Find the exact active tab based on the current Expo router state
+  const currentRouteName = state.routes[state.index]?.name;
+  const activeIndex = tabs.findIndex((t) => t.routeName === currentRouteName);
   const safeActiveIndex = activeIndex === -1 ? (isSupervisor ? 0 : 1) : activeIndex;
 
-  const [slideAnim] = useState(() => new Animated.Value(safeActiveIndex * tabWidth));
+  const [slideAnim] = useState(new Animated.Value(safeActiveIndex * tabWidth));
 
   useEffect(() => {
     Animated.spring(slideAnim, {
@@ -111,45 +134,48 @@ function CustomTabBar({ state, descriptors, navigation, role }: any) {
       friction: 9,
       tension: 60,
     }).start();
-  }, [safeActiveIndex, slideAnim, tabWidth]);
+  }, [safeActiveIndex, tabWidth, slideAnim]);
 
+  // Hidden screens logic (using state instead of pathname for consistency if possible, but state.routes only contains tab screens)
   const hiddenScreens = [
-    '/AddJob',
-    '/AfterWash',
-    '/Attendance',
-    '/JobLogs',
-    '/Penalties',
-    '/Wallet',
-    '/PaymentSummary',
-    '/MyRatings',
-    '/Salary',
+    'AddJob',
+    'AfterWash',
+    'Attendance',
+    'JobLogs',
+    'Penalties',
+    'Wallet',
+    'PaymentSummary',
+    'MyRatings',
+    'Salary',
   ];
-  if (hiddenScreens.includes(pathname)) return null;
+  if (hiddenScreens.includes(currentRouteName)) return null;
 
   return (
-    <View className="absolute bottom-8 w-full items-center">
+    <View className="absolute bottom-6 w-full items-center" pointerEvents="box-none">
       <BlurView
         intensity={Platform.OS === 'ios' ? 30 : 100}
         tint="light"
-        style={{
-          width: CONTAINER_WIDTH,
-          height: 72,
-          overflow: 'hidden',
-          borderRadius: 9999,
-          elevation: 20,
-        }}
+        style={
+          {
+            width: CONTAINER_WIDTH,
+            height: 60,
+            overflow: 'hidden',
+            borderRadius: 9999,
+            elevation: 20,
+          } as any
+        }
       >
         <LinearGradient
           colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
-          style={{ position: 'absolute', width: '100%', height: '100%' }}
+          style={{ position: 'absolute', width: '100%', height: '100%' } as any}
         />
         <View className="flex-row items-center w-full h-full relative">
           {/* Active Pill */}
           <Animated.View
             style={{
               width: tabWidth,
-              height: 56,
-              paddingHorizontal: 8,
+              height: 48,
+              paddingHorizontal: 2,
               transform: [{ translateX: slideAnim }],
               position: 'absolute',
               left: 0,
@@ -157,22 +183,44 @@ function CustomTabBar({ state, descriptors, navigation, role }: any) {
           >
             <LinearGradient
               colors={['#0EA5E9', '#0284C7']}
-              style={{ width: '100%', height: '100%', borderRadius: 20, elevation: 10 }}
+              style={{ width: '100%', height: '100%', borderRadius: 24, elevation: 10 } as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
             />
           </Animated.View>
 
           {/* Tabs */}
-          {tabs.map((tab, idx) => (
-            <TabButton
-              key={tab.name}
-              label={tab.name}
-              icon={tab.icon}
-              active={safeActiveIndex === idx}
-              onPress={() => router.push(tab.route as any)}
-            />
-          ))}
+          {tabs.map((tab, idx) => {
+            const isFocused = safeActiveIndex === idx;
+
+            const onPress = () => {
+              const route = state.routes.find(
+                (r: { name: string; key: string }) => r.name === tab.routeName
+              );
+              if (route) {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(tab.routeName);
+                }
+              } else {
+                navigation.navigate(tab.routeName);
+              }
+            };
+
+            return (
+              <TabButton
+                key={tab.routeName}
+                label={tab.name}
+                icon={tab.icon}
+                active={isFocused}
+                onPress={onPress}
+              />
+            );
+          })}
         </View>
       </BlurView>
     </View>

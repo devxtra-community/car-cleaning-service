@@ -68,11 +68,11 @@ export default function SelectWorkerScreen() {
             {filteredWorkers.map((worker) => (
               <Pressable
                 key={worker.id}
-                onPress={() => setSelectedWorker(worker.cleaner_id)}
-                className={`flex-row items-center bg-white rounded-[18px] p-4 mb-3 border ${
-                  selectedWorker === worker.cleaner_id
-                    ? 'border-[#3DA2CE] border-2 shadow-sm'
-                    : 'border-white shadow-lg shadow-black/5'
+                onPress={() => setSelectedWorker(worker.id)}
+                className={`flex-row items-center p-4 rounded-xl border mb-3 ${
+                  selectedWorker === worker.id
+                    ? 'bg-[#E0F2FE] border-[#0EA5E9]'
+                    : 'bg-white border-[#F1F5F9]'
                 }`}
               >
                 <View className="w-9 h-9 rounded-full bg-[#E8F4F8] justify-center items-center mr-3">

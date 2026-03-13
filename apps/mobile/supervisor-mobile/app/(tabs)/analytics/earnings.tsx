@@ -93,12 +93,6 @@ export default function EarningsScreen() {
         <Text className="text-4xl font-antigravity-bold text-[#2563EB] mb-2">
           ₹{total.toLocaleString()}
         </Text>
-
-        {/* TREND INDICATOR */}
-        <View className="flex-row items-center gap-1 bg-[#D1FAE5] px-2.5 py-1 rounded-xl">
-          <TrendingUp size={14} color="#10B981" />
-          <Text className="text-xs font-antigravity-bold text-[#10B981]">Real-time</Text>
-        </View>
       </View>
 
       {/* SERVICE BREAKDOWN */}

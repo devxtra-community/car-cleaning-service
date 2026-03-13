@@ -115,7 +115,7 @@ const calculateMilestoneIncentive = (
 ): { amount: number; details: any } | null => {
   const { total_tasks } = rule.criteria;
 
-  if (total_tasks && totalTasks === total_tasks) {
+  if (total_tasks && totalTasks >= total_tasks) {
     return {
       amount: rule.base_amount,
       details: {

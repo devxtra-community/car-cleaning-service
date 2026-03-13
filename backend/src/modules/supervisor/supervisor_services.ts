@@ -81,11 +81,17 @@ export const updateWorkerAssignmentService = async (cleanerId: string, floorId: 
   return result.rows[0];
 };
 
+// Helper to convert a UTC timestamp to IST date string for consistent date comparison
+const IST_NOW = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+const IST_DATE = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date`;
+const taskIST = (col: string) => `(${col} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+
 export const supervisorReportService = async (supervisorId: string, period: string) => {
   let filter = '';
-  if (period === 'day') filter = `t.completed_at::date = CURRENT_DATE`;
-  else if (period === 'week') filter = `t.completed_at >= date_trunc('week', NOW())`;
-  else filter = `t.completed_at >= date_trunc('month', NOW())`;
+  if (period === 'day') filter = `${taskIST('t.completed_at')}::date = ${IST_DATE}`;
+  else if (period === 'week')
+    filter = `${taskIST('t.completed_at')} >= date_trunc('week', ${IST_NOW})`;
+  else filter = `${taskIST('t.completed_at')} >= date_trunc('month', ${IST_NOW})`;
 
   const result = await pool.query(
     `
@@ -109,11 +115,14 @@ export const supervisorReportService = async (supervisorId: string, period: stri
   return result.rows;
 };
 
-export const getSupervisorDashboardSummaryService = async (supervisorId: string) => {
+export const getSupervisorDashboardSummaryService = async (supervisorUserId: string) => {
+  const IST_DATE_EXPR = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date`;
+  const toIST = (col: string) => `(${col} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+
   const result = await pool.query(
     `
     SELECT 
-      COALESCE(SUM(t.amount_charged), 0)::float as total_earnings,
+      COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as total_earnings,
       COUNT(t.id)::int as total_jobs,
       COALESCE(AVG(r.rating), 0)::float as avg_rating,
       (
@@ -131,18 +140,46 @@ export const getSupervisorDashboardSummaryService = async (supervisorId: string)
         JOIN cleaners c2 ON c2.id = t3.cleaner_id
         WHERE c2.supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
           AND t3.status != 'completed'
-      ) as pending_jobs
+      ) as pending_jobs,
+      (
+        SELECT COALESCE(SUM(COALESCE(t4.final_price, t4.task_amount, 0)), 0)::float
+        FROM tasks t4
+        JOIN cleaners c3 ON c3.id = t4.cleaner_id
+        JOIN supervisors s2 ON c3.supervisor_id = s2.id
+        WHERE s2.user_id = $1
+          AND t4.status = 'completed'
+          AND ${toIST('t4.completed_at')}::date = ${IST_DATE_EXPR} - interval '1 day'
+      ) as yesterday_earnings
     FROM tasks t
     JOIN cleaners c ON c.id = t.cleaner_id
     JOIN supervisors s ON c.supervisor_id = s.id
     LEFT JOIN reviews r ON r.task_id = t.id
     WHERE s.user_id = $1
       AND t.status = 'completed'
-      AND t.completed_at::date = CURRENT_DATE
+      AND ${toIST('t.completed_at')}::date = ${IST_DATE_EXPR}
     `,
-    [supervisorId]
+    [supervisorUserId]
   );
-  return result.rows[0];
+
+  const summary = result.rows[0];
+  if (!summary) return null;
+
+  const earnings_growth =
+    summary.yesterday_earnings > 0
+      ? parseFloat(
+          (
+            ((summary.total_earnings - summary.yesterday_earnings) / summary.yesterday_earnings) *
+            100
+          ).toFixed(1)
+        )
+      : summary.total_earnings > 0
+        ? 100
+        : 0;
+
+  return {
+    ...summary,
+    earnings_growth,
+  };
 };
 
 // Get supervisor details (your existing code)
@@ -474,10 +511,17 @@ export const getSupervisorAnalyticsService = async (supervisorUserId: string) =>
   const client = await pool.connect();
   try {
     // Helper to get totals and car type breakdown for a period
+    // IST-safe date/time helpers for analytics period filters
+    const IST_DATE_EXPR = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date`;
+    const IST_TS_EXPR = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+    const toIST = (col: string) => `(${col} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+
     const getDataForPeriod = async (periodFilter: string) => {
+      // FIX #2 (Analytics side) + #4: Use COALESCE(final_price, task_amount) for consistency with Dashboard.
+      // This ensures Analytics and Dashboard always show the same earnings numbers.
       const overview = await client.query(
         `SELECT 
-          COALESCE(SUM(t.final_price), 0)::float as total_earnings,
+          COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as total_earnings,
           COUNT(t.id)::int as total_jobs
          FROM tasks t
          JOIN cleaners c ON t.cleaner_id = c.id
@@ -490,7 +534,7 @@ export const getSupervisorAnalyticsService = async (supervisorUserId: string) =>
         `SELECT 
           t.car_type as type,
           COUNT(*)::int as count,
-          COALESCE(SUM(t.final_price), 0)::float as amount
+          COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as amount
          FROM tasks t
          JOIN cleaners c ON t.cleaner_id = c.id
          JOIN supervisors s ON c.supervisor_id = s.id
@@ -507,9 +551,34 @@ export const getSupervisorAnalyticsService = async (supervisorUserId: string) =>
       };
     };
 
-    const daily = await getDataForPeriod('t.completed_at::date = CURRENT_DATE');
-    const weekly = await getDataForPeriod("t.completed_at >= date_trunc('week', CURRENT_DATE)");
-    const monthly = await getDataForPeriod("t.completed_at >= date_trunc('month', CURRENT_DATE)");
+    const dailyFilter = `${toIST('t.completed_at')}::date = ${IST_DATE_EXPR}`;
+    const yesterdayFilter = `${toIST('t.completed_at')}::date = ${IST_DATE_EXPR} - interval '1 day'`;
+
+    const weeklyFilter = `${toIST('t.completed_at')} >= date_trunc('week', ${IST_TS_EXPR})`;
+    const lastWeekFilter = `${toIST('t.completed_at')} >= date_trunc('week', ${IST_TS_EXPR}) - interval '1 week' AND ${toIST('t.completed_at')} < date_trunc('week', ${IST_TS_EXPR})`;
+
+    const monthlyFilter = `${toIST('t.completed_at')} >= date_trunc('month', ${IST_TS_EXPR})`;
+    const lastMonthFilter = `${toIST('t.completed_at')} >= date_trunc('month', ${IST_TS_EXPR}) - interval '1 month' AND ${toIST('t.completed_at')} < date_trunc('month', ${IST_TS_EXPR})`;
+
+    const getEnhancedDataForPeriod = async (currentFilter: string, previousFilter: string) => {
+      const current = await getDataForPeriod(currentFilter);
+      const previous = await getDataForPeriod(previousFilter);
+
+      const calculateGrowth = (curr: number, prev: number) => {
+        if (prev === 0) return curr > 0 ? 100 : 0;
+        return parseFloat((((curr - prev) / prev) * 100).toFixed(1));
+      };
+
+      return {
+        ...current,
+        earnings_growth: calculateGrowth(current.total_earnings, previous.total_earnings),
+        jobs_growth: calculateGrowth(current.total_jobs, previous.total_jobs),
+      };
+    };
+
+    const daily = await getEnhancedDataForPeriod(dailyFilter, yesterdayFilter);
+    const weekly = await getEnhancedDataForPeriod(weeklyFilter, lastWeekFilter);
+    const monthly = await getEnhancedDataForPeriod(monthlyFilter, lastMonthFilter);
 
     // Weekly Performance (Last 7 Days) for the chart
     const weeklyPerformance = await client.query(

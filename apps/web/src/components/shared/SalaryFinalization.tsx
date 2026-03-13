@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getAllSalaries, finalizeSalary, getSalaryCycles, lockSalaryPeriod } from '../../services/allAPI';
+import {
+  getAllSalaries,
+  finalizeSalary,
+  getSalaryCycles,
+  lockSalaryPeriod,
+} from '../../services/allAPI';
 import { useNavigate } from 'react-router-dom';
 
 /* =========================
@@ -31,34 +36,43 @@ const SalaryFinalization: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cycles, setCycles] = useState<any[]>([]);
   const [activeCycle, setActiveCycle] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const limit = 10;
   const navigate = useNavigate();
 
   /* =========================
      Fetch data
      ========================= */
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [salaryData, cycleData] = await Promise.all([
-          getAllSalaries(),
-          getSalaryCycles()
-        ]);
-        setSalaries(salaryData);
-        setCycles(cycleData);
-        if (cycleData && cycleData.length > 0) {
-          const active = cycleData.find((c: any) => !c.is_locked) || cycleData[0];
-          setActiveCycle(active);
-        }
-      } catch (err) {
-        console.error('Failed to fetch data', err);
-      } finally {
-        setLoading(false);
+  const fetchData = async (page: number) => {
+    setLoading(true);
+    try {
+      const offset = (page - 1) * limit;
+      const [salaryRes, cycleData] = await Promise.all([
+        getAllSalaries(limit, offset),
+        getSalaryCycles(),
+      ]);
+      setSalaries(salaryRes.data);
+      setTotalRecords(salaryRes.meta.total);
+      setCycles(cycleData);
+      if (cycleData && cycleData.length > 0) {
+        const active = cycleData.find((c: any) => !c.is_locked) || cycleData[0];
+        setActiveCycle(active);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchData();
-  }, []);
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   /* =========================
      Finalize salary
@@ -118,7 +132,7 @@ const SalaryFinalization: React.FC = () => {
     try {
       await lockSalaryPeriod(activeCycle.id);
       setActiveCycle({ ...activeCycle, is_locked: true });
-      setSalaries(prev => prev.map(s => ({ ...s, status: 'locked' })));
+      setSalaries((prev) => prev.map((s) => ({ ...s, status: 'locked' })));
     } catch (err) {
       console.error(err);
       alert('Failed to lock salary period.');
@@ -152,10 +166,11 @@ const SalaryFinalization: React.FC = () => {
           <button
             onClick={handleLockPeriod}
             disabled={!activeCycle || activeCycle.is_locked || locking}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${!activeCycle || activeCycle.is_locked
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              !activeCycle || activeCycle.is_locked
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow'
-              }`}
+            }`}
           >
             {locking ? 'Locking...' : activeCycle?.is_locked ? '🔒 Locked' : 'Lock Period'}
           </button>
@@ -306,14 +321,15 @@ const SalaryFinalization: React.FC = () => {
 
                     <td className="p-4 text-center">
                       <span
-                        className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${salary.status === 'finalized'
+                        className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${
+                          salary.status === 'finalized'
                             ? 'bg-green-100 text-green-700'
                             : salary.status === 'paid'
                               ? 'bg-blue-100 text-blue-700'
                               : salary.status === 'locked'
                                 ? 'bg-purple-100 text-purple-700'
                                 : 'bg-yellow-100 text-yellow-700'
-                          }`}
+                        }`}
                       >
                         {salary.status === 'finalized' && '✓ '}
                         {salary.status === 'paid' && '💰 '}
@@ -371,10 +387,11 @@ const SalaryFinalization: React.FC = () => {
                       <button
                         disabled={salary.status !== 'draft'}
                         onClick={() => handleFinalize(salary.id)}
-                        className={`px-4 py-2 rounded-lg text-xs font-medium transition ${salary.status === 'draft'
+                        className={`px-4 py-2 rounded-lg text-xs font-medium transition ${
+                          salary.status === 'draft'
                             ? 'bg-blue-600 text-white hover:bg-blue-700'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}
+                        }`}
                       >
                         {salary.status === 'draft' ? 'Finalize' : '🔒 Locked'}
                       </button>
@@ -417,16 +434,26 @@ const SalaryFinalization: React.FC = () => {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-200 gap-3">
           <p className="text-sm text-gray-600">
-            Showing <span className="font-medium">{filteredSalaries.length}</span> of{' '}
-            <span className="font-medium">{salaries.length}</span> records
+            Showing <span className="font-medium">{salaries.length}</span> of{' '}
+            <span className="font-medium">{totalRecords}</span> records
           </p>
 
           <div className="flex items-center gap-2">
-            <button className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+              className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               ← Previous
             </button>
-            <span className="text-sm text-gray-600 px-3">Page 1</span>
-            <button className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span className="text-sm text-gray-600 px-3">
+              Page {currentPage} of {Math.ceil(totalRecords / limit) || 1}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalRecords / limit) || loading}
+              className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Next →
             </button>
           </div>

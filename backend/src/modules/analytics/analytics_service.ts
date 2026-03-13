@@ -66,8 +66,10 @@ export const getCleanerPerformance = async (period?: string) => {
   // period can be 'daily', 'weekly', 'monthly' or null for all time
   let dateFilter = '';
   if (period === 'daily') dateFilter = `AND t.completed_at >= CURRENT_DATE`;
-  else if (period === 'weekly') dateFilter = `AND t.completed_at >= date_trunc('week', CURRENT_DATE)`;
-  else if (period === 'monthly') dateFilter = `AND t.completed_at >= date_trunc('month', CURRENT_DATE)`;
+  else if (period === 'weekly')
+    dateFilter = `AND t.completed_at >= date_trunc('week', CURRENT_DATE)`;
+  else if (period === 'monthly')
+    dateFilter = `AND t.completed_at >= date_trunc('month', CURRENT_DATE)`;
 
   const res = await pool.query(
     `SELECT 
@@ -90,7 +92,8 @@ export const getCleanerPerformance = async (period?: string) => {
 
 export const getCollectionsReconciliation = async (month?: string) => {
   let dateFilter = '';
-  if (month) dateFilter = `AND t.completed_at >= date_trunc('month', $1::date) AND t.completed_at < date_trunc('month', $1::date) + interval '1 month'`;
+  if (month)
+    dateFilter = `AND t.completed_at >= date_trunc('month', $1::date) AND t.completed_at < date_trunc('month', $1::date) + interval '1 month'`;
 
   const queryParams = month ? [month] : [];
 
@@ -185,4 +188,63 @@ export const getFraudTrendsService = async () => {
   const { rows } = await pool.query(query);
   await setCache(cacheKey, rows, 1800); // 30 min cache
   return rows;
+};
+
+export const getAdminSummaryService = async () => {
+  const cacheKey = 'analytics:admin_summary';
+  const cached = await getCache(cacheKey);
+  if (cached) return cached;
+
+  const res = await pool.query(`
+    SELECT
+      (SELECT COALESCE(SUM(paid_amount), 0)::float FROM salaries WHERE date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)) as total_salary_paid,
+      (SELECT COUNT(*)::int FROM cleaners WHERE is_active = true) as total_cleaners,
+      (SELECT COUNT(*)::int FROM cleaner_assigned_vehicles WHERE is_active = true) as total_vehicles,
+      (SELECT COUNT(*)::int FROM buildings) as total_buildings,
+      (SELECT COUNT(*)::int FROM incentive_rules WHERE is_active = true) as active_incentive_rules,
+      (SELECT COUNT(*)::int FROM users WHERE role = 'supervisor' AND is_active = true) as total_supervisors,
+      (SELECT COUNT(*)::int FROM attendance WHERE date = CURRENT_DATE AND cleaner_id IS NOT NULL) as cleaners_present,
+      (SELECT COUNT(*)::int FROM attendance WHERE date = CURRENT_DATE AND cleaner_id IS NULL) as supervisors_present,
+      (SELECT COUNT(*)::int FROM tasks WHERE status = 'completed' AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = CURRENT_DATE) as tasks_done_today,
+      (SELECT COUNT(*)::int FROM tasks WHERE status = 'pending') as tasks_pending,
+      (SELECT COUNT(*)::int FROM tasks WHERE status IN ('started', 'working')) as tasks_active
+  `);
+
+  const summary = res.rows[0];
+  await setCache(cacheKey, summary, 600); // 10 min cache
+  return summary;
+};
+
+export const getCustomerReportService = async () => {
+  const cacheKey = 'analytics:customer_report';
+  const cached = await getCache(cacheKey);
+  if (cached) return cached;
+
+  const res = await pool.query(`
+    SELECT
+      t.id,
+      cav.owner_name,
+      cav.car_number,
+      cav.car_type,
+      u.full_name as cleaner_name,
+      COALESCE(
+        (SELECT SUM(p.amount) FROM penalties p WHERE p.task_id = t.id), 0
+      )::float as penalty_amount,
+      COALESCE(t.task_amount, 0)::float as task_amount,
+      COALESCE(t.final_price, t.task_amount, 0)::float as final_price,
+      t.status,
+      t.completed_at
+    FROM tasks t
+    LEFT JOIN cleaner_assigned_vehicles cav ON t.vehicle_id = cav.id
+    LEFT JOIN cleaners c ON t.cleaner_id = c.id
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE (t.completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = 
+          (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date
+       OR t.status != 'completed'
+    ORDER BY t.created_at DESC
+    LIMIT 100
+  `);
+
+  await setCache(cacheKey, res.rows, 300); // 5 min cache
+  return res.rows;
 };
