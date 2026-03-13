@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getUserRole, getAccessToken } from '../../src/api/tokenStorage';
-import { usePushNotifications } from '../../hooks/usePushnotification';
+import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 const ACTIVE = '#ffffff'; // White for active text
 const INACTIVE = '#9ca3af'; // Gray for inactive
