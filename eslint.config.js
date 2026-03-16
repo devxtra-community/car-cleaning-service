@@ -3,10 +3,13 @@ import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettierPlugin from 'eslint-plugin-prettier';
+import globals from 'globals';
 
 export default [
+  {
+    ignores: ['**/dist/**', 'backend/dist/**', '**/node_modules/**', '.expo/**'],
+  },
   js.configs.recommended,
-
   ...tseslint.configs.recommended,
 
   {
@@ -15,6 +18,11 @@ export default [
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2021,
       },
     },
     plugins: {
@@ -38,6 +46,19 @@ export default [
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'react/react-in-jsx-scope': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-undef': 'error',
+    },
+  },
+
+  // Specific overrides for backend/scripts to ensure node globals
+  {
+    files: ['backend/**/*.js', 'backend/scripts/**/*.js', '*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
     ignores: ['**/dist/**', '**/node_modules/**'],
   },

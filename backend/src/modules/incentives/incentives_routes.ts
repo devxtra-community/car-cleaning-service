@@ -18,9 +18,20 @@ import {
   recordDailyWorkController,
   getDailyWorkRecordsController,
   getMonthlyIncentiveSummaryController,
+  // Targets
+  getAllIncentiveTargetsController,
+  createIncentiveTargetController,
+  updateIncentiveTargetController,
+  deleteIncentiveTargetController,
 } from './incentives_controller';
 
 const router = Router();
+
+/* ================= INCENTIVE TARGETS ================= */
+router.get('/targets', getAllIncentiveTargetsController);
+router.post('/targets', createIncentiveTargetController);
+router.put('/targets/:id', updateIncentiveTargetController);
+router.delete('/targets/:id', deleteIncentiveTargetController);
 
 /* ================= INCENTIVE TYPES ================= */
 router.post('/types', createIncentiveTypeController);

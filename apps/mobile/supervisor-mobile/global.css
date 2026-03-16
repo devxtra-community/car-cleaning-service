@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .font-heading {
+    @apply font-antigravity-semibold tracking-wide text-clay-text;
+  }
+
+  .font-body {
+    @apply font-antigravity-regular text-base leading-relaxed text-clay-secondary;
+  }
+
+  .font-label {
+    @apply font-antigravity-medium text-sm text-clay-secondary opacity-90;
+  }
+
+  .btn-text {
+    @apply font-antigravity-semibold text-center;
+  }
+
+  .clay-card {
+    @apply bg-white rounded-[32px] border-l border-t border-white;
+  }
+
+  .clay-button {
+    @apply rounded-2xl border-l border-t border-white/50;
+  }
+
+  .glass-panel {
+    @apply bg-white/30 border border-white/40;
+  }
+}

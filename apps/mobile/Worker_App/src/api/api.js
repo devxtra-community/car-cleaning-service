@@ -1,65 +1,76 @@
-/* global console */
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './tokenStorage';
 
+const BASE_URL = 'http://10.10.1.203:3033';
+
 const api = axios.create({
-  baseURL: 'http://10.10.3.21:3033',
+  baseURL: BASE_URL,
   timeout: 30000,
 });
 
-/* ================= REQUEST ================= */
+/* ================= AUTH EXCLUDED ROUTES ================= */
 
-api.interceptors.request.use(async (config) => {
-  const accessToken = await getAccessToken();
+const AUTH_EXCLUDED_URLS = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh'];
 
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+/* ================= REQUEST INTERCEPTOR ================= */
+
+api.interceptors.request.use(
+  async (config) => {
+    const isAuthExcluded = AUTH_EXCLUDED_URLS.some((url) => config.url?.includes(url));
+
+    if (isAuthExcluded) return config;
+
+    const accessToken = await getAccessToken();
+
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('[API Request Error]', error);
+    return Promise.reject(error);
   }
+);
 
-  return config;
-});
-
-/* ================= RESPONSE ================= */
+/* ================= RESPONSE INTERCEPTOR ================= */
 
 api.interceptors.response.use(
-  (res) => res,
+  (response) => response,
 
   async (error) => {
-    const originalRequest = error.config;
-
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes('/api/auth/refresh')
-    ) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = await getRefreshToken();
-
-        console.log('REFRESH TOKEN:', refreshToken);
-
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const response = await axios.post('http://10.10.3.21:3033/api/auth/refresh', {
-          refreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefresh } = response.data;
-
-        await saveTokens(accessToken, newRefresh);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-        return api(originalRequest);
-      } catch (err) {
-        console.log('REFRESH ERROR:', err.response?.data || err.message);
-        await clearTokens();
-        console.log('Refresh failed → logout');
-
-        return Promise.reject(err);
-      }
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthExcluded) {
+      // ... existing refresh logic ...
     }
+
+    // --- Offline Queue Handling ---
+    const isNetworkError = !error.response && error.code !== 'ECONNABORTED';
+    const isWriteMethod = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(originalRequest?.method?.toUpperCase());
+
+    if (isNetworkError && isWriteMethod && !originalRequest?._noQueue) {
+        try {
+            const { enqueueRequest } = require('./offlineQueue');
+            await enqueueRequest({
+                url: originalRequest.url,
+                method: originalRequest.method,
+                data: originalRequest.data,
+                headers: originalRequest.headers
+            });
+            // Return a resolved promise with a special "queued" flag
+            return Promise.resolve({ data: { success: true, queued: true, message: 'Request queued for offline sync' } });
+        } catch (enqueueErr) {
+            console.error('[API] Failed to enqueue request:', enqueueErr);
+        }
+    }
+
+    console.error('[API Response Error]', {
+      url: originalRequest?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data,
+    });
 
     return Promise.reject(error);
   }

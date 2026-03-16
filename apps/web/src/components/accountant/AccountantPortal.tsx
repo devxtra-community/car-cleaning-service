@@ -8,14 +8,18 @@ import {
   ArrowRightOnRectangleIcon,
   BuildingOffice2Icon,
   TruckIcon,
+  CurrencyRupeeIcon,
   CheckBadgeIcon,
   DocumentChartBarIcon,
   BanknotesIcon,
   GiftIcon,
   ChartBarIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 const AccountantPortal = () => {
+  const { i18n, t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, loading, logout } = useAuth();
 
@@ -53,11 +57,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/dashboard">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <HomeIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Dashboard</span>
@@ -68,11 +71,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/buildings">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <BuildingOffice2Icon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Buildings</span>
@@ -83,11 +85,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/vechicles">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <TruckIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Vehicle Management</span>
@@ -101,14 +102,16 @@ const AccountantPortal = () => {
               Salary Management
             </p>
           </div>
+
+
+
           <NavLink to="/accountant/addIncetiveTarget">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <GiftIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Incentive Targets</span>
@@ -119,11 +122,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/analyticsProgress">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <ChartBarIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Analysis</span>
@@ -134,11 +136,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/salaryFinalization">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <CheckBadgeIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Finalization</span>
@@ -149,11 +150,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/salary-cycles">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Cycles</span>
@@ -164,14 +164,27 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/salary-summary">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <BanknotesIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Summary</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/accountant/role-salaries">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <UserGroupIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Role-Based Salary</span>
               </div>
             )}
           </NavLink>
@@ -184,11 +197,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/monthlyReport">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Monthly Report</span>
@@ -199,11 +211,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/reconciliation">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Reconciliation</span>
@@ -214,11 +225,10 @@ const AccountantPortal = () => {
           <NavLink to="/accountant/revenueReport">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <BanknotesIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Revenue Report</span>
@@ -238,6 +248,21 @@ const AccountantPortal = () => {
               <p className="text-sm font-medium text-gray-900 truncate">Athulya R Chandra</p>
               <p className="text-xs text-gray-500">accountant</p>
             </div>
+          </div>
+
+          <div className="mb-4 px-3">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-2 px-1">
+              Select Language
+            </label>
+            <select
+              value={i18n.language}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              <option value="en">English (US)</option>
+              <option value="ar">العربية (Arabic)</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+            </select>
           </div>
 
           <button

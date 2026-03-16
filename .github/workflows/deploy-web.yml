@@ -1,0 +1,48 @@
+name: CD - Deploy Web to S3/CloudFront
+
+on:
+  push:
+    branches: ["main", "yasir"]
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/deploy-web.yml"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Web Portal
+        run: |
+          cd apps/web
+          pnpm run build
+        env:
+          VITE_API_URL: ${{ secrets.PROD_API_URL }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync apps/web/dist s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
+

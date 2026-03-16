@@ -8,6 +8,8 @@ import {
   CurrencyDollarIcon,
   CheckCircleIcon,
   UserIcon,
+  PhoneIcon,
+  EnvelopeIcon,
   PencilIcon,
   ArrowLeftIcon,
   ExclamationCircleIcon,
@@ -62,7 +64,7 @@ interface BuildingDetails {
   radius: number;
   created_at: string;
   floors: Floor[];
-  supervisors: Supervisor[];
+  supervisor: Supervisor | null;
   statistics: Statistics;
   cleaners: Cleaner[];
   revenueTrend: RevenueTrend[];
@@ -83,22 +85,16 @@ const BuildingDetailsPage = () => {
     try {
       setLoading(true);
       const response = await getBuildingDetails(buildingId);
+      console.log(response);
 
-      const buildingData = response.data;
-
-      setData({
-        ...buildingData,
-        supervisor:
-          buildingData.supervisors && buildingData.supervisors.length > 0
-            ? buildingData.supervisors[0]
-            : null,
-      });
+      setData(response.data);
     } catch (error) {
       console.error('Error fetching building details:', error);
     } finally {
       setLoading(false);
     }
-  }, [buildingId]);
+  }, [buildingId]); // Add buildingId as dependency
+
   useEffect(() => {
     fetchBuildingDetails();
   }, [fetchBuildingDetails]);
@@ -323,39 +319,40 @@ const OverviewTab = ({ data }: { data: BuildingDetails }) => {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <UserIcon className="w-5 h-5 text-blue-600" />
-          Supervisors
+          Supervisor
         </h3>
-
-        {data.supervisors && data.supervisors.length > 0 ? (
-          <div className="space-y-4">
-            {data.supervisors.map((supervisor) => (
-              <div
-                key={supervisor.id}
-                className="p-4 bg-white border-blue -50 rounded-lg shadow-sm"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  {supervisor.profile_image ? (
-                    <img
-                      src={supervisor.profile_image}
-                      alt={supervisor.full_name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="text-blue-600 font-semibold text-lg">
-                        {supervisor.full_name.charAt(0)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="font-semibold text-gray-900">{supervisor.full_name}</p>
-                    <p className="text-sm text-gray-500">{supervisor.email}</p>
-                  </div>
+        {data.supervisor ? (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              {data.supervisor.profile_image ? (
+                <img
+                  src={data.supervisor.profile_image}
+                  alt={data.supervisor.full_name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-lg">
+                    {data.supervisor.full_name.charAt(0)}
+                  </span>
                 </div>
+              )}
+              <div>
+                <p className="font-semibold text-gray-900">{data.supervisor.full_name}</p>
+                <p className="text-sm text-gray-500">Building Supervisor</p>
               </div>
-            ))}
-          </div>
+            </div>
+            <InfoRow
+              icon={<EnvelopeIcon className="w-4 h-4" />}
+              label="Email"
+              value={data.supervisor.email}
+            />
+            <InfoRow
+              icon={<PhoneIcon className="w-4 h-4" />}
+              label="Phone"
+              value={data.supervisor.phone || 'N/A'}
+            />
+          </>
         ) : (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <UserIcon className="w-12 h-12 text-gray-300 mx-auto mb-2" />

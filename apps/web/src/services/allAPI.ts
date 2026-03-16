@@ -1,5 +1,4 @@
 import { api, setAccessToken } from './commonAPI';
-import SERVER_URL from './serverURL';
 
 interface LoginPayload {
   email: string;
@@ -11,6 +10,12 @@ export interface IncentiveTarget {
   reason: string;
   incentive_amount: number;
   active: boolean;
+  cleaner_id?: string;
+  building_id?: string;
+  floor_id?: string;
+  cleaner_name?: string;
+  building_name?: string;
+  floor_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +65,11 @@ export const login = async ({ email, password }: LoginPayload) => {
   return response;
 };
 
+export const getAllSupervisors = async () => {
+  const response = await api.get('/api/auth/supervisors');
+  return response.data.data;
+};
+
 //------------------Supervisor Report------------------//
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -83,6 +93,36 @@ export interface SupervisorCleaner {
   base_salary: number;
   incentive_target: number;
   floor: SupervisorFloor | null;
+}
+
+export interface Supervisor {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  base_salary: number;
+  nationality: string;
+  document_id: string;
+  age?: number;
+  profile_image?: string;
+  document?: string;
+  joining_date?: string;
+  is_active: boolean;
+  building?: SupervisorBuilding | null;
+  cleaners: SupervisorCleaner[];
+}
+
+/** Shape returned by GET /api/auth/supervisors (list view) */
+export interface SupervisorListItem {
+  supervisor_id: string;
+  full_name: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  profile_image?: string;
+  is_active?: boolean;
+  building_id?: string;
+  building_name?: string;
 }
 
 export interface SupervisorWorker {
@@ -112,6 +152,63 @@ export interface UpdateSupervisorPayload {
   password?: string;
 }
 
+// ─── Admin endpoints ──────────────────────────────────────────────────────────
+
+/**
+ * GET /api/supervisors/:id
+ * Full details of a single supervisor including cleaners (admin).
+ */
+export const getSupervisorDetails = async (
+  id: string
+): Promise<{ success: boolean; data: Supervisor }> => {
+  const response = await api.get(`/supervisors/${id}`);
+  return response.data;
+};
+
+/**
+ * PUT /supervisors/:id
+ * Update a supervisor's profile (admin).
+ */
+export const updateSupervisor = async (
+  id: string,
+  payload: UpdateSupervisorPayload
+): Promise<{ success: boolean; message?: string; data: Supervisor }> => {
+  const response = await api.put(`/supervisors/${id}`, payload);
+  return response.data;
+};
+
+/**
+ * PATCH /supervisors/:id/status
+ * Activate or deactivate a supervisor (admin).
+ */
+export const toggleSupervisorStatus = async (
+  id: string,
+  isActive: boolean
+): Promise<{ success: boolean; message?: string; data: { id: string; is_active: boolean } }> => {
+  const response = await api.patch(`/supervisors/${id}/status`, {
+    is_active: isActive,
+  });
+  return response.data;
+};
+
+/**
+ * DELETE /supervisors/:id
+ * Permanently delete a supervisor (admin).
+ * Returns 400 if the supervisor still has assigned cleaners.
+ */
+export const deleteSupervisor = async (
+  id: string
+): Promise<{ success: boolean; message?: string }> => {
+  const response = await api.delete(`/supervisors/${id}`);
+  return response.data;
+};
+
+// ─── Supervisor-role endpoints ────────────────────────────────────────────────
+
+/**
+ * GET /supervisors/workers
+ * Workers assigned to the currently logged-in supervisor.
+ */
 export const getSupervisorWorkers = async (): Promise<SupervisorWorker[]> => {
   const response = await api.get('/supervisors/workers');
   return response.data.data;
@@ -213,6 +310,9 @@ export const createIncentiveTarget = async (data: {
   target_tasks: number;
   reason: string;
   incentive_amount: number;
+  cleaner_id?: string;
+  building_id?: string;
+  floor_id?: string;
 }) => {
   const response = await api.post('/api/incentives/targets', data);
   return response.data.data;
@@ -234,6 +334,10 @@ export const updateIncentiveTarget = async (
     target_tasks: number;
     reason: string;
     incentive_amount: number;
+    cleaner_id: string | null;
+    building_id: string | null;
+    floor_id: string | null;
+    active: boolean;
   }>
 ) => {
   const response = await api.put(`/api/incentives/targets/${id}`, data);
@@ -319,17 +423,16 @@ export const createSalary = async (salaryData: {
   salary_month: string;
   base_salary: number;
   penalty_amount?: number;
-  monthly_review?: string;
-  payment_method?: string;
-  bank_account?: string;
 }) => {
   const response = await api.post('/salary', salaryData);
   return response.data.data;
 };
 
-export const getAllSalaries = async () => {
-  const response = await api.get('/salary');
-  return response.data.data;
+export const getAllSalaries = async (limit?: number, offset?: number) => {
+  const response = await api.get('/salary', {
+    params: { limit, offset },
+  });
+  return response.data;
 };
 
 export const getSalaryDetailsPerWorker = async (userId: string) => {
@@ -344,9 +447,6 @@ export const updateSalary = async (
   data: {
     base_salary?: number;
     penalty_amount?: number;
-    monthly_review?: string;
-    payment_method?: string;
-    bank_account?: string;
   }
 ) => {
   const response = await api.put(`/salary/${salaryId}`, data);
@@ -358,666 +458,61 @@ export const finalizeSalary = async (salaryId: string) => {
   return response.data.data;
 };
 
-////////////-─────────────────────────────────────────────SUPERVISOR API─────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// Add these exports to your existing src/services/allAPI.ts
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─── Types (also add to your shared types file if you have one) ───────────────
-
-export interface SupervisorListItem {
-  supervisor_id: string;
-  full_name: string;
-  is_active: boolean;
-  building_id: string | null;
-  building_name: string | null;
-  email: string | null;
-  phone: string | null;
-  profile_image: string | null;
-  joining_date: string | null;
-  base_salary: number | null;
-  cleaner_count: number;
-  updated_at: string;
-}
-
-export interface SupervisorCleaner {
-  id: string;
-  full_name: string;
-  email: string;
-  total_tasks: number;
-  total_earning: number;
-  base_salary: number;
-  floor: { id: string; floor_number: number } | null;
-}
-
-export interface Supervisor {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  base_salary: number;
-  nationality: string;
-  document_id: string;
-  profile_image: string | null;
-  age: number | null;
-  document: string | null;
-  joining_date: string | null;
-  is_active: boolean;
-  building: { id: string; name: string } | null;
-  cleaners: SupervisorCleaner[];
-}
-
-export interface UpdateSupervisorPayload {
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  age?: number;
-  nationality?: string;
-  document_id?: string;
-  document?: string;
-  base_salary?: number;
-  profile_image?: string;
-  building_id?: string;
-  password?: string;
-}
-
-export interface AvailableCleaner {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  profile_image: string | null;
-  building_id: string | null;
-  building_name: string | null;
-  floor_id: string | null;
-  floor_name: string | null;
-  floor_number: number | null;
-  incentive_target: number;
-}
-
-export interface BuildingOption {
-  id: string;
-  building_name: string;
-  location: string | null;
-}
-
-// ─── API calls ─────────────────────────────────────────────────────────────────
-
-export const getAllSupervisors = async (): Promise<SupervisorListItem[]> => {
-  const response = await api.get('/supervisors');
+export const getSalaryCycles = async () => {
+  const response = await api.get('/salary/salary-cycles');
   return response.data.data;
 };
 
-export const getUnassignedSupervisors = async (): Promise<SupervisorListItem[]> => {
-  const response = await api.get('/supervisors/unassigned');
-  return response.data.data;
-};
-
-export const getSupervisorDetails = async (
-  id: string
-): Promise<{ success: boolean; data: Supervisor }> => {
-  const response = await api.get(`/supervisors/${id}`);
+export const lockSalaryPeriod = async (cycleId: string) => {
+  const response = await api.post(`/salary/lock/${cycleId}`);
   return response.data;
 };
 
-export const updateSupervisor = async (
-  id: string,
-  payload: UpdateSupervisorPayload
-): Promise<{ success: boolean; message: string; data: Supervisor }> => {
-  const response = await api.put(`/supervisors/${id}`, payload);
+// ─── Vehicle Assignments ──────────────────────────────────────────────────
+
+export const assignVehicle = async (data: any) => {
+  const response = await api.post('/workers/assignments/vehicle', data);
   return response.data;
 };
 
-export const toggleSupervisorStatus = async (
-  id: string,
-  is_active: boolean
-): Promise<{ success: boolean; message: string }> => {
-  const response = await api.patch(`/supervisors/${id}/toggle-status`, { is_active });
+export const unassignVehicle = async (id: string) => {
+  const response = await api.delete(`/workers/assignments/vehicle/${id}`);
   return response.data;
 };
 
-export const deleteSupervisor = async (
-  id: string
-): Promise<{ success: boolean; message: string }> => {
-  const response = await api.delete(`/supervisors/${id}`);
+export const getCleanerAssignedVehicles = async (cleanerId: string) => {
+  const response = await api.get(`/workers/assignments/vehicle/${cleanerId}`);
   return response.data;
 };
 
-export const getAvailableCleaners = async (supervisorId: string): Promise<AvailableCleaner[]> => {
-  const response = await api.get(`/supervisors/${supervisorId}/available-cleaners`);
-  return response.data.data;
-};
+// ─── Analytics & Insights ────────────────────────────────────────────────
 
-export const assignCleanerToSupervisor = async (
-  supervisorId: string,
-  cleanerId: string
-): Promise<{ success: boolean; message: string }> => {
-  const response = await api.post(`/supervisors/${supervisorId}/assign-cleaner`, {
-    cleanerId,
-  });
+export const getBuildingComparison = async () => {
+  const response = await api.get('/api/analytics/building-comparison');
   return response.data;
 };
 
-export const removeCleanerFromSupervisor = async (
-  supervisorId: string,
-  cleanerId: string
-): Promise<{ success: boolean; message: string }> => {
-  const response = await api.delete(`/supervisors/${supervisorId}/cleaners/${cleanerId}`);
+export const getCustomerRatingSummary = async () => {
+  const response = await api.get('/api/analytics/rating-summary');
   return response.data;
 };
 
-export const getSupervisorBuildingOptions = async (): Promise<BuildingOption[]> => {
-  const response = await api.get('/supervisors/buildings');
-  return response.data.data;
+export const getFraudTrends = async () => {
+  const response = await api.get('/api/analytics/fraud-trends');
+  return response.data;
 };
 
-export interface CleanerListItem {
-  cleaner_id: string;
-  user_id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  age: number | null;
-  nationality: string | null;
-  document_id: string | null;
-  document: string | null;
-  profile_image: string | null;
-  base_salary: number | null;
-  joining_date: string | null;
-  building_id: string | null;
-  building_name: string | null;
-  floor_id: string | null;
-  floor_name: string | null;
-  floor_number: number | null;
-  supervisor_id: string | null;
-  supervisor_profile_id: string | null;
-  supervisor_name: string | null;
-  total_tasks: number;
-  total_earning: number;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface CleanerTask {
-  id: string;
-  vehicle_type: string | null;
-  car_number: string | null;
-  car_model: string | null;
-  car_type: string | null;
-  car_color: string | null;
-  car_image_url: string | null;
-  building_name: string | null;
-  building_location: string | null;
-  floor_name: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  task_amount: string;
-  final_price: string | null;
-  status: string;
-  before_photo_url: string | null;
-  after_photo_url: string | null;
-  after_wash_image_url: string | null;
-  owner_name: string | null;
-  owner_phone: string | null;
-  payment_method: string | null;
-  rating: number | null;
-  comment: string | null;
-  created_at: string;
-}
-
-export interface CleanerIncentive {
-  id: string;
-  amount: number;
-  reason: string | null;
-  created_at: string;
-}
-export interface CleanerPenalty {
-  id: string;
-  amount: number;
-  reason: string | null;
-  created_at: string;
-}
-
-export interface CleanerDetail {
-  cleanerId: string;
-  userId: string;
-  fullName: string;
-  email: string;
-  phone: string | null;
-  age: number | null;
-  nationality: string | null;
-  document: string | null;
-  documentId: string | null;
-  profileImage: string | null;
-  baseSalary: number;
-  joiningDate: string | null;
-  isActive: boolean;
-  totalTasks: number;
-  totalEarning: number;
-  building: { id: string; name: string; location: string } | null;
-  floor: { id: string; name: string; number: number } | null;
-  supervisor: { id: string; name: string } | null;
-  summary: {
-    totalTasks: number;
-    totalTaskAmount: number;
-    totalIncentives: number;
-    totalPenalties: number;
-    netEarning: number;
-  };
-  tasks: CleanerTask[];
-  incentives: CleanerIncentive[];
-  penalties: CleanerPenalty[];
-}
-
-export interface UpdateCleanerPayload {
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  age?: number;
-  nationality?: string;
-  document_id?: string;
-  document?: string;
-  base_salary?: number;
-  profile_image?: string;
-  password?: string;
-  building_id?: string;
-  floor_id?: string;
-  supervisor_id?: string | null;
-}
-
-export interface FloorOption {
-  id: string;
-  floor_name: string;
-  floor_number: number;
-}
-export interface SupervisorOption {
-  id: string;
-  full_name: string;
-  is_active: boolean;
-}
-export interface BuildingDropdownItem {
-  id: string;
-  building_name: string;
-  location: string | null;
-}
-
-// ─── API functions ────────────────────────────────────────────────────────────
-
-export const getAllCleaners = async (): Promise<CleanerListItem[]> =>
-  (await api.get('/workers')).data.data;
-
-export const getCleanerDetail = async (
-  id: string,
-  date?: string
-): Promise<{ success: boolean; data: CleanerDetail }> =>
-  (await api.get(`/workers/${id}`, { params: date ? { date } : {} })).data;
-
-export const updateCleaner = async (
-  id: string,
-  payload: UpdateCleanerPayload
-): Promise<{ success: boolean; message: string; data: CleanerDetail }> =>
-  (await api.put(`/workers/${id}`, payload)).data;
-
-export const toggleCleanerStatus = async (
-  id: string,
-  is_active: boolean
-): Promise<{ success: boolean; message: string }> =>
-  (await api.patch(`/workers/${id}/toggle-status`, { is_active })).data;
-
-export const deleteCleaner = async (id: string): Promise<{ success: boolean; message: string }> =>
-  (await api.delete(`/workers/${id}`)).data;
-
-export const getCleanerBuildings = async (): Promise<BuildingDropdownItem[]> =>
-  (await api.get('/workers/buildings')).data.data;
-
-export const getFloorsForBuilding = async (buildingId: string): Promise<FloorOption[]> =>
-  (await api.get(`/workers/buildings/${buildingId}/floors`)).data.data;
-
-export const getSupervisorsForBuilding = async (buildingId: string): Promise<SupervisorOption[]> =>
-  (await api.get(`/workers/buildings/${buildingId}/supervisors`)).data.data;
-
-// ─── Auth — add to loginUserService after bcrypt.compare ─────────────────────
-// export const checkCleanerNotBlocked = async (userId: string, role: string) => {
-//   if (role !== 'cleaner') return;
-//   const r = await pool.query('SELECT is_active FROM cleaners WHERE user_id = $1', [userId]);
-//   if (!r.rows.length || !(r.rows[0] as { is_active: boolean }).is_active)
-//     throw new AppError('Your account has been temporarily blocked. Please contact the administrator.', 403, 'ACCOUNT_BLOCKED');
-// };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface AdminListItem {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  age: number | null;
-  nationality: string | null;
-  document_id: string | null;
-  base_salary: number | null;
-  profile_image: string | null;
-  building_id: string | null;
-  floor_id: string | null;
-  joining_date: string | null;
-  last_login: string | null;
-  created_at: string;
-  updated_at: string;
-  token_version: number;
-  // derived
-  is_active: boolean;
-}
-
-export interface AccountantListItem {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  age: number | null;
-  nationality: string | null;
-  document_id: string | null;
-  base_salary: number | null;
-  profile_image: string | null;
-  building_id: string | null;
-  floor_id: string | null;
-  joining_date: string | null;
-  last_login: string | null;
-  created_at: string;
-  updated_at: string;
-  token_version: number;
-  building_name: string | null;
-  floor_name: string | null;
-  floor_number: number | null;
-  // derived
-  is_active: boolean;
-}
-
-export interface UserUpdatePayload {
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  age?: number;
-  nationality?: string;
-  document_id?: string;
-  base_salary?: number;
-  profile_image?: string;
-  joining_date?: string;
-  building_id?: string | null;
-  floor_id?: string | null;
-  password?: string;
-}
-
-// helper: derive is_active from token_version
-const withActive = <T extends { token_version: number }>(row: T): T & { is_active: boolean } => ({
-  ...row,
-  is_active: row.token_version >= 0,
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN API
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const getAllAdmins = async (): Promise<AdminListItem[]> => {
-  const { data } = await api.get('/api/admins');
-  return (data as AdminListItem[]).map(withActive);
+export const getCollectionsReconciliation = async () => {
+  const response = await api.get('/api/analytics/collections-reconciliation');
+  return response.data;
 };
 
-export const getAdminById = async (id: string): Promise<AdminListItem> => {
-  const { data } = await api.get(`/api/admins/${id}`);
-  return withActive(data as AdminListItem);
+export const getAllFloors = async () => {
+  const response = await api.get('/api/floors');
+  return response.data;
 };
 
-export const updateAdmin = async (
-  id: string,
-  payload: UserUpdatePayload
-): Promise<AdminListItem> => {
-  const { data } = await api.put(`/api/admins/${id}`, payload);
-  return withActive(data as AdminListItem);
-};
-
-export const deleteAdmin = async (id: string): Promise<{ message: string }> => {
-  const { data } = await api.delete(`/api/admins/${id}`);
-  return data;
-};
-
-export const toggleAdminStatus = async (
-  id: string,
-  isActive: boolean
-): Promise<{ id: string; is_active: boolean }> => {
-  const { data } = await api.patch(`/api/admins/${id}/toggle-status`, { is_active: isActive });
-  return data;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ACCOUNTANT API
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const getAllAccountants = async (): Promise<AccountantListItem[]> => {
-  const { data } = await api.get('/api/accountants');
-  return (data as AccountantListItem[]).map(withActive);
-};
-
-export const getAccountantById = async (id: string): Promise<AccountantListItem> => {
-  const { data } = await api.get(`/api/accountants/${id}`);
-  return withActive(data as AccountantListItem);
-};
-
-export const updateAccountant = async (
-  id: string,
-  payload: UserUpdatePayload
-): Promise<AccountantListItem> => {
-  const { data } = await api.put(`/api/accountants/${id}`, payload);
-  return withActive(data as AccountantListItem);
-};
-
-export const deleteAccountant = async (id: string): Promise<{ message: string }> => {
-  const { data } = await api.delete(`/api/accountants/${id}`);
-  return data;
-};
-
-export const toggleAccountantStatus = async (
-  id: string,
-  isActive: boolean
-): Promise<{ id: string; is_active: boolean }> => {
-  const { data } = await api.patch(`/api/accountants/${id}/toggle-status`, { is_active: isActive });
-  return data;
-};
-
-export interface SalaryPeriod {
-  id: string;
-  name: string;
-  start_date: string;
-  end_date: string;
-  status: 'draft' | 'active' | 'locked' | 'paid';
-  notes: string | null;
-  created_by: string | null;
-  created_by_name: string | null;
-  locked_at: string | null;
-  locked_by_name: string | null;
-  paid_at: string | null;
-  created_at: string;
-  total_cleaners: number;
-  locked_count: number;
-  paid_count: number;
-  total_payout: number;
-}
-
-export interface SalaryRecord {
-  id: string;
-  salary_period_id: string;
-  cleaner_id: string;
-  full_name: string;
-  email: string;
-  profile_image: string | null;
-  building_name: string | null;
-  floor_name: string | null;
-  floor_number: number | null;
-  supervisor_name: string | null;
-  base_salary: number;
-  total_tasks: number;
-  total_task_amount: number;
-  total_incentives: number;
-  total_penalties: number;
-  total_adjustments: number;
-  net_salary: number;
-  status: 'draft' | 'finalized' | 'locked' | 'paid';
-  notes: string | null;
-  finalized_at: string | null;
-  finalized_by_name: string | null;
-  adjustments: SalaryAdjustment[];
-}
-
-export interface SalaryAdjustment {
-  id: string;
-  type: 'bonus' | 'deduction';
-  amount: number;
-  reason: string;
-  created_by_name: string | null;
-  created_at: string;
-}
-
-export interface SalaryRecordDetail {
-  record: SalaryRecord & {
-    period_name: string;
-    start_date: string;
-    end_date: string;
-    joining_date: string | null;
-    document_id: string | null;
-    building_location: string | null;
-  };
-  tasks: TaskRow[];
-  incentives: IncentiveRow[];
-  penalties: PenaltyRow[];
-  adjustments: SalaryAdjustment[];
-  dailyBreakdown: DailyBreakdownRow[];
-}
-
-export interface TaskRow {
-  id: string;
-  car_number: string | null;
-  car_type: string | null;
-  final_price: string;
-  completed_at: string;
-  building_name: string | null;
-  floor_name: string | null;
-}
-
-export interface IncentiveRow {
-  id: string;
-  amount: number;
-  reason: string | null;
-  created_at: string;
-}
-export interface PenaltyRow {
-  id: string;
-  amount: number;
-  reason: string | null;
-  created_at: string;
-}
-
-export interface DailyBreakdownRow {
-  date: string;
-  tasks_completed: number;
-  incentive_amount: number | null;
-  rule_name: string | null;
-  rule_description: string | null;
-  calculation_details: Record<string, unknown> | null;
-}
-
-export interface MonthlyReportRow {
-  period_id: string;
-  period_name: string;
-  start_date: string;
-  end_date: string;
-  period_status: string;
-  total_cleaners: number;
-  total_base: number;
-  total_task_amount: number;
-  total_incentives: number;
-  total_penalties: number;
-  total_adjustments: number;
-  total_net: number;
-}
-
-export interface CleanerSalaryHistoryRow {
-  id: string;
-  period_name: string;
-  start_date: string;
-  end_date: string;
-  period_status: string;
-  base_salary: number;
-  total_tasks: number;
-  total_task_amount: number;
-  total_incentives: number;
-  total_penalties: number;
-  total_adjustments: number;
-  net_salary: number;
-  status: string;
-  finalized_at: string | null;
-}
-
-// ─── API calls ────────────────────────────────────────────────────────────────
-
-export const getAllSalaryPeriods = async (): Promise<SalaryPeriod[]> =>
-  (await api.get('/api/salary')).data.data;
-
-export const getSalaryPeriod = async (
-  id: string
-): Promise<{ period: SalaryPeriod; records: SalaryRecord[] }> =>
-  (await api.get(`/api/salary/${id}`)).data.data;
-
-export const createSalaryPeriod = async (p: {
-  name: string;
-  start_date: string;
-  end_date: string;
-  notes?: string;
-}) => (await api.post('/api/salary', p)).data;
-
-export const updateSalaryPeriod = async (
-  id: string,
-  p: { name: string; start_date: string; end_date: string; notes?: string }
-) => (await api.put(`/api/salary/${id}`, p)).data;
-
-export const calculateSalaries = async (id: string) =>
-  (await api.post(`/api/salary/${id}/calculate`)).data;
-
-export const lockSalaryPeriod = async (id: string) =>
-  (await api.post(`/api/salary/${id}/lock`)).data;
-
-export const markSalaryPeriodPaid = async (id: string) =>
-  (await api.post(`/api/salary/${id}/mark-paid`)).data;
-
-export const getSalaryRecordDetail = async (
-  recordId: string
-): Promise<{ success: boolean; data: SalaryRecordDetail }> =>
-  (await api.get(`/api/salary/records/${recordId}`)).data;
-
-export const finalizeSalaryRecord = async (recordId: string, notes?: string) =>
-  (await api.post(`/api/salary/records/${recordId}/finalize`, { notes })).data;
-
-export const unfinalizeSalaryRecord = async (recordId: string) =>
-  (await api.post(`/api/salary/records/${recordId}/unfinalize`)).data;
-
-export const addSalaryAdjustment = async (
-  recordId: string,
-  p: { type: 'bonus' | 'deduction'; amount: number; reason: string }
-) => (await api.post(`/api/salary/records/${recordId}/adjustments`, p)).data;
-
-export const deleteSalaryAdjustment = async (adjustmentId: string) =>
-  (await api.delete(`/api/salary/adjustments/${adjustmentId}`)).data;
-
-export const getCleanerSalaryHistory = async (
-  cleanerId: string
-): Promise<CleanerSalaryHistoryRow[]> =>
-  (await api.get(`/api/salary/cleaner/${cleanerId}/history`)).data.data;
-
-export const getMonthlyReport = async (year: number, month?: number): Promise<MonthlyReportRow[]> =>
-  (await api.get('/api/salary/reports/monthly', { params: { year, month } })).data.data;
-
-export const exportSalaryCSV = (periodId: string) => {
-  window.open(`${SERVER_URL}/api/salary/${periodId}/export/csv`, '_blank');
-};
-export const exportSalaryExcel = (periodId: string) => {
-  window.open(`${SERVER_URL}/api/salary/${periodId}/export/excel`, '_blank');
+export const getAdminSummary = async () => {
+  const response = await api.get('/api/analytics/summary');
+  return response.data;
 };

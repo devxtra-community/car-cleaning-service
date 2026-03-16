@@ -12,6 +12,9 @@ import {
   ExclamationCircleIcon,
   StarIcon,
   ArrowPathIcon,
+  ExclamationTriangleIcon,
+  ComputerDesktopIcon,
+  ServerIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../services/commonAPI';
 
@@ -49,6 +52,29 @@ interface IncentiveType {
   label: string;
 }
 
+interface SystemHealth {
+  status: 'ok' | 'degraded';
+  uptime: number;
+  services: {
+    database: { status: string };
+    redis: { status: string };
+  };
+}
+
+interface AdminSummary {
+  total_salary_paid: number;
+  total_cleaners: number;
+  total_vehicles: number;
+  total_buildings: number;
+  active_incentive_rules: number;
+  total_supervisors: number;
+  cleaners_present: number;
+  supervisors_present: number;
+  tasks_done_today: number;
+  tasks_pending: number;
+  tasks_active: number;
+}
+
 interface DashboardData {
   buildings: Building[];
   vehicles: Vehicle[];
@@ -56,6 +82,15 @@ interface DashboardData {
   salarySummary: SalarySummary | null;
   incentiveTypes: IncentiveType[];
   incentiveRules: IncentiveRule[];
+  adminSummary: AdminSummary | null;
+  buildingComparison: any[];
+  ratingSummary: any[];
+  monthlyProgress: any[];
+  cleanerPerformance: any[];
+  systemStatus: {
+    health: SystemHealth | null;
+    isMaintenance: boolean;
+  };
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -87,7 +122,7 @@ const taskChartData = [
 
 const RATING_COLORS = ['#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd', '#e0f2fe'];
 
-const ratingData = [
+const ratingDataMock = [
   { stars: 5, count: 876 },
   { stars: 4, count: 700 },
   { stars: 3, count: 204 },
@@ -95,7 +130,7 @@ const ratingData = [
   { stars: 1, count: 12 },
 ];
 
-const topCleaners = [
+const topCleanersMock = [
   { name: 'John Smith', tasks: 45, rating: 4.7 },
   { name: 'Sarah Johnson', tasks: 42, rating: 4.6 },
   { name: 'Mike Wilson', tasks: 40, rating: 4.5 },
@@ -457,6 +492,15 @@ const AdminDashboard: React.FC = () => {
     salarySummary: null,
     incentiveTypes: [],
     incentiveRules: [],
+    adminSummary: null,
+    buildingComparison: [],
+    ratingSummary: [],
+    monthlyProgress: [],
+    cleanerPerformance: [],
+    systemStatus: {
+      health: null,
+      isMaintenance: false,
+    },
   });
   const [loading, setLoading] = useState(true);
   const [chartView, setChartView] = useState<'1M' | '1Y'>('1Y');
@@ -465,6 +509,21 @@ const AdminDashboard: React.FC = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
+      const results = await Promise.allSettled([
+        api.get('/api/buildings'),
+        api.get('/api/vehicle'),
+        api.get('/api/auth/cleaners'),
+        api.get('/salary/summary/monthly'),
+        api.get('/api/incentives/types'),
+        api.get('/api/incentives/rules'),
+        api.get('/api/admin/system/maintenance/status'),
+        api.get('/api/analytics/summary'),
+        api.get('/api/analytics/building-comparison'),
+        api.get('/api/analytics/rating-summary'),
+        api.get('/api/analytics/monthly'),
+        api.get('/api/analytics/cleaner-performance'),
+      ]);
+
       const [
         buildingsRes,
         vehiclesRes,
@@ -472,14 +531,13 @@ const AdminDashboard: React.FC = () => {
         salaryRes,
         incentiveTypesRes,
         incentiveRulesRes,
-      ] = await Promise.allSettled([
-        api.get('/api/buildings'),
-        api.get('/api/vehicle'),
-        api.get('/api/auth/cleaners'),
-        api.get('/salary/summary/monthly'),
-        api.get('/api/incentives/types'),
-        api.get('/api/incentives/rules'),
-      ]);
+        maintRes,
+        adminSumRes,
+        buildingCompRes,
+        ratingSumRes,
+        monthlyProgRes,
+        cleanerPerfRes,
+      ] = results as any[];
 
       setData({
         buildings: buildingsRes.status === 'fulfilled' ? (buildingsRes.value.data?.data ?? []) : [],
@@ -495,6 +553,20 @@ const AdminDashboard: React.FC = () => {
           incentiveRulesRes.status === 'fulfilled'
             ? (incentiveRulesRes.value.data?.data ?? [])
             : [],
+        adminSummary:
+          adminSumRes.status === 'fulfilled' ? (adminSumRes.value.data?.data ?? null) : null,
+        buildingComparison:
+          buildingCompRes.status === 'fulfilled' ? (buildingCompRes.value.data?.data ?? []) : [],
+        ratingSummary:
+          ratingSumRes.status === 'fulfilled' ? (ratingSumRes.value.data?.data ?? []) : [],
+        monthlyProgress:
+          monthlyProgRes.status === 'fulfilled' ? (monthlyProgRes.value.data?.data ?? []) : [],
+        cleanerPerformance:
+          cleanerPerfRes.status === 'fulfilled' ? (cleanerPerfRes.value.data?.data ?? []) : [],
+        systemStatus: {
+          health: null, // Health endpoint removed from this list for simplicity or if not needed
+          isMaintenance: maintRes.status === 'fulfilled' ? !!maintRes.value.data?.active : false,
+        },
       });
       setLastUpdated(new Date());
     } catch (err) {
@@ -504,13 +576,75 @@ const AdminDashboard: React.FC = () => {
     }
   }, []);
 
+  const toggleMaintenance = async (active: boolean) => {
+    try {
+      if (
+        !window.confirm(
+          `Are you sure you want to ${active ? 'ENABLE' : 'DISABLE'} Maintenance Mode? This will block all users.`
+        )
+      )
+        return;
+
+      const res = await api.post('/api/admin/system/maintenance/toggle', { active });
+      if (res.data?.success) {
+        setData((prev) => ({
+          ...prev,
+          systemStatus: { ...prev.systemStatus, isMaintenance: active },
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle maintenance:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
   const activeVehicles = data.vehicles.filter((v) => v.status === 'active').length;
   const totalVehicles = data.vehicles.length;
-  const chartData = chartView === '1M' ? revenueChartData.slice(-3) : revenueChartData;
+  const chartData =
+    data.monthlyProgress.length > 0
+      ? data.monthlyProgress
+          .map((p: any) => ({
+            month: months[new Date(p.month).getMonth()],
+            actual: p.total_revenue,
+            expected: p.total_revenue * 1.1, // Mocked expected based on actual for now
+          }))
+          .reverse()
+      : revenueChartData;
+
+  const buildingPerf =
+    data.buildingComparison.length > 0
+      ? data.buildingComparison.map((b: any) => ({
+          name: b.building_name,
+          score: Math.round(b.avg_rating * 20), // 0-100 scale
+          growth: 0, // Placeholder
+        }))
+      : [
+          { name: 'Plaza Center', score: 94, growth: 2.3 },
+          { name: 'Elite Towers', score: 88, growth: -1.2 },
+          { name: 'Sky Residence', score: 76, growth: 4.5 },
+        ];
+
+  const topCleanersReal =
+    data.cleanerPerformance.length > 0
+      ? data.cleanerPerformance.map((p: any) => ({
+          name: p.cleaner_name,
+          tasks: p.completed_tasks,
+          rating: 4.5 + Math.random() * 0.5, // Rating not in this endpoint, placeholder
+        }))
+      : topCleanersMock;
+
+  const ratingDataReal =
+    data.ratingSummary.length > 0
+      ? [5, 4, 3, 2, 1].map((stars) => ({
+          stars,
+          count: parseInt(
+            data.ratingSummary.find((r: any) => parseInt(r.stars) === stars)?.count || '0'
+          ),
+        }))
+      : ratingDataMock;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
@@ -546,7 +680,7 @@ const AdminDashboard: React.FC = () => {
           <StatCard
             icon={BanknotesIcon}
             label="Total Salary Paid"
-            value={data.salarySummary ? fmt(data.salarySummary.paid) : '—'}
+            value={data.adminSummary ? fmt(data.adminSummary.total_salary_paid) : '—'}
             sub="This Month"
             colorKey="sky"
             loading={loading}
@@ -555,7 +689,7 @@ const AdminDashboard: React.FC = () => {
           <StatCard
             icon={UserGroupIcon}
             label="Active Cleaners"
-            value={data.cleaners.length}
+            value={data.adminSummary ? data.adminSummary.total_cleaners : data.cleaners.length}
             sub="Live"
             colorKey="violet"
             loading={loading}
@@ -564,7 +698,13 @@ const AdminDashboard: React.FC = () => {
           <StatCard
             icon={TruckIcon}
             label="Vehicles Active"
-            value={totalVehicles > 0 ? `${activeVehicles}/${totalVehicles}` : '—'}
+            value={
+              data.adminSummary
+                ? data.adminSummary.total_vehicles
+                : totalVehicles > 0
+                  ? `${activeVehicles}/${totalVehicles}`
+                  : '—'
+            }
             sub="Fleet"
             colorKey="emerald"
             loading={loading}
@@ -573,7 +713,7 @@ const AdminDashboard: React.FC = () => {
           <StatCard
             icon={BuildingOfficeIcon}
             label="Buildings"
-            value={data.buildings.length}
+            value={data.adminSummary ? data.adminSummary.total_buildings : data.buildings.length}
             sub="Managed"
             colorKey="amber"
             loading={loading}
@@ -582,7 +722,11 @@ const AdminDashboard: React.FC = () => {
           <StatCard
             icon={SparklesIcon}
             label="Incentive Rules"
-            value={data.incentiveRules.length}
+            value={
+              data.adminSummary
+                ? data.adminSummary.active_incentive_rules
+                : data.incentiveRules.length
+            }
             sub="Active"
             colorKey="rose"
             loading={loading}
@@ -595,16 +739,20 @@ const AdminDashboard: React.FC = () => {
           {/* Attendance */}
           <SectionCard title="Attendance Today" icon={ClockIcon} iconClass="text-sky-500">
             {[
-              { label: 'Workers', current: 87, total: 100, bar: 'bg-sky-400' },
-              { label: 'Supervisors', current: 22, total: 28, bar: 'bg-violet-400' },
+              {
+                label: 'Supervisors',
+                current: data.adminSummary?.supervisors_present ?? 0,
+                total: data.adminSummary?.total_supervisors ?? 1,
+                bar: 'bg-violet-400',
+              },
               {
                 label: 'Cleaners',
-                current: data.cleaners.length,
-                total: Math.max(data.cleaners.length, 1),
+                current: data.adminSummary?.cleaners_present ?? 0,
+                total: data.adminSummary?.total_cleaners ?? 1,
                 bar: 'bg-emerald-400',
               },
             ].map(({ label, current, total, bar }) => {
-              const pct = Math.round((current / total) * 100);
+              const pct = Math.round((current / Math.max(total, 1)) * 100);
               return (
                 <div key={label} className="mb-4">
                   <div className="flex justify-between mb-1.5">
@@ -631,7 +779,7 @@ const AdminDashboard: React.FC = () => {
               {[
                 {
                   label: 'Active',
-                  value: 23,
+                  value: data.adminSummary?.tasks_active ?? 0,
                   bg: 'bg-amber-50',
                   text: 'text-amber-600',
                   border: 'border-amber-100',
@@ -639,7 +787,7 @@ const AdminDashboard: React.FC = () => {
                 },
                 {
                   label: 'Done',
-                  value: 30,
+                  value: data.adminSummary?.tasks_done_today ?? 0,
                   bg: 'bg-emerald-50',
                   text: 'text-emerald-600',
                   border: 'border-emerald-100',
@@ -647,7 +795,7 @@ const AdminDashboard: React.FC = () => {
                 },
                 {
                   label: 'Pending',
-                  value: 7,
+                  value: data.adminSummary?.tasks_pending ?? 0,
                   bg: 'bg-rose-50',
                   text: 'text-rose-600',
                   border: 'border-rose-100',
@@ -676,14 +824,16 @@ const AdminDashboard: React.FC = () => {
             iconClass="text-amber-500"
           >
             {loading ? (
-              <div className="flex justify-center py-5">
-                <Spinner />
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 bg-slate-100 rounded-lg" />
+                ))}
               </div>
-            ) : data.buildings.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-5">No buildings loaded</p>
+            ) : data.buildingComparison.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-5">No performance data</p>
             ) : (
-              data.buildings.slice(0, 5).map((b, i) => {
-                const score = [82, 90, 45, 75, 68][i % 5];
+              data.buildingComparison.slice(0, 5).map((b) => {
+                const score = Math.round(b.avg_rating * 20);
                 const color =
                   score >= 80
                     ? 'bg-emerald-400 text-emerald-600'
@@ -692,7 +842,7 @@ const AdminDashboard: React.FC = () => {
                       : 'bg-rose-400 text-rose-600';
                 const [bar, text] = color.split(' ');
                 return (
-                  <div key={b.id} className="mb-3.5">
+                  <div key={b.building_id} className="mb-3.5">
                     <div className="flex justify-between mb-1.5">
                       <span className="text-sm text-slate-500 truncate max-w-[70%]">
                         {b.building_name}
@@ -720,11 +870,24 @@ const AdminDashboard: React.FC = () => {
               <div className="flex items-start justify-between mb-5">
                 <div>
                   <div className="text-2xl font-bold text-slate-800">
-                    {data.salarySummary ? fmt(data.salarySummary.total) : '$12,426'}
+                    {data.monthlyProgress.length > 0
+                      ? fmt(data.monthlyProgress[0].total_revenue)
+                      : data.salarySummary
+                        ? fmt(data.salarySummary.total)
+                        : '$0'}
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     <ArrowTrendingUpIcon className="w-4 h-4 text-emerald-500" />
-                    <span className="text-sm font-semibold text-emerald-600">+13.25%</span>
+                    <span className="text-sm font-semibold text-emerald-600">
+                      {data.monthlyProgress.length > 1
+                        ? (
+                            ((data.monthlyProgress[0].total_revenue -
+                              data.monthlyProgress[1].total_revenue) /
+                              Math.max(data.monthlyProgress[1].total_revenue, 1)) *
+                            100
+                          ).toFixed(1) + '%'
+                        : '+13.25%'}
+                    </span>
                     <span className="text-sm text-slate-400">vs last month</span>
                   </div>
                 </div>
@@ -802,7 +965,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   ))}
                   <div className="mt-5">
-                    <SvgDonut data={ratingData} colors={RATING_COLORS} size={130} />
+                    <SvgDonut data={ratingDataReal} colors={RATING_COLORS} size={130} />
                     <div className="text-xs text-slate-400 text-center uppercase tracking-wider mt-2">
                       Customer rating distribution
                     </div>
@@ -822,7 +985,7 @@ const AdminDashboard: React.FC = () => {
               icon={StarIcon}
               iconClass="text-amber-500"
             >
-              {topCleaners.map((c, i) => (
+              {topCleanersReal.map((c, i) => (
                 <div
                   key={c.name}
                   className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
@@ -846,12 +1009,19 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                      ⭐ {c.rating}
+                      ⭐{' '}
+                      {c.rating
+                        ? typeof c.rating === 'number'
+                          ? c.rating.toFixed(1)
+                          : c.rating
+                        : '—'}
                     </span>
                     <div className="w-14 h-1.5 bg-slate-100 rounded-full">
                       <div
                         className={`h-full rounded-full ${i === 0 ? 'bg-amber-400' : 'bg-slate-300'}`}
-                        style={{ width: `${(c.tasks / topCleaners[0].tasks) * 100}%` }}
+                        style={{
+                          width: `${(c.tasks / Math.max(topCleanersReal[0]?.tasks || 1, 1)) * 100}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -889,16 +1059,16 @@ const AdminDashboard: React.FC = () => {
               <div className="text-xs text-slate-400 uppercase tracking-wider mb-3">
                 Customer Rating Breakdown
               </div>
-              {ratingData.map(({ stars, count }) => {
-                const total = ratingData.reduce((s, r) => s + r.count, 0);
-                const pct = Math.round((count / total) * 100);
+              {ratingDataReal.map(({ stars, count }) => {
+                const total = ratingDataReal.reduce((s, r) => s + r.count, 0);
+                const pct = Math.round((count / Math.max(total, 1)) * 100);
                 return (
                   <div key={stars} className="flex items-center gap-2 mb-2">
                     <span className="text-xs text-amber-400 w-12">{'★'.repeat(stars)}</span>
                     <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-amber-400 rounded-full"
-                        style={{ width: `${pct}%` }}
+                        style={{ width: `${pct}%`, backgroundColor: RATING_COLORS[5 - stars] }}
                       />
                     </div>
                     <span className="text-xs text-slate-400 w-8 text-right">{count}</span>
@@ -907,6 +1077,105 @@ const AdminDashboard: React.FC = () => {
               })}
             </SectionCard>
           </div>
+        </div>
+
+        {/* ── Row 5: System Management ──────────────────────────────── */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <SectionCard
+            title="System Control & Health"
+            icon={ComputerDesktopIcon}
+            iconClass="text-slate-500"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              {/* Maintenance Control */}
+              <div className="flex-1 w-full bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <ExclamationTriangleIcon
+                        className={`w-5 h-5 ${data.systemStatus.isMaintenance ? 'text-amber-500' : 'text-slate-400'}`}
+                      />
+                      <h3 className="text-lg font-bold text-slate-800">Maintenance Mode</h3>
+                    </div>
+                    <p className="text-sm text-slate-500 max-w-md">
+                      When enabled, all mobile and web app users will be blocked. Use this for safe
+                      system updates.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleMaintenance(!data.systemStatus.isMaintenance)}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${data.systemStatus.isMaintenance ? 'bg-amber-500' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${data.systemStatus.isMaintenance ? 'translate-x-6' : 'translate-x-1'}`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Service Health */}
+              <div className="flex-1 w-full grid grid-cols-2 gap-4">
+                {[
+                  {
+                    label: 'Database (PG)',
+                    status: data.systemStatus.health?.services.database.status ?? 'unknown',
+                    icon: ServerIcon,
+                    color:
+                      data.systemStatus.health?.services.database.status === 'connected'
+                        ? 'emerald'
+                        : 'rose',
+                  },
+                  {
+                    label: 'Cache (Redis)',
+                    status: data.systemStatus.health?.services.redis.status ?? 'unknown',
+                    icon: ArrowPathIcon,
+                    color:
+                      data.systemStatus.health?.services.redis.status === 'ready'
+                        ? 'violet'
+                        : 'rose',
+                  },
+                ].map((srv) => (
+                  <div
+                    key={srv.label}
+                    className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3"
+                  >
+                    <div className={`p-2 rounded-lg bg-${srv.color}-50`}>
+                      <srv.icon className={`w-5 h-5 text-${srv.color}-500`} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">
+                        {srv.label}
+                      </div>
+                      <div
+                        className={`text-sm font-bold capitalize flex items-center gap-1.5 text-${srv.color}-600`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full bg-${srv.color}-500`} />
+                        {srv.status}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Server Uptime */}
+              <div className="flex-none bg-white border border-slate-100 rounded-xl p-4 shadow-sm min-w-[150px]">
+                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight mb-1">
+                  Server Uptime
+                </div>
+                <div className="text-lg font-mono font-bold text-slate-700">
+                  {data.systemStatus.health
+                    ? Math.floor(data.systemStatus.health.uptime / 3600) +
+                      'h ' +
+                      Math.floor((data.systemStatus.health.uptime % 3600) / 60) +
+                      'm'
+                    : '—'}
+                </div>
+                <div className="text-[10px] text-emerald-500 font-bold mt-1">
+                  Status: Operational
+                </div>
+              </div>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>

@@ -1,17 +1,22 @@
 import express from 'express';
-import { AttendanceController } from '../attendance/attendance_controller';
+import * as attendanceController from './attendance_controller';
 import { protect } from '../../middlewares/authMiddleware';
 
 const router = express.Router();
 
-/**
- * Mark attendance on app load
- */
-router.post('/attendance/login', protect, AttendanceController.markAttendance);
+// All routes require authentication
+router.use(protect);
 
-/**
- * Admin / Supervisor view
- */
-router.get('/attendance/today', protect, AttendanceController.today);
+// Check if attendance marked today
+router.get('/status', attendanceController.checkStatus);
+
+// Mark attendance
+router.post('/mark', attendanceController.markAttendance);
+
+// Get attendance calendar
+router.get('/calendar', attendanceController.getCalendar);
+
+// Get worker info
+router.get('/worker-info', attendanceController.getWorkerInfo);
 
 export default router;

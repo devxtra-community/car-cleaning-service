@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '../../middlewares/authMiddleware';
+import { logAuditAction } from '../../utils/auditLogger';
 import { logger } from '../../config/logger';
-import { AppError } from 'src/middlewares/error-handler';
+import { AppError } from '../../middlewares/error-handler';
 import { ClientType, verifyRefreshToken } from '../../config/jwt';
 import { uploadToS3 } from '../../middlewares/uploadMiddleware';
 import {
@@ -14,10 +16,16 @@ import {
   getSupervisorsByBuildingService,
   getAllAccountantsService,
   getAllAdminsService,
+  toggleUserStatusService,
+  resetUserPasswordService,
 } from './auth_service';
-import { sendWelcomeMail } from 'src/config/sendWelcomeMail';
+import { sendWelcomeMail } from '../../config/sendWelcomeMail';
 
 const VALID_CLIENT_TYPES: ClientType[] = ['web', 'mobile'];
+
+// ============================================================
+// REGISTER
+// ============================================================
 
 export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -81,14 +89,11 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
 
     const user = await createUser(payload);
 
-    // ── Send welcome email (fire-and-forget) ──────────────────
-    // Using void intentionally: mail errors are logged but do NOT
-    // cause the registration to fail. Switch to await if you need
-    // guaranteed delivery before responding.
+    // Send welcome email (fire-and-forget — errors are logged but don't fail registration)
     void sendWelcomeMail({
       to: base.email,
       full_name: base.full_name,
-      password: base.password, // plain-text password, before hashing
+      password: base.password,
       role,
     }).catch((mailErr: unknown) => {
       console.error('[sendWelcomeMail] Failed to send welcome email:', mailErr);
@@ -104,9 +109,16 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+// ============================================================
+// LOGIN
+// client_type sent in request body — 'web' or 'mobile'
+// web   → refresh token in httpOnly cookie, access token in body
+// mobile → both tokens in body
+// ============================================================
+
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, client_type } = req.body;
+    const { email, password, client_type = 'web' } = req.body;
 
     if (!email || !password) {
       throw new AppError('Email and password are required', 400, 'CREDENTIALS_REQUIRED');
@@ -124,12 +136,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     const { user, accessToken, refreshToken } = await loginService(email, password, clientType);
 
-    // Web — set refresh token in httpOnly cookie
     if (clientType === 'web') {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // kept same as your original
+        sameSite: 'lax',
         path: '/api/auth/refresh',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
@@ -139,7 +150,6 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       success: true,
       message: 'Login successful',
       accessToken,
-      // mobile gets refresh token in body — web does not
       ...(clientType === 'mobile' && { refreshToken }),
       data: user,
     });
@@ -150,8 +160,6 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
 // ============================================================
 // LOGOUT
-// Reads refresh token from cookie to delete that specific session
-// logoutAll=true in body deletes all sessions for the user
 // ============================================================
 
 export const logout = async (req: Request, res: Response, next: NextFunction) => {
@@ -159,7 +167,6 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
     const rawRefreshToken = req.cookies?.refreshToken;
     const logoutAll = req.body?.logoutAll === true;
 
-    // Get userId from auth middleware (your existing middleware sets req.user)
     const userId = (req as Request & { user?: { userId: string } }).user?.userId;
 
     if (!userId) {
@@ -168,20 +175,17 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
 
     let tokenId: string | undefined;
 
-    // Extract tokenId from cookie to delete only this session
     if (rawRefreshToken && !logoutAll) {
       try {
         const payload = verifyRefreshToken(rawRefreshToken);
         tokenId = payload.tokenId;
       } catch {
-        // Token already invalid or expired — still proceed with logout
         logger.warn('Could not verify refresh token during logout, clearing cookie anyway');
       }
     }
 
     await logoutService(userId, logoutAll ? undefined : tokenId);
 
-    // Always clear the cookie
     res.clearCookie('refreshToken', {
       httpOnly: true,
       sameSite: 'lax',
@@ -214,11 +218,9 @@ export const getCleaners = async (req: Request, res: Response, next: NextFunctio
 export const getCleanersBySupervisor = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const supervisorId = req.params.supervisorId as string;
-
     if (!supervisorId) {
       throw new AppError('Supervisor ID is required', 400, 'SUPERVISOR_ID_REQUIRED');
     }
-
     const data = await getCleanersBySupervisorService(supervisorId);
     return res.status(200).json({ success: true, data });
   } catch (err) {
@@ -242,11 +244,9 @@ export const getAllSupervisors = async (req: Request, res: Response, next: NextF
 export const getSupervisorsByBuilding = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const buildingId = req.params.buildingId as string;
-
     if (!buildingId) {
       throw new AppError('Building ID is required', 400, 'BUILDING_ID_REQUIRED');
     }
-
     const data = await getSupervisorsByBuildingService(buildingId);
     return res.status(200).json({ success: true, count: data.length, data });
   } catch (err) {
@@ -275,6 +275,66 @@ export const getAllAdminsController = async (req: Request, res: Response, next: 
   try {
     const data = await getAllAdminsService();
     return res.status(200).json({ success: true, count: data.length, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ============================================================
+// ADMIN MANAGEMENT
+// ============================================================
+
+export const toggleUserStatusController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    const adminId = req.user?.userId;
+
+    if (is_active === undefined) {
+      throw new AppError('is_active is required', 400, 'IS_ACTIVE_REQUIRED');
+    }
+
+    const data = await toggleUserStatusService(id as string, is_active);
+
+    if (adminId) {
+      await logAuditAction(adminId, 'TOGGLE_USER_STATUS', { target_user_id: id, is_active });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `User status updated to ${is_active ? 'active' : 'inactive'}`,
+      data,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetUserPasswordController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { new_password } = req.body;
+    const adminId = req.user?.userId;
+
+    if (!new_password) {
+      throw new AppError('new_password is required', 400, 'PASSWORD_REQUIRED');
+    }
+
+    await resetUserPasswordService(id as string, new_password);
+
+    if (adminId) {
+      await logAuditAction(adminId, 'RESET_USER_PASSWORD', { target_user_id: id });
+    }
+
+    return res.status(200).json({ success: true, message: 'Password reset successfully' });
   } catch (err) {
     next(err);
   }

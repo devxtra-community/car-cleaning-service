@@ -1,41 +1,31 @@
 import express from 'express';
-import { getCleanerFullDetailsController, getWorkerDashboard } from './workers_controller';
-import { allowRoles } from 'src/middlewares/roleMiddleware';
-import { Router } from 'express';
+import { protect } from '../../middlewares/authMiddleware';
 import {
-  getAllCleaners,
-  getCleanerById,
-  updateCleaner,
-  toggleCleanerStatus,
-  deleteCleaner,
-  getBuildingsDropdown,
-  getFloorsForBuilding,
-  getSupervisorsForBuilding,
+    getWorkerDashboard,
+    getWorkerWalletStats,
+    getWorkerTaskLogs,
+    getCleanerFullDetailsController,
 } from './workers_controller';
-import { protect } from 'src/middlewares/authMiddleware';
+import {
+    assignVehicleController,
+    unassignVehicleController,
+    getAssignedVehiclesController,
+    getMyAssignedVehiclesController
+} from './assignment_controller';
+import { allowRoles } from '../../middlewares/roleMiddleware';
 
-const router = Router();
-const adminOnly = [protect, allowRoles('admin', 'super_admin')];
+const router = express.Router();
 
-router.get('/dashboard', ...adminOnly, getWorkerDashboard);
+// Worker App Endpoints
+router.get('/dashboard', protect, getWorkerDashboard);
+router.get('/wallet', protect, getWorkerWalletStats);
+router.get('/task-logs', protect, getWorkerTaskLogs);
+router.get('/my-vehicles', protect, getMyAssignedVehiclesController);
 
-router.get('/cleaners/:cleanerId', ...adminOnly, getCleanerFullDetailsController);
+// Admin Portal Endpoints
+router.get('/cleaners/:cleanerId', protect, allowRoles('admin'), getCleanerFullDetailsController);
+router.post('/assignments/vehicle', protect, allowRoles('admin'), assignVehicleController);
+router.delete('/assignments/vehicle/:id', protect, allowRoles('admin'), unassignVehicleController);
+router.get('/assignments/vehicle/:cleanerId', protect, allowRoles('admin'), getAssignedVehiclesController);
 
-// ── Static paths must come before /:id ───────────────────────────────────────
-router.get('/buildings', ...adminOnly, getBuildingsDropdown);
-router.get('/buildings/:buildingId/floors', ...adminOnly, getFloorsForBuilding);
-router.get('/buildings/:buildingId/supervisors', ...adminOnly, getSupervisorsForBuilding);
-
-// ── Collection ────────────────────────────────────────────────────────────────
-router.get('/', ...adminOnly, getAllCleaners);
-
-// ── Per-resource ──────────────────────────────────────────────────────────────
-router.get('/:id', ...adminOnly, getCleanerById); // ?date=YYYY-MM-DD
-router.put('/:id', ...adminOnly, updateCleaner);
-router.patch('/:id/toggle-status', ...adminOnly, toggleCleanerStatus);
-router.delete('/:id', ...adminOnly, deleteCleaner);
-
-// Wire in main router: app.use('/api/cleaners', cleanersRouter);
-// Also add checkCleanerNotBlocked to loginUserService — same pattern as checkSupervisorNotBlocked
-// but queries: SELECT is_active FROM cleaners WHERE user_id = $1
 export default router;

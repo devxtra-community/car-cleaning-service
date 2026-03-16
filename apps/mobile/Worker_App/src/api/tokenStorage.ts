@@ -5,6 +5,12 @@ export const saveTokens = async (access: string, refresh: string) => {
   await SecureStore.setItemAsync('refreshToken', refresh);
 };
 
+export const saveUserRole = async (role: string) => {
+  await SecureStore.setItemAsync('userRole', role);
+};
+
+export const getUserRole = async () => SecureStore.getItemAsync('userRole');
+
 export const getAccessToken = async () => SecureStore.getItemAsync('accessToken');
 
 export const getRefreshToken = async () => SecureStore.getItemAsync('refreshToken');
@@ -12,4 +18,5 @@ export const getRefreshToken = async () => SecureStore.getItemAsync('refreshToke
 export const clearTokens = async () => {
   await SecureStore.deleteItemAsync('accessToken');
   await SecureStore.deleteItemAsync('refreshToken');
+  await SecureStore.deleteItemAsync('userRole');
 };

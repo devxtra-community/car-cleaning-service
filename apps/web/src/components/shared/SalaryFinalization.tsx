@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getAllSalaries, finalizeSalary } from '../../services/allAPI';
+import {
+  getAllSalaries,
+  finalizeSalary,
+  getSalaryCycles,
+  lockSalaryPeriod,
+} from '../../services/allAPI';
 import { useNavigate } from 'react-router-dom';
 
 /* =========================
@@ -15,7 +20,7 @@ interface SalaryRow {
   incentive_amount: number;
   penalty_amount: number;
   final_salary: number;
-  status: 'draft' | 'finalized' | 'paid';
+  status: 'draft' | 'finalized' | 'locked' | 'paid';
 }
 
 type RoleFilter = 'all' | 'cleaner' | 'supervisor' | 'accountant';
@@ -26,28 +31,48 @@ type RoleFilter = 'all' | 'cleaner' | 'supervisor' | 'accountant';
 const SalaryFinalization: React.FC = () => {
   const [salaries, setSalaries] = useState<SalaryRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locking, setLocking] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [cycles, setCycles] = useState<any[]>([]);
+  const [activeCycle, setActiveCycle] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const limit = 10;
   const navigate = useNavigate();
 
   /* =========================
-     Fetch salaries
+     Fetch data
      ========================= */
-  useEffect(() => {
-    const fetchSalaries = async () => {
-      setLoading(true);
-      try {
-        const data = await getAllSalaries();
-        setSalaries(data);
-      } catch (err) {
-        console.error('Failed to fetch salaries', err);
-      } finally {
-        setLoading(false);
+  const fetchData = async (page: number) => {
+    setLoading(true);
+    try {
+      const offset = (page - 1) * limit;
+      const [salaryRes, cycleData] = await Promise.all([
+        getAllSalaries(limit, offset),
+        getSalaryCycles(),
+      ]);
+      setSalaries(salaryRes.data);
+      setTotalRecords(salaryRes.meta.total);
+      setCycles(cycleData);
+      if (cycleData && cycleData.length > 0) {
+        const active = cycleData.find((c: any) => !c.is_locked) || cycleData[0];
+        setActiveCycle(active);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchSalaries();
-  }, []);
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   /* =========================
      Finalize salary
@@ -95,6 +120,28 @@ const SalaryFinalization: React.FC = () => {
   const pendingCount = filteredSalaries.filter((s) => s.status === 'draft').length;
 
   /* =========================
+     Lock Salary Period
+     ========================= */
+  const handleLockPeriod = async () => {
+    if (!activeCycle || activeCycle.is_locked) return;
+    if (pendingCount > 0) {
+      alert('Must finalize all pending salaries before locking the period.');
+      return;
+    }
+    setLocking(true);
+    try {
+      await lockSalaryPeriod(activeCycle.id);
+      setActiveCycle({ ...activeCycle, is_locked: true });
+      setSalaries((prev) => prev.map((s) => ({ ...s, status: 'locked' })));
+    } catch (err) {
+      console.error(err);
+      alert('Failed to lock salary period.');
+    } finally {
+      setLocking(false);
+    }
+  };
+
+  /* =========================
      Role-specific column visibility
      ========================= */
   const showIncentivesColumn = selectedRole === 'all' || selectedRole === 'cleaner';
@@ -114,10 +161,18 @@ const SalaryFinalization: React.FC = () => {
 
         <div className="flex gap-3">
           <button className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
-            January 2026
+            {activeCycle ? `${activeCycle.month}/${activeCycle.year}` : 'Select Period'}
           </button>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
-            Lock Period
+          <button
+            onClick={handleLockPeriod}
+            disabled={!activeCycle || activeCycle.is_locked || locking}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              !activeCycle || activeCycle.is_locked
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow'
+            }`}
+          >
+            {locking ? 'Locking...' : activeCycle?.is_locked ? '🔒 Locked' : 'Lock Period'}
           </button>
         </div>
       </div>
@@ -271,11 +326,14 @@ const SalaryFinalization: React.FC = () => {
                             ? 'bg-green-100 text-green-700'
                             : salary.status === 'paid'
                               ? 'bg-blue-100 text-blue-700'
-                              : 'bg-yellow-100 text-yellow-700'
+                              : salary.status === 'locked'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-yellow-100 text-yellow-700'
                         }`}
                       >
                         {salary.status === 'finalized' && '✓ '}
                         {salary.status === 'paid' && '💰 '}
+                        {salary.status === 'locked' && '🔒 '}
                         {salary.status === 'draft' && '📝 '}
                         {salary.status.charAt(0).toUpperCase() + salary.status.slice(1)}
                       </span>
@@ -376,16 +434,26 @@ const SalaryFinalization: React.FC = () => {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-200 gap-3">
           <p className="text-sm text-gray-600">
-            Showing <span className="font-medium">{filteredSalaries.length}</span> of{' '}
-            <span className="font-medium">{salaries.length}</span> records
+            Showing <span className="font-medium">{salaries.length}</span> of{' '}
+            <span className="font-medium">{totalRecords}</span> records
           </p>
 
           <div className="flex items-center gap-2">
-            <button className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || loading}
+              className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               ← Previous
             </button>
-            <span className="text-sm text-gray-600 px-3">Page 1</span>
-            <button className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span className="text-sm text-gray-600 px-3">
+              Page {currentPage} of {Math.ceil(totalRecords / limit) || 1}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalRecords / limit) || loading}
+              className="border border-gray-300 bg-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Next →
             </button>
           </div>

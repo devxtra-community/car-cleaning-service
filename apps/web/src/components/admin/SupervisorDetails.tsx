@@ -1,45 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
+  getAllBuildings,
   getSupervisorDetails,
   toggleSupervisorStatus,
   updateSupervisor,
-  deleteSupervisor,
-  getAvailableCleaners,
-  assignCleanerToSupervisor,
-  removeCleanerFromSupervisor,
-  getSupervisorBuildingOptions,
   type Supervisor,
-  type AvailableCleaner,
-  type BuildingOption,
   type UpdateSupervisorPayload,
-  SupervisorCleaner,
 } from '../../services/allAPI';
 import Toast from '../shared/Toast';
-import DeleteConfirmModal from '../shared/DeleteConfirmModal';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── types ────────────────────────────────────────────────────────────────────
 
 interface ToastState {
   message: string;
   type: 'success' | 'error';
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('en-AE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const initials = (name: string) =>
   name
@@ -57,127 +39,612 @@ const COLORS = [
   '#C2255C',
   '#9C36B5',
   '#5C7CFA',
+  '#099268',
+  '#D6336C',
 ];
 const avatarColor = (name: string) => COLORS[name.charCodeAt(0) % COLORS.length];
 
-const axiosMsg = (err: unknown): string => {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'object' && err !== null && 'response' in err) {
-    const e = err as { response?: { data?: { message?: string } } };
-    return e.response?.data?.message ?? 'Something went wrong';
-  }
-  return 'Something went wrong';
-};
+// ─── sub-components ───────────────────────────────────────────────────────────
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-const StatCard: React.FC<{
-  label: string;
-  value: string | number;
-  subtext?: string;
-  accent: string;
-  icon: React.ReactNode;
-}> = ({ label, value, subtext, accent, icon }) => (
-  <div
-    className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5"
-    style={{ borderTop: `3px solid ${accent}` }}
-  >
-    <div
-      className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 shrink-0"
-      style={{ background: `${accent}18`, color: accent }}
-    >
-      {icon}
-    </div>
-    <p className="text-2xl font-extrabold text-slate-900 tracking-tight">{value}</p>
-    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1">{label}</p>
-    {subtext && <p className="text-xs text-slate-300 mt-0.5">{subtext}</p>}
+const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
+  <div style={s.infoRow}>
+    <span style={s.infoLabel}>{label}</span>
+    <span style={s.infoValue}>{value ?? '—'}</span>
   </div>
 );
 
-// ─── Info row ─────────────────────────────────────────────────────────────────
-
-const InfoRow: React.FC<{ label: string; value?: string | number | null; link?: string }> = ({
+const StatCard = ({
   label,
   value,
-  link,
+  accent,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  accent: string;
+  icon: React.ReactNode;
 }) => (
-  <div className="flex justify-between items-center py-2.5 border-b border-slate-50 last:border-0">
-    <span className="text-xs text-slate-400 font-medium">{label}</span>
-    {link ? (
-      <a
-        href={link}
-        target="_blank"
-        rel="noreferrer"
-        className="text-xs font-semibold text-blue-600 hover:underline"
-      >
-        View ↗
-      </a>
-    ) : (
-      <span className="text-xs font-semibold text-slate-800 text-right max-w-[60%] truncate">
-        {value ?? '—'}
-      </span>
-    )}
+  <div style={{ ...s.statCard, borderTop: `3px solid ${accent}` }}>
+    <div style={{ ...s.statIcon, background: `${accent}18`, color: accent }}>{icon}</div>
+    <div style={s.statValue}>{value}</div>
+    <div style={s.statLabel}>{label}</div>
   </div>
 );
 
-// ─── Edit modal ───────────────────────────────────────────────────────────────
+// ─── main component ───────────────────────────────────────────────────────────
 
-const EditSupervisorModal: React.FC<{
-  supervisor: Supervisor;
-  buildings: BuildingOption[];
-  onClose: () => void;
-  onSuccess: (updated: Supervisor) => void;
-}> = ({ supervisor, buildings, onClose, onSuccess }) => {
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<'profile' | 'cleaners'>('profile');
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const [availCleaners, setAvailCleaners] = useState<AvailableCleaner[]>([]);
+const SupervisorDetails: React.FC = () => {
+  const { supervisorId } = useParams<{ supervisorId: string }>();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [buildings, setBuildings] = useState<{ id: string; building_name: string }[]>([]);
+  const [togglingStatus, setTogglingStatus] = useState(false);
   const [cleanerSearch, setCleanerSearch] = useState('');
-  const [assigning, setAssigning] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
-  const [localSup, setLocalSup] = useState<Supervisor>(supervisor);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
-  const showToast = (message: string, type: ToastState['type']) => setToast({ message, type });
+  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
+
+  // ── fetch ──────────────────────────────────────────────────────────────────
+  const fetchSupervisor = useCallback(async () => {
+    if (!supervisorId) return;
+    try {
+      setLoading(true);
+      setPageError(null);
+      const data = await getSupervisorDetails(supervisorId);
+      setSupervisor(data.data);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load supervisor';
+      setPageError(errorMsg);
+      showToast(errorMsg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [supervisorId]);
+
+  useEffect(() => {
+    if (isAuthenticated && supervisorId) {
+      fetchSupervisor();
+      getAllBuildings()
+        .then((data) => {
+          const buildingsData = Array.isArray(data)
+            ? data
+            : ((data as { data?: unknown[] }).data ?? []);
+          setBuildings(buildingsData);
+        })
+        .catch(() => {});
+    }
+  }, [supervisorId, isAuthenticated, fetchSupervisor]);
+
+  // ── toggle status ──────────────────────────────────────────────────────────
+  const handleToggleStatus = async () => {
+    if (!supervisor) return;
+    try {
+      setTogglingStatus(true);
+      await toggleSupervisorStatus(supervisor.id, !supervisor.is_active);
+      setSupervisor((prev) => (prev ? { ...prev, is_active: !prev.is_active } : null));
+      showToast(`Supervisor ${!supervisor.is_active ? 'activated' : 'deactivated'}`, 'success');
+    } catch {
+      showToast('Failed to update status', 'error');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
+
+  // ── loading ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div style={s.centeredPage}>
+        <style>{baseCSS}</style>
+        <div style={s.spinner} className="sd-spin" />
+        <p style={{ marginTop: 14, color: '#94A3B8', fontSize: 14 }}>Loading supervisor…</p>
+      </div>
+    );
+  }
+
+  if (pageError || !supervisor) {
+    return (
+      <div style={s.centeredPage}>
+        <style>{baseCSS}</style>
+        <div style={s.errorBox}>
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#EF4444"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p style={{ color: '#EF4444', fontSize: 15, fontWeight: 600, margin: 0 }}>
+            {pageError ?? 'Supervisor not found'}
+          </p>
+          <button style={s.backLink} onClick={() => navigate(-1)}>
+            ← Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── derived ────────────────────────────────────────────────────────────────
+  const totalTasks = supervisor.cleaners.reduce((a, c) => a + (c.total_tasks || 0), 0);
+  const totalEarnings = supervisor.cleaners.reduce((a, c) => a + (Number(c.total_earning) || 0), 0);
+  const totalSalaries = supervisor.cleaners.reduce((a, c) => a + (Number(c.base_salary) || 0), 0);
+  const avgIncentive =
+    supervisor.cleaners.length > 0
+      ? supervisor.cleaners.reduce((a, c) => a + (c.incentive_target || 0), 0) /
+        supervisor.cleaners.length
+      : 0;
+
+  const filteredCleaners = supervisor.cleaners.filter(
+    (c) =>
+      c.full_name.toLowerCase().includes(cleanerSearch.toLowerCase()) ||
+      c.email.toLowerCase().includes(cleanerSearch.toLowerCase())
+  );
+
+  const joinDate = supervisor.joining_date
+    ? new Date(supervisor.joining_date).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
+
+  return (
+    <div style={s.page}>
+      <style>{baseCSS}</style>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Back + breadcrumb */}
+      <div style={s.topNav}>
+        <button style={s.backBtn} className="sd-back" onClick={() => navigate(-1)}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+          Back to Supervisors
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          <span style={{ color: '#94A3B8' }}>Supervisors</span>
+          <span style={{ color: '#CBD5E1' }}>/</span>
+          <span style={{ color: '#1E293B', fontWeight: 600 }}>{supervisor.full_name}</span>
+        </div>
+      </div>
+
+      {/* Hero card */}
+      <div style={s.heroCard}>
+        <div style={s.heroLeft}>
+          {supervisor.profile_image ? (
+            <img src={supervisor.profile_image} alt={supervisor.full_name} style={s.heroAvatar} />
+          ) : (
+            <div style={{ ...s.heroAvatarFb, background: avatarColor(supervisor.full_name) }}>
+              {initials(supervisor.full_name)}
+            </div>
+          )}
+          <div>
+            <div style={s.heroName}>{supervisor.full_name}</div>
+            <div style={s.heroRole}>Supervisor</div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 10,
+                flexWrap: 'wrap',
+              }}
+            >
+              <span style={{ ...s.pill, ...(supervisor.is_active ? s.pillGreen : s.pillGray) }}>
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: supervisor.is_active ? '#16A34A' : '#94A3B8',
+                    display: 'inline-block',
+                  }}
+                />
+                {supervisor.is_active ? 'Active' : 'Inactive'}
+              </span>
+              {supervisor.building && (
+                <span style={s.buildingPill}>
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M9 22V12h6v10M3 9h18" />
+                  </svg>
+                  {supervisor.building.name}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flexShrink: 0,
+            flexWrap: 'wrap',
+          }}
+        >
+          <button
+            style={{ ...s.heroBtn, ...(supervisor.is_active ? s.heroBtnWarn : s.heroBtnSuccess) }}
+            className="sd-hero-btn"
+            onClick={handleToggleStatus}
+            disabled={togglingStatus}
+          >
+            {togglingStatus ? '…' : supervisor.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+          <button
+            style={s.heroBtnPrimary}
+            className="sd-hero-primary"
+            onClick={() => setEditOpen(true)}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Edit Profile
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={s.statsGrid}>
+        <StatCard
+          label="Cleaners Assigned"
+          value={supervisor.cleaners.length}
+          accent="#3B5BDB"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Total Tasks"
+          value={totalTasks}
+          accent="#0C8599"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="9 11 12 14 22 4" />
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Total Earnings (AED)"
+          value={fmt(totalEarnings)}
+          accent="#2F9E44"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Base Salary (AED)"
+          value={fmt(supervisor.base_salary)}
+          accent="#E67700"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <line x1="2" y1="10" x2="22" y2="10" />
+            </svg>
+          }
+        />
+      </div>
+
+      {/* Details grid */}
+      <div style={s.detailsGrid}>
+        {/* Personal */}
+        <div style={s.infoCard}>
+          <div style={s.infoCardHead}>
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#3B5BDB"
+              strokeWidth="2"
+            >
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Personal Information
+          </div>
+          <InfoRow label="Full Name" value={supervisor.full_name} />
+          <InfoRow label="Nationality" value={supervisor.nationality} />
+          <InfoRow label="Age" value={supervisor.age} />
+          <InfoRow label="Document ID" value={supervisor.document_id} />
+          {joinDate && <InfoRow label="Joined" value={joinDate} />}
+          {supervisor.document && (
+            <div style={s.infoRow}>
+              <span style={s.infoLabel}>Document</span>
+              <a href={supervisor.document} target="_blank" rel="noreferrer" style={s.docLink}>
+                View ↗
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Contact */}
+        <div style={s.infoCard}>
+          <div style={s.infoCardHead}>
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#0C8599"
+              strokeWidth="2"
+            >
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 013 9.18 2 2 0 014.18 7H7a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 14a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+            </svg>
+            Contact & Assignment
+          </div>
+          <InfoRow label="Email" value={supervisor.email} />
+          <InfoRow label="Phone" value={supervisor.phone} />
+          <InfoRow label="Building" value={supervisor.building?.name} />
+          <InfoRow
+            label="Base Salary"
+            value={supervisor.base_salary ? `${fmt(supervisor.base_salary)} AED` : null}
+          />
+        </div>
+
+        {/* Team */}
+        <div style={s.infoCard}>
+          <div style={s.infoCardHead}>
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2F9E44"
+              strokeWidth="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+            Team Summary
+          </div>
+          <InfoRow label="Cleaners" value={supervisor.cleaners.length} />
+          <InfoRow label="Total Tasks Done" value={totalTasks} />
+          <InfoRow label="Total Earnings" value={`${fmt(totalEarnings)} AED`} />
+          <InfoRow label="Total Salaries" value={`${fmt(totalSalaries)} AED`} />
+          <InfoRow label="Avg Incentive Target" value={avgIncentive.toFixed(1)} />
+        </div>
+      </div>
+
+      {/* Cleaners table */}
+      <div style={{ marginBottom: 40 }}>
+        <div style={s.tableHeader}>
+          <div>
+            <h2 style={s.tableTitle}>Assigned Cleaners</h2>
+            <p style={s.tableSub}>
+              {supervisor.cleaners.length} cleaner{supervisor.cleaners.length !== 1 ? 's' : ''}{' '}
+              under this supervisor
+            </p>
+          </div>
+          {supervisor.cleaners.length > 4 && (
+            <div style={{ position: 'relative' as const }}>
+              <svg
+                style={s.tableSearchIcon}
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              >
+                <circle cx="9" cy="9" r="6" />
+                <path d="M15 15l-3.5-3.5" strokeLinecap="round" />
+              </svg>
+              <input
+                style={s.tableSearch}
+                className="sd-input"
+                placeholder="Search cleaners…"
+                value={cleanerSearch}
+                onChange={(e) => setCleanerSearch(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <div style={s.tableCard}>
+          {supervisor.cleaners.length === 0 ? (
+            <div style={s.empty}>
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#CBD5E1"
+                strokeWidth="1.5"
+              >
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+              </svg>
+              <p style={s.emptyText}>No cleaners assigned yet</p>
+            </div>
+          ) : (
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  {[
+                    'Cleaner',
+                    'Email',
+                    'Floor',
+                    'Tasks',
+                    'Base Salary',
+                    'Earnings',
+                    'Incentive',
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        ...s.th,
+                        textAlign: ['Tasks', 'Base Salary', 'Earnings', 'Incentive'].includes(h)
+                          ? 'right'
+                          : 'left',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(filteredCleaners.length > 0 ? filteredCleaners : supervisor.cleaners).map(
+                  (c, idx) => (
+                    <tr key={c.id} style={{ animationDelay: `${idx * 35}ms` }} className="sd-row">
+                      <td style={s.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ ...s.cAvatar, background: avatarColor(c.full_name) }}>
+                            {initials(c.full_name)}
+                          </div>
+                          <span style={s.cName}>{c.full_name}</span>
+                        </div>
+                      </td>
+                      <td style={s.td}>
+                        <span style={s.cEmail}>{c.email}</span>
+                      </td>
+                      <td style={s.td}>
+                        {c.floor ? (
+                          <span style={s.floorBadge}>F{c.floor.floor_number}</span>
+                        ) : (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ ...s.td, textAlign: 'right' }}>
+                        <span style={s.numBold}>{c.total_tasks || 0}</span>
+                      </td>
+                      <td style={{ ...s.td, textAlign: 'right' }}>
+                        <span style={s.num}>{fmt(Number(c.base_salary || 0))} AED</span>
+                      </td>
+                      <td style={{ ...s.td, textAlign: 'right' }}>
+                        <span style={{ ...s.num, color: '#059669' }}>
+                          {fmt(Number(c.total_earning || 0))} AED
+                        </span>
+                      </td>
+                      <td style={{ ...s.td, textAlign: 'right' }}>
+                        <span style={s.incentiveBadge}>{c.incentive_target || 0}</span>
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Edit modal */}
+      {editOpen && (
+        <EditModal
+          supervisor={supervisor}
+          buildings={buildings}
+          onClose={() => setEditOpen(false)}
+          onSuccess={() => {
+            setEditOpen(false);
+            fetchSupervisor();
+            showToast('Supervisor updated successfully', 'success');
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// ─── EditModal ────────────────────────────────────────────────────────────────
+
+const EditModal: React.FC<{
+  supervisor: Supervisor;
+  buildings: { id: string; building_name: string }[];
+  onClose: () => void;
+  onSuccess: () => void;
+}> = ({ supervisor, buildings, onClose, onSuccess }) => {
+  // ← loading state declared HERE inside EditModal
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
 
   const [form, setForm] = useState({
     full_name: supervisor.full_name,
     email: supervisor.email,
     phone: supervisor.phone,
     age: supervisor.age ? String(supervisor.age) : '',
-    nationality: supervisor.nationality ?? '',
-    document_id: supervisor.document_id ?? '',
+    nationality: supervisor.nationality,
+    document_id: supervisor.document_id,
     base_salary: String(supervisor.base_salary),
     building_id: supervisor.building?.id ?? '',
     profile_image: supervisor.profile_image ?? '',
     document: supervisor.document ?? '',
-    password: '',
   });
-
-  // Load available cleaners once when switching to cleaners tab
-  useEffect(() => {
-    if (tab !== 'cleaners') return;
-    void (async () => {
-      try {
-        const data = await getAvailableCleaners(supervisor.id);
-        setAvailCleaners(data);
-      } catch {
-        showToast('Failed to load available cleaners', 'error');
-      }
-    })();
-  }, [tab, supervisor.id]);
-
-  // Escape key
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,1260 +666,781 @@ const EditSupervisorModal: React.FC<{
       full_name: form.full_name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
-      nationality: form.nationality.trim() || undefined,
-      document_id: form.document_id.trim() || undefined,
+      nationality: form.nationality.trim(),
+      document_id: form.document_id.trim(),
       base_salary: Number(form.base_salary),
     };
     if (form.age) payload.age = Number(form.age);
     if (form.building_id) payload.building_id = form.building_id;
     if (form.profile_image) payload.profile_image = form.profile_image;
     if (form.document) payload.document = form.document;
-    if (form.password) payload.password = form.password;
 
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await updateSupervisor(supervisor.id, payload);
-      if (res.success) {
-        showToast('Supervisor updated', 'success');
-        setTimeout(() => onSuccess(res.data), 600);
-      } else {
-        showToast(res.message ?? 'Update failed', 'error');
-      }
-    } catch (err) {
-      showToast(axiosMsg(err), 'error');
+      if (res.success) onSuccess();
+      else showToast(res.message ?? 'Update failed', 'error');
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : ((err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+            'Update failed');
+      showToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Assign cleaner
-  const handleAssign = async (cleanerId: string) => {
-    setAssigning(cleanerId);
-    try {
-      await assignCleanerToSupervisor(supervisor.id, cleanerId);
-      // Move cleaner from available list to supervisor's list
-      const assigned = availCleaners.find((c) => c.id === cleanerId);
-      if (assigned) {
-        setLocalSup((prev) => ({
-          ...prev,
-          cleaners: [
-            ...prev.cleaners,
-            {
-              id: assigned.id,
-              full_name: assigned.full_name,
-              email: assigned.email,
-              total_tasks: 0,
-              total_earning: 0,
-              base_salary: 0,
-              incentive_target: assigned.incentive_target ?? 0,
-              floor: assigned.floor_id
-                ? { id: assigned.floor_id, floor_number: assigned.floor_number ?? 0 }
-                : null,
-            } satisfies SupervisorCleaner,
-          ],
-        }));
-        setAvailCleaners((prev) => prev.filter((c) => c.id !== cleanerId));
-      }
-      showToast('Cleaner assigned successfully', 'success');
-    } catch (err) {
-      showToast(axiosMsg(err), 'error');
-    } finally {
-      setAssigning(null);
-    }
-  };
-
-  // Remove cleaner
-  const handleRemoveCleaner = async (cleanerId: string) => {
-    setRemovingId(cleanerId);
-    try {
-      await removeCleanerFromSupervisor(supervisor.id, cleanerId);
-      const removed = localSup.cleaners.find((c) => c.id === cleanerId);
-      setLocalSup((prev) => ({
-        ...prev,
-        cleaners: prev.cleaners.filter((c) => c.id !== cleanerId),
-      }));
-      // Put back in available list (basic info only)
-      if (removed) {
-        setAvailCleaners((prev) => [
-          ...prev,
-          {
-            id: removed.id,
-            full_name: removed.full_name,
-            email: removed.email,
-            phone: null,
-            profile_image: null,
-            building_id: null,
-            building_name: null,
-            floor_id: removed.floor?.id ?? null,
-            floor_name: null,
-            floor_number: removed.floor?.floor_number ?? null,
-            incentive_target: removed.incentive_target ?? 0,
-          } satisfies AvailableCleaner,
-        ]);
-      }
-      showToast('Cleaner removed', 'success');
-    } catch (err) {
-      showToast(axiosMsg(err), 'error');
-    } finally {
-      setRemovingId(null);
-    }
-  };
-
-  const filteredAvail = availCleaners.filter(
-    (c) =>
-      c.full_name.toLowerCase().includes(cleanerSearch.toLowerCase()) ||
-      c.email.toLowerCase().includes(cleanerSearch.toLowerCase())
+  const FLabel = ({
+    label,
+    children,
+    span2 = false,
+  }: {
+    label: string;
+    children: React.ReactNode;
+    span2?: boolean;
+  }) => (
+    <div style={{ gridColumn: span2 ? '1 / -1' : undefined }}>
+      <label style={s.fieldLabel}>{label}</label>
+      {children}
+    </div>
   );
-
-  const inputCls =
-    'w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all';
-  const labelCls = 'block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5';
 
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-        style={{ animation: 'fadeIn 0.18s ease' }}
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden"
-          style={{ animation: 'popIn 0.2s ease' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Modal header */}
-          <div className="px-7 pt-6 pb-5 border-b border-slate-100 flex items-start justify-between gap-4 shrink-0">
+      <div style={s.mOverlay} onClick={onClose}>
+        <div style={s.mModal} onClick={(e) => e.stopPropagation()}>
+          <div style={s.mHeader}>
             <div>
-              <h2 className="text-lg font-extrabold text-slate-900">Edit Supervisor</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Updating {supervisor.full_name}</p>
+              <h2 style={s.mTitle}>Edit Supervisor</h2>
+              <p style={s.mSub}>Update {supervisor.full_name}'s profile information</p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all shrink-0"
-            >
+            <button style={s.mClose} className="em-close" onClick={onClose}>
               <svg
-                className="w-4 h-4"
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={2.2}
-                viewBox="0 0 24 24"
+                strokeWidth="2.2"
+                strokeLinecap="round"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
 
-          {/* Tabs */}
-          <div className="px-7 pt-4 flex gap-1 border-b border-slate-100 shrink-0">
-            {(['profile', 'cleaners'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-4 py-2 rounded-t-lg text-xs font-bold uppercase tracking-widest transition-colors ${
-                  tab === t ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'
-                }`}
+          <div style={s.mDivider} />
+
+          <form onSubmit={handleSubmit} style={s.mForm}>
+            <p style={s.mSection}>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
               >
-                {t === 'profile' ? 'Profile' : `Cleaners (${localSup.cleaners.length})`}
-              </button>
-            ))}
-          </div>
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Personal Information
+            </p>
+            <div style={s.mGrid}>
+              <FLabel label="Full Name *">
+                <input
+                  name="full_name"
+                  type="text"
+                  value={form.full_name}
+                  onChange={handleChange}
+                  required
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+              <FLabel label="Email *">
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+              <FLabel label="Phone *">
+                <input
+                  name="phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={handleChange}
+                  required
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+              <FLabel label="Age">
+                <input
+                  name="age"
+                  type="number"
+                  value={form.age}
+                  onChange={handleChange}
+                  min="18"
+                  max="100"
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+              <FLabel label="Nationality">
+                <input
+                  name="nationality"
+                  type="text"
+                  value={form.nationality}
+                  onChange={handleChange}
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+              <FLabel label="Document ID">
+                <input
+                  name="document_id"
+                  type="text"
+                  value={form.document_id}
+                  onChange={handleChange}
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+            </div>
 
-          {/* Body — scrollable */}
-          <div className="overflow-y-auto flex-1 px-7 py-6">
-            {/* ── Profile tab ─────────────────────────────────────────────── */}
-            {tab === 'profile' && (
-              <form id="edit-sup-form" onSubmit={handleSubmit} className="space-y-5">
-                {/* Personal */}
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"
-                    />
-                  </svg>
-                  Personal Information
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>
-                      Full Name <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      name="full_name"
-                      type="text"
-                      value={form.full_name}
-                      onChange={handleChange}
-                      required
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>
-                      Email <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      name="email"
-                      type="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      required
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>
-                      Phone <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      name="phone"
-                      type="tel"
-                      value={form.phone}
-                      onChange={handleChange}
-                      required
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Age</label>
-                    <input
-                      name="age"
-                      type="number"
-                      value={form.age}
-                      onChange={handleChange}
-                      min="18"
-                      max="100"
-                      placeholder="e.g. 32"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Nationality</label>
-                    <input
-                      name="nationality"
-                      type="text"
-                      value={form.nationality}
-                      onChange={handleChange}
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Document ID</label>
-                    <input
-                      name="document_id"
-                      type="text"
-                      value={form.document_id}
-                      onChange={handleChange}
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100" />
-
-                {/* Assignment & pay */}
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18"
-                    />
-                  </svg>
-                  Assignment &amp; Compensation
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>
-                      Base Salary (AED) <span className="text-red-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
-                        AED
-                      </span>
-                      <input
-                        name="base_salary"
-                        type="number"
-                        value={form.base_salary}
-                        onChange={handleChange}
-                        min="0"
-                        step="0.01"
-                        required
-                        className={`${inputCls} pl-12`}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Building</label>
-                    <div className="relative">
-                      <select
-                        name="building_id"
-                        value={form.building_id}
-                        onChange={handleChange}
-                        className={`${inputCls} appearance-none pr-9 cursor-pointer`}
-                      >
-                        <option value="">— No building —</option>
-                        {buildings.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.building_name}
-                          </option>
-                        ))}
-                      </select>
-                      <svg
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100" />
-
-                {/* Media & docs */}
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"
-                    />
-                  </svg>
-                  Media &amp; Documents
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <label className={labelCls}>Profile Image URL</label>
-                    <input
-                      name="profile_image"
-                      type="url"
-                      value={form.profile_image}
-                      onChange={handleChange}
-                      placeholder="https://…"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Document URL</label>
-                    <input
-                      name="document"
-                      type="url"
-                      value={form.document}
-                      onChange={handleChange}
-                      placeholder="https://…"
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100" />
-
-                {/* Password reset */}
-                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                    />
-                  </svg>
-                  Reset Password (optional)
-                </p>
-                <div>
-                  <label className={labelCls}>New Password</label>
+            <div style={{ ...s.mDivider, margin: '18px 0' }} />
+            <p style={s.mSection}>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M9 22V12h6v10M3 9h18" />
+              </svg>
+              Assignment & Compensation
+            </p>
+            <div style={s.mGrid}>
+              <FLabel label="Base Salary (AED) *">
+                <div style={{ position: 'relative' as const }}>
+                  <span style={s.mPrefix}>AED</span>
                   <input
-                    name="password"
-                    type="password"
-                    value={form.password}
+                    name="base_salary"
+                    type="number"
+                    value={form.base_salary}
                     onChange={handleChange}
-                    placeholder="Leave blank to keep current password"
-                    className={inputCls}
+                    min="0"
+                    step="0.01"
+                    required
+                    style={{ ...s.mInput, paddingLeft: 52 }}
+                    className="em-input"
                   />
                 </div>
-              </form>
-            )}
-
-            {/* ── Cleaners tab ─────────────────────────────────────────────── */}
-            {tab === 'cleaners' && (
-              <div className="space-y-5">
-                {/* Current cleaners */}
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                    Assigned Cleaners ({localSup.cleaners.length})
-                  </p>
-                  {localSup.cleaners.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-xl">
-                      <p className="text-sm text-slate-400">No cleaners assigned yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {localSup.cleaners.map((c) => (
-                        <div
-                          key={c.id}
-                          className="flex items-center gap-3 px-3.5 py-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all group"
-                        >
-                          <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-                            style={{ background: avatarColor(c.full_name) }}
-                          >
-                            {initials(c.full_name)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">
-                              {c.full_name}
-                            </p>
-                            <p className="text-xs text-slate-400 truncate">{c.email}</p>
-                          </div>
-                          {c.floor && (
-                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold shrink-0">
-                              F{c.floor.floor_number}
-                            </span>
-                          )}
-                          <button
-                            onClick={() => void handleRemoveCleaner(c.id)}
-                            disabled={removingId === c.id}
-                            title="Remove from supervisor"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                          >
-                            {removingId === c.id ? (
-                              <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-slate-100" />
-
-                {/* Available cleaners to assign */}
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                    Add Cleaners Without a Supervisor ({filteredAvail.length})
-                  </p>
-
-                  {availCleaners.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-xl">
-                      <p className="text-sm text-slate-400">
-                        All registered cleaners already have supervisors
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Search */}
-                      <div className="relative mb-3">
-                        <svg
-                          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={1.8}
-                          viewBox="0 0 24 24"
-                        >
-                          <circle cx="11" cy="11" r="7" />
-                          <path strokeLinecap="round" d="M17 17l4 4" />
-                        </svg>
-                        <input
-                          value={cleanerSearch}
-                          onChange={(e) => setCleanerSearch(e.target.value)}
-                          placeholder="Search cleaners…"
-                          className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-                        />
-                      </div>
-
-                      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                        {filteredAvail.map((c) => (
-                          <div
-                            key={c.id}
-                            className="flex items-center gap-3 px-3.5 py-3 rounded-xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all"
-                          >
-                            {c.profile_image ? (
-                              <img
-                                src={c.profile_image}
-                                alt={c.full_name}
-                                className="w-8 h-8 rounded-lg object-cover shrink-0"
-                              />
-                            ) : (
-                              <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-                                style={{ background: avatarColor(c.full_name) }}
-                              >
-                                {initials(c.full_name)}
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-slate-900 truncate">
-                                {c.full_name}
-                              </p>
-                              <p className="text-xs text-slate-400 truncate">
-                                {c.building_name ? `${c.building_name}` : 'No building'}
-                                {c.floor_number !== null ? ` · F${c.floor_number}` : ''}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => void handleAssign(c.id)}
-                              disabled={assigning === c.id}
-                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0"
-                            >
-                              {assigning === c.id ? (
-                                <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                              ) : (
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2.5}
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 4.5v15m7.5-7.5h-15"
-                                  />
-                                </svg>
-                              )}
-                              Assign
-                            </button>
-                          </div>
-                        ))}
-                        {filteredAvail.length === 0 && cleanerSearch && (
-                          <p className="text-sm text-slate-400 text-center py-4">
-                            No results for &ldquo;{cleanerSearch}&rdquo;
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Modal footer */}
-          <div className="px-7 py-5 border-t border-slate-100 flex justify-end gap-3 shrink-0 bg-white">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Close
-            </button>
-            {tab === 'profile' && (
-              <button
-                type="submit"
-                form="edit-sup-form"
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors shadow-sm"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Saving…
-                  </>
+              </FLabel>
+              <FLabel label="Building">
+                {buildings.length > 0 ? (
+                  <select
+                    name="building_id"
+                    value={form.building_id}
+                    onChange={handleChange}
+                    style={s.mSelect}
+                    className="em-input"
+                  >
+                    <option value="">— Select building —</option>
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.building_name}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
-                  'Save Changes'
+                  <input
+                    name="building_id"
+                    type="text"
+                    value={form.building_id}
+                    onChange={handleChange}
+                    placeholder="Building ID"
+                    style={s.mInput}
+                    className="em-input"
+                  />
+                )}
+              </FLabel>
+            </div>
+
+            <div style={{ ...s.mDivider, margin: '18px 0' }} />
+            <p style={s.mSection}>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+              Media & Documents
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+              <FLabel label="Profile Image URL" span2>
+                <input
+                  name="profile_image"
+                  type="url"
+                  value={form.profile_image}
+                  onChange={handleChange}
+                  placeholder="https://…"
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+              <FLabel label="Document URL" span2>
+                <input
+                  name="document"
+                  type="url"
+                  value={form.document}
+                  onChange={handleChange}
+                  placeholder="https://…"
+                  style={s.mInput}
+                  className="em-input"
+                />
+              </FLabel>
+            </div>
+
+            <div style={s.mFooter}>
+              <button
+                type="button"
+                style={s.mCancel}
+                className="em-cancel"
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button type="submit" style={s.mSubmit} className="em-submit" disabled={loading}>
+                {loading ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={s.mSpinner} className="sd-spin" />
+                    Updating…
+                  </span>
+                ) : (
+                  <>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                    >
+                      <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    Save Changes
+                  </>
                 )}
               </button>
-            )}
-          </div>
+            </div>
+          </form>
         </div>
       </div>
     </>
   );
 };
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── styles ───────────────────────────────────────────────────────────────────
 
-const SupervisorDetails: React.FC = () => {
-  const navigate = useNavigate();
-  const { supervisorId } = useParams<{ supervisorId: string }>();
-  const { isAuthenticated } = useAuth();
-
-  const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
-  const [buildings, setBuildings] = useState<BuildingOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pageError, setPageError] = useState<string | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deletingPage, setDeletingPage] = useState(false);
-  const [togglingStatus, setTogglingStatus] = useState(false);
-  const [cleanerSearch, setCleanerSearch] = useState('');
-  const [toast, setToast] = useState<ToastState | null>(null);
-
-  const showToast = (message: string, type: ToastState['type']) => setToast({ message, type });
-
-  // ── fetch ──────────────────────────────────────────────────────────────────
-
-  const fetchSupervisor = useCallback(async () => {
-    if (!supervisorId) return;
-    try {
-      setLoading(true);
-      setPageError(null);
-      const res = await getSupervisorDetails(supervisorId);
-      console.log(res);
-
-      setSupervisor(res.data);
-    } catch (err) {
-      setPageError(axiosMsg(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [supervisorId]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    void fetchSupervisor();
-    void getSupervisorBuildingOptions()
-      .then(setBuildings)
-      .catch(() => {});
-  }, [supervisorId, isAuthenticated, fetchSupervisor]);
-
-  // ── toggle status ──────────────────────────────────────────────────────────
-
-  const handleToggleStatus = async () => {
-    if (!supervisor) return;
-    setTogglingStatus(true);
-    try {
-      const next = !supervisor.is_active;
-      await toggleSupervisorStatus(supervisor.id, next);
-      setSupervisor((prev) => (prev ? { ...prev, is_active: next } : null));
-      showToast(`Supervisor ${next ? 'activated' : 'deactivated'}`, 'success');
-    } catch {
-      showToast('Failed to update status', 'error');
-    } finally {
-      setTogglingStatus(false);
-    }
-  };
-
-  // ── delete page ────────────────────────────────────────────────────────────
-
-  const handleDeleteConfirm = async () => {
-    if (!supervisor) return;
-    setDeletingPage(true);
-    try {
-      await deleteSupervisor(supervisor.id);
-      showToast('Supervisor deleted', 'success');
-      setTimeout(() => navigate('/admin/supervisors'), 800);
-    } catch (err) {
-      showToast(axiosMsg(err), 'error');
-    } finally {
-      setDeletingPage(false);
-      setDeleteOpen(false);
-    }
-  };
-
-  // ─── loading ────────────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-3">
-        <div className="w-9 h-9 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin" />
-        <p className="text-sm text-slate-400">Loading supervisor…</p>
-      </div>
-    );
-  }
-
-  if (pageError ?? !supervisor) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
-        <div className="flex flex-col items-center gap-3 bg-white border border-red-100 rounded-2xl p-10">
-          <svg
-            className="w-10 h-10 text-red-400"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-            />
-          </svg>
-          <p className="text-sm font-semibold text-red-600">
-            {pageError ?? 'Supervisor not found'}
-          </p>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm text-blue-600 hover:underline font-medium"
-          >
-            ← Go back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── derived ────────────────────────────────────────────────────────────────
-
-  const totalTasks = supervisor.cleaners.reduce((a, c) => a + (c.total_tasks || 0), 0);
-  const totalEarnings = supervisor.cleaners.reduce((a, c) => a + Number(c.total_earning || 0), 0);
-  const totalSalaries = supervisor.cleaners.reduce((a, c) => a + Number(c.base_salary || 0), 0);
-
-  const filteredCleaners = supervisor.cleaners.filter(
-    (c) =>
-      c.full_name.toLowerCase().includes(cleanerSearch.toLowerCase()) ||
-      c.email.toLowerCase().includes(cleanerSearch.toLowerCase())
-  );
-
-  // ─── render ────────────────────────────────────────────────────────────────
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <style>{`
-        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-        @keyframes popIn  { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
-      `}</style>
-
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-      {deleteOpen && (
-        <DeleteConfirmModal
-          isOpen={deleteOpen}
-          title="Delete Supervisor?"
-          message={
-            <>
-              Permanently delete{' '}
-              <span className="font-semibold text-slate-800">
-                &ldquo;{supervisor.full_name}&rdquo;
-              </span>
-              ? Their user account will be removed. Supervisors with active cleaners cannot be
-              deleted — reassign cleaners first.
-            </>
-          }
-          confirmText="Delete"
-          cancelText="Cancel"
-          loading={deletingPage}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => setDeleteOpen(false)}
-        />
-      )}
-
-      {editOpen && supervisor && (
-        <EditSupervisorModal
-          supervisor={supervisor}
-          buildings={buildings}
-          onClose={() => setEditOpen(false)}
-          onSuccess={(updated) => {
-            setSupervisor(updated);
-            setEditOpen(false);
-            showToast('Supervisor updated', 'success');
-          }}
-        />
-      )}
-
-      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
-        <div className="mx-auto px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/admin/supervisors')}
-              className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-                />
-              </svg>
-            </button>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                Admin / Supervisors
-              </p>
-              <h1 className="text-base font-extrabold text-slate-900">{supervisor.full_name}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Toggle active */}
-            <button
-              disabled={togglingStatus}
-              onClick={() => void handleToggleStatus()}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-all disabled:opacity-60 ${
-                supervisor.is_active
-                  ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
-                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-              }`}
-            >
-              {togglingStatus ? (
-                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : supervisor.is_active ? (
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="4" width="4" height="16" rx="1" />
-                  <rect x="14" y="4" width="4" height="16" rx="1" />
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-              {supervisor.is_active ? 'Deactivate' : 'Activate'}
-            </button>
-
-            {/* Edit */}
-            <button
-              onClick={() => setEditOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors shadow-sm"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
-                />
-              </svg>
-              Edit Profile
-            </button>
-
-            {/* Delete */}
-            <button
-              onClick={() => setDeleteOpen(true)}
-              className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all"
-              title="Delete supervisor"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className=" mx-auto px-6 py-8 space-y-6">
-        {/* ── Hero card ────────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-start gap-5 flex-wrap">
-          {supervisor.profile_image ? (
-            <img
-              src={supervisor.profile_image}
-              alt={supervisor.full_name}
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-slate-100 shrink-0"
-            />
-          ) : (
-            <div
-              className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shrink-0"
-              style={{ background: avatarColor(supervisor.full_name) }}
-            >
-              {initials(supervisor.full_name)}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-              {supervisor.full_name}
-            </h2>
-            <p className="text-sm text-slate-400 mt-0.5">Supervisor</p>
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              {/* Active / Inactive badge */}
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                  supervisor.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${supervisor.is_active ? 'bg-emerald-500' : 'bg-red-400'}`}
-                />
-                {supervisor.is_active ? 'Active — can log in' : 'Inactive — login blocked'}
-              </span>
-
-              {supervisor.building && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-semibold">
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18"
-                    />
-                  </svg>
-                  {supervisor.building.name}
-                </span>
-              )}
-
-              {supervisor.joining_date && (
-                <span className="text-xs text-slate-400">
-                  Joined {fmtDate(supervisor.joining_date)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Stats ────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Cleaners"
-            value={supervisor.cleaners.length}
-            subtext="assigned"
-            accent="#3B5BDB"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Total Tasks"
-            value={totalTasks}
-            subtext="completed"
-            accent="#0C8599"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Team Earnings"
-            value={`${fmt(totalEarnings)} AED`}
-            subtext="total"
-            accent="#2F9E44"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Base Salary"
-            value={`${fmt(supervisor.base_salary)} AED`}
-            subtext="supervisor"
-            accent="#E67700"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
-                />
-              </svg>
-            }
-          />
-        </div>
-
-        {/* ── Info grid ────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Personal */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 flex items-center gap-2 mb-4 pb-3 border-b border-slate-50">
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"
-                />
-              </svg>
-              Personal
-            </p>
-            <InfoRow label="Nationality" value={supervisor.nationality} />
-            <InfoRow label="Age" value={supervisor.age} />
-            <InfoRow label="Document ID" value={supervisor.document_id} />
-            {supervisor.document && <InfoRow label="Document" link={supervisor.document} />}
-          </div>
-
-          {/* Contact */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-teal-600 flex items-center gap-2 mb-4 pb-3 border-b border-slate-50">
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
-                />
-              </svg>
-              Contact
-            </p>
-            <InfoRow label="Email" value={supervisor.email} />
-            <InfoRow label="Phone" value={supervisor.phone} />
-            <InfoRow label="Building" value={supervisor.building?.name} />
-            <InfoRow label="Base Salary" value={`${fmt(supervisor.base_salary)} AED`} />
-          </div>
-
-          {/* Team */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 flex items-center gap-2 mb-4 pb-3 border-b border-slate-50">
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-                />
-              </svg>
-              Team Summary
-            </p>
-            <InfoRow label="Cleaners" value={supervisor.cleaners.length} />
-            <InfoRow label="Tasks Done" value={totalTasks} />
-            <InfoRow label="Team Earnings" value={`${fmt(totalEarnings)} AED`} />
-            <InfoRow label="Team Salaries" value={`${fmt(totalSalaries)} AED`} />
-          </div>
-        </div>
-
-        {/* ── Cleaners table ───────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Assigned Cleaners</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {supervisor.cleaners.length} cleaner{supervisor.cleaners.length !== 1 ? 's' : ''}{' '}
-                under this supervisor
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {supervisor.cleaners.length > 4 && (
-                <div className="relative">
-                  <svg
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.8}
-                    viewBox="0 0 24 24"
-                  >
-                    <circle cx="11" cy="11" r="7" />
-                    <path strokeLinecap="round" d="M17 17l4 4" />
-                  </svg>
-                  <input
-                    value={cleanerSearch}
-                    onChange={(e) => setCleanerSearch(e.target.value)}
-                    placeholder="Search cleaners…"
-                    className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-                  />
-                </div>
-              )}
-              <button
-                onClick={() => {
-                  setEditOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Add Cleaner
-              </button>
-            </div>
-          </div>
-
-          {supervisor.cleaners.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <svg
-                className="w-12 h-12 text-slate-200"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-                />
-              </svg>
-              <p className="text-sm text-slate-400">No cleaners assigned yet</p>
-              <button
-                onClick={() => setEditOpen(true)}
-                className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl"
-              >
-                Add Cleaners
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    {['Cleaner', 'Email', 'Floor', 'Tasks', 'Base Salary', 'Earnings'].map((h) => (
-                      <th
-                        key={h}
-                        className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap ${
-                          ['Tasks', 'Base Salary', 'Earnings'].includes(h)
-                            ? 'text-right'
-                            : 'text-left'
-                        }`}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {(filteredCleaners.length > 0 ? filteredCleaners : supervisor.cleaners).map(
-                    (c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
-                              style={{ background: avatarColor(c.full_name) }}
-                            >
-                              {initials(c.full_name)}
-                            </div>
-                            <span className="font-semibold text-slate-900">{c.full_name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-500 text-xs">{c.email}</td>
-                        <td className="px-4 py-3.5">
-                          {c.floor ? (
-                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold">
-                              F{c.floor.floor_number}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-bold text-slate-900">
-                          {c.total_tasks || 0}
-                        </td>
-                        <td className="px-4 py-3.5 text-right text-slate-600">
-                          {fmt(Number(c.base_salary || 0))} AED
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-semibold text-emerald-600">
-                          {fmt(Number(c.total_earning || 0))} AED
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+const s: Record<string, React.CSSProperties> = {
+  page: {
+    padding: '32px 40px',
+    minHeight: '100vh',
+    background: '#F8FAFC',
+    fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
+    margin: '0 auto',
+  },
+  centeredPage: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
+  },
+  errorBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+    background: '#FFF5F5',
+    border: '1px solid #FEE2E2',
+    borderRadius: 14,
+    padding: '40px 48px',
+  },
+  backLink: {
+    marginTop: 8,
+    background: 'none',
+    border: 'none',
+    color: '#3B5BDB',
+    fontSize: 14,
+    cursor: 'pointer',
+    fontWeight: 500,
+    textDecoration: 'underline',
+  },
+  topNav: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  backBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '8px 16px',
+    borderRadius: 9,
+    border: '1.5px solid #E2E8F0',
+    background: '#fff',
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  heroCard: {
+    background: '#fff',
+    border: '1px solid #E2E8F0',
+    borderRadius: 18,
+    padding: '28px 32px',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
+    flexWrap: 'wrap',
+    gap: 20,
+  },
+  heroLeft: { display: 'flex', alignItems: 'flex-start', gap: 20 },
+  heroAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '3px solid #F1F5F9',
+    flexShrink: 0,
+  },
+  heroAvatarFb: {
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 28,
+    fontWeight: 700,
+    color: '#fff',
+    flexShrink: 0,
+  },
+  heroName: { fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.01em' },
+  heroRole: { fontSize: 13, color: '#64748B', marginTop: 3, fontWeight: 500 },
+  pill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 12px',
+    borderRadius: 20,
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  pillGreen: { background: '#DCFCE7', color: '#15803D' },
+  pillGray: { background: '#F1F5F9', color: '#64748B' },
+  buildingPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    padding: '4px 10px',
+    borderRadius: 20,
+    fontSize: 12,
+    fontWeight: 500,
+    background: '#EFF6FF',
+    color: '#1D4ED8',
+  },
+  heroBtn: {
+    padding: '9px 18px',
+    borderRadius: 9,
+    border: 'none',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  heroBtnWarn: { background: '#FEF3C7', color: '#92400E' },
+  heroBtnSuccess: { background: '#DCFCE7', color: '#14532D' },
+  heroBtnPrimary: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '9px 18px',
+    borderRadius: 9,
+    border: 'none',
+    background: '#1E40AF',
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    boxShadow: '0 1px 3px rgba(30,64,175,0.25)',
+  },
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))',
+    gap: 14,
+    marginBottom: 20,
+  },
+  statCard: {
+    background: '#fff',
+    border: '1px solid #E2E8F0',
+    borderRadius: 14,
+    padding: '20px 22px',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
+  },
+  statIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  statValue: { fontSize: 24, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' },
+  statLabel: { fontSize: 12, color: '#64748B', marginTop: 3, fontWeight: 500 },
+  detailsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))',
+    gap: 14,
+    marginBottom: 20,
+  },
+  infoCard: {
+    background: '#fff',
+    border: '1px solid #E2E8F0',
+    borderRadius: 14,
+    padding: '20px 22px',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
+  },
+  infoCardHead: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#64748B',
+    letterSpacing: '0.07em',
+    textTransform: 'uppercase',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottom: '1px solid #F1F5F9',
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '9px 0',
+    borderBottom: '1px solid #F8FAFC',
+  },
+  infoLabel: { fontSize: 12, color: '#94A3B8', fontWeight: 500 },
+  infoValue: {
+    fontSize: 13,
+    color: '#1E293B',
+    fontWeight: 600,
+    textAlign: 'right',
+    maxWidth: '60%',
+  },
+  docLink: { fontSize: 13, color: '#3B5BDB', fontWeight: 500, textDecoration: 'none' },
+  tableHeader: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  tableTitle: {
+    fontSize: 17,
+    fontWeight: 700,
+    color: '#0F172A',
+    margin: 0,
+    letterSpacing: '-0.01em',
+  },
+  tableSub: { fontSize: 12, color: '#94A3B8', marginTop: 3 },
+  tableSearchIcon: {
+    position: 'absolute',
+    left: 10,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 14,
+    height: 14,
+    color: '#94A3B8',
+  },
+  tableSearch: {
+    padding: '8px 12px 8px 32px',
+    border: '1.5px solid #E2E8F0',
+    borderRadius: 9,
+    fontSize: 13,
+    color: '#1E293B',
+    background: '#fff',
+    outline: 'none',
+    width: 200,
+    boxSizing: 'border-box',
+  },
+  tableCard: {
+    background: '#fff',
+    border: '1px solid #E2E8F0',
+    borderRadius: 14,
+    overflow: 'hidden',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
+  },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: {
+    padding: '12px 18px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#94A3B8',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    background: '#F8FAFC',
+    borderBottom: '1px solid #F1F5F9',
+  },
+  td: {
+    padding: '13px 18px',
+    borderBottom: '1px solid #F8FAFC',
+    verticalAlign: 'middle',
+    fontSize: 13,
+  },
+  cAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#fff',
+    flexShrink: 0,
+  },
+  cName: { fontSize: 13, fontWeight: 600, color: '#1E293B' },
+  cEmail: { fontSize: 12, color: '#64748B' },
+  floorBadge: {
+    display: 'inline-flex',
+    padding: '3px 9px',
+    borderRadius: 6,
+    background: '#EFF6FF',
+    color: '#1D4ED8',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  numBold: { fontSize: 13, fontWeight: 700, color: '#1E293B' },
+  num: { fontSize: 13, fontWeight: 600 },
+  incentiveBadge: {
+    display: 'inline-flex',
+    padding: '3px 9px',
+    borderRadius: 6,
+    background: '#FFF7ED',
+    color: '#C2410C',
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  empty: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+    padding: '48px 24px',
+  },
+  emptyText: { fontSize: 14, color: '#94A3B8', margin: 0 },
+  spinner: {
+    width: 22,
+    height: 22,
+    border: '2.5px solid #E2E8F0',
+    borderTopColor: '#1E40AF',
+    borderRadius: '50%',
+  },
+  // edit modal
+  mOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(15,23,42,0.4)',
+    backdropFilter: 'blur(4px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    padding: 20,
+  },
+  mModal: {
+    background: '#fff',
+    borderRadius: 18,
+    width: '100%',
+    maxWidth: 640,
+    maxHeight: '92vh',
+    overflowY: 'auto',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+    fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
+    animation: 'sdPop 0.2s ease',
+  },
+  mHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: '24px 28px 20px',
+  },
+  mTitle: { fontSize: 20, fontWeight: 700, color: '#0F172A', margin: 0 },
+  mSub: { fontSize: 13, color: '#94A3B8', marginTop: 3 },
+  mClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: '1.5px solid #E2E8F0',
+    background: '#fff',
+    color: '#94A3B8',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  mDivider: { height: 1, background: '#F1F5F9' },
+  mForm: { padding: '20px 28px 28px' },
+  mSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#64748B',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    marginBottom: 14,
+    marginTop: 0,
+  },
+  mGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px' },
+  fieldLabel: {
+    display: 'block',
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#374151',
+    marginBottom: 6,
+  },
+  mInput: {
+    width: '100%',
+    padding: '10px 13px',
+    border: '1.5px solid #E2E8F0',
+    borderRadius: 9,
+    fontSize: 13.5,
+    color: '#1E293B',
+    background: '#fff',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  mSelect: {
+    width: '100%',
+    padding: '10px 36px 10px 13px',
+    border: '1.5px solid #E2E8F0',
+    borderRadius: 9,
+    fontSize: 13.5,
+    color: '#1E293B',
+    background: '#fff',
+    outline: 'none',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+    appearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 13px center',
+  },
+  mPrefix: {
+    position: 'absolute',
+    left: 13,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#94A3B8',
+    pointerEvents: 'none',
+  },
+  mFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 24,
+    paddingTop: 20,
+    borderTop: '1px solid #F1F5F9',
+  },
+  mCancel: {
+    padding: '10px 22px',
+    borderRadius: 9,
+    border: '1.5px solid #E2E8F0',
+    background: '#fff',
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#374151',
+    cursor: 'pointer',
+  },
+  mSubmit: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '10px 22px',
+    borderRadius: 9,
+    border: 'none',
+    background: '#1E40AF',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer',
+    boxShadow: '0 1px 3px rgba(30,64,175,0.25)',
+  },
+  mSpinner: {
+    display: 'inline-block',
+    width: 14,
+    height: 14,
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderTopColor: '#fff',
+    borderRadius: '50%',
+  },
 };
+
+const baseCSS = `
+  @keyframes sdFade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes sdPop  { from { opacity:0; transform:scale(0.95); }    to { opacity:1; transform:scale(1); } }
+  @keyframes sdSpin { to { transform:rotate(360deg); } }
+  .sd-spin { animation: sdSpin 0.8s linear infinite; }
+  .sd-row  { animation: sdFade 0.22s ease both; }
+  .sd-row:hover { background: #F8FAFC !important; }
+  .sd-back:hover { background: #F8FAFC; border-color: #CBD5E1; }
+  .sd-hero-btn:hover { opacity: 0.82; }
+  .sd-hero-primary:hover { background: #1D4ED8 !important; }
+  .sd-input:focus { border-color: #93C5FD !important; box-shadow: 0 0 0 3px rgba(147,197,253,0.2) !important; }
+  .em-input:focus { border-color: #93C5FD !important; box-shadow: 0 0 0 3px rgba(147,197,253,0.2) !important; outline: none; }
+  .em-input::placeholder { color: #CBD5E1; }
+  .em-close:hover  { color:#374151 !important; border-color:#CBD5E1 !important; background:#F8FAFC !important; }
+  .em-cancel:hover { background:#F8FAFC !important; }
+  .em-submit:hover { background:#1D4ED8 !important; }
+`;
 
 export default SupervisorDetails;

@@ -1,49 +1,62 @@
-import { Router } from 'express';
-import { protect } from 'src/middlewares/authMiddleware';
-import { allowRoles } from 'src/middlewares/roleMiddleware';
+import express from 'express';
+import { protect } from '../../middlewares/authMiddleware';
+import { allowRoles } from '../../middlewares/roleMiddleware';
 import {
-  getAllSupervisors,
-  getUnassignedSupervisors,
-  getBuildingsForDropdown,
-  getSupervisorById,
-  updateSupervisor,
-  toggleSupervisorStatus,
-  deleteSupervisor,
-  getAvailableCleaners,
-  assignCleanerToSupervisor,
-  removeCleanerFromSupervisor,
+  getSupervisorWorkers,
+  supervisorReport,
+  getSupervisorTasks,
+  getLiveWorkers,
+  assignTaskToWorker,
+  updateTask,
+  updateSupervisorProfile,
+  getSupervisorDashboardSummary,
+  getAdminSupervisorDetails,
+  updateAdminSupervisor,
+  toggleAdminSupervisorStatus,
+  deleteAdminSupervisor,
+  getCleanersAttendance,
+  updateCleanerAssignment,
+  getSupervisorAnalytics,
 } from './supervisor_controller';
+import { addPenalty, getSupervisorPenalties } from '../penalties/penalties_controller';
 
-const router = Router();
-const adminOnly = [protect, allowRoles('admin', 'super_admin')];
+const router = express.Router();
 
-// ── Static paths FIRST (must be before /:id) ──────────────────────────────────
+// ── Supervisor-role routes ────────────────────────────────────────────────────
+router.get('/workers', protect, allowRoles('supervisor', 'super_admin'), getSupervisorWorkers);
+router.get('/workers/live', protect, allowRoles('supervisor', 'super_admin'), getLiveWorkers);
+router.get('/workers/attendance', protect, allowRoles('supervisor'), getCleanersAttendance);
+router.post('/workers/assignment', protect, allowRoles('supervisor'), updateCleanerAssignment);
+router.get('/report', protect, allowRoles('supervisor'), supervisorReport);
+router.get('/tasks', protect, allowRoles('supervisor'), getSupervisorTasks);
+router.post('/tasks', protect, allowRoles('supervisor'), assignTaskToWorker);
+router.patch('/tasks/:id', protect, allowRoles('supervisor'), updateTask);
+router.get(
+  '/dashboard-summary',
+  protect,
+  allowRoles('supervisor', 'super_admin'),
+  getSupervisorDashboardSummary
+);
 
-router.get('/unassigned', ...adminOnly, getUnassignedSupervisors);
-router.get('/buildings', ...adminOnly, getBuildingsForDropdown);
+router.get('/analytics', protect, allowRoles('supervisor'), getSupervisorAnalytics);
 
-// ── Collection ────────────────────────────────────────────────────────────────
+// Profile (supervisor self-update)
+router.patch('/profile', protect, allowRoles('supervisor'), updateSupervisorProfile);
+console.log(' Supervisor profile route registered: PATCH /api/supervisor/profile');
 
-router.get('/', ...adminOnly, getAllSupervisors);
+// Penalties
+router.post('/penalties', protect, allowRoles('supervisor'), addPenalty);
+router.get('/penalties', protect, allowRoles('supervisor'), getSupervisorPenalties);
 
-// ── Nested per-supervisor (specific sub-paths before /:id) ───────────────────
-
-// GET    /api/supervisors/:id/available-cleaners
-router.get('/:id/available-cleaners', ...adminOnly, getAvailableCleaners);
-
-// POST   /api/supervisors/:id/assign-cleaner
-router.post('/:id/assign-cleaner', ...adminOnly, assignCleanerToSupervisor);
-
-// DELETE /api/supervisors/:id/cleaners/:cleanerId
-router.delete('/:id/cleaners/:cleanerId', ...adminOnly, removeCleanerFromSupervisor);
-
-// PATCH  /api/supervisors/:id/toggle-status
-router.patch('/:id/toggle-status', ...adminOnly, toggleSupervisorStatus);
-
-// ── Generic /:id (must come last) ─────────────────────────────────────────────
-
-router.get('/:id', ...adminOnly, getSupervisorById);
-router.put('/:id', ...adminOnly, updateSupervisor);
-router.delete('/:id', ...adminOnly, deleteSupervisor);
+// ── Admin CRUD routes ─────────────────────────────────────────────────────────
+router.get('/:id', protect, allowRoles('admin', 'super_admin'), getAdminSupervisorDetails);
+router.put('/:id', protect, allowRoles('admin', 'super_admin'), updateAdminSupervisor);
+router.patch(
+  '/:id/status',
+  protect,
+  allowRoles('admin', 'super_admin'),
+  toggleAdminSupervisorStatus
+);
+router.delete('/:id', protect, allowRoles('admin', 'super_admin'), deleteAdminSupervisor);
 
 export default router;

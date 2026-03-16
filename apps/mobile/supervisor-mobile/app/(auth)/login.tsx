@@ -4,95 +4,110 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   Pressable,
   Dimensions,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
+import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import Checkbox from 'expo-checkbox';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
-import Svg, { Path, Circle } from 'react-native-svg';
-import * as SecureStore from 'expo-secure-store';
+import { saveTokens } from '../../src/tokenStorage';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const { height, width } = Dimensions.get('window');
 
-// Topographic Pattern
-const TopoPattern = () => (
-  <Svg
-    height="100%"
-    width="100%"
-    style={StyleSheet.absoluteFillObject}
-    viewBox="0 0 400 500"
-    preserveAspectRatio="xMidYMid slice"
-  >
-    <Path
-      d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
+// Topographic Pattern for Headers
+const TopoPattern = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const CircleComponent = Circle as any;
 
-    <Circle cx="320" cy="100" r="30" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
-    <Circle cx="320" cy="100" r="45" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
-    <Circle cx="320" cy="100" r="60" stroke="rgba(255,255,255,0.1)" strokeWidth="2" fill="none" />
+  return (
+    <SvgComponent
+      height="100%"
+      width="100%"
+      className="absolute inset-0"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+      pointerEvents="none"
+    >
+      <PathComponent
+        d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 100 Q 50 85, 100 100 T 200 100 T 300 100 T 400 100"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <PathComponent
+        d="M 0 120 Q 50 110, 100 120 T 200 120 T 300 120 T 400 120"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="30"
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth="2"
+        fill="none"
+      />
+      <CircleComponent
+        cx="320"
+        cy="100"
+        r="45"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth="2"
+        fill="none"
+      />
+    </SvgComponent>
+  );
+};
 
-    <Path
-      d="M 60 180 Q 40 160, 60 140 Q 80 120, 100 140 Q 120 160, 100 180 Q 80 200, 60 180 Z"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 50 180 Q 28 160, 50 135 Q 72 110, 110 135 Q 132 160, 110 185 Q 88 210, 50 180 Z"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
+const WavyHeader = () => {
+  const SvgComponent = Svg as any;
+  const PathComponent = Path as any;
+  const SvgGradientComponent = SvgGradient as any;
+  const StopComponent = Stop as any;
+  const DefsComponent = Defs as any;
 
-    <Path
-      d="M 0 240 Q 60 220, 120 240 T 240 240 T 360 240 T 400 240"
-      stroke="rgba(255,255,255,0.15)"
-      strokeWidth="2"
-      fill="none"
-    />
-    <Path
-      d="M 0 260 Q 60 245, 120 260 T 240 260 T 360 260 T 400 260"
-      stroke="rgba(255,255,255,0.12)"
-      strokeWidth="2"
-      fill="none"
-    />
-
-    <Circle cx="340" cy="380" r="25" stroke="rgba(255,255,255,0.15)" strokeWidth="2" fill="none" />
-    <Circle cx="340" cy="380" r="38" stroke="rgba(255,255,255,0.12)" strokeWidth="2" fill="none" />
-  </Svg>
-);
-
-// Wave Curve Component
-const WaveCurve = () => (
-  <Svg height="81" width={width} viewBox={`0 0 ${width} 81`} style={styles.wave}>
-    <Path
-      d={`M 0 40 Q ${width * 0.25} 0, ${width * 0.5} 40 T ${width} 40 L ${width} 81 L 0 81 Z`}
-      fill="#F5F7FA"
-    />
-  </Svg>
-);
+  return (
+    <View className="absolute inset-0" pointerEvents="none">
+      <SvgComponent
+        height={height * 0.45}
+        width={width}
+        viewBox={`0 0 ${width} 320`}
+        preserveAspectRatio="none"
+      >
+        <DefsComponent>
+          <SvgGradientComponent id="grad" x1="0" y1="0" x2="1" y2="1">
+            <StopComponent offset="0" stopColor="#0EA5E9" />
+            <StopComponent offset="1" stopColor="#0284C7" />
+          </SvgGradientComponent>
+        </DefsComponent>
+        <PathComponent
+          d={`M0,0 L${width},0 L${width},250 C${width * 0.75},320 ${width * 0.25},180 0,250 Z`}
+          fill="url(#grad)"
+        />
+      </SvgComponent>
+      <TopoPattern />
+    </View>
+  );
+};
 
 export default function LoginScreen() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -112,229 +127,156 @@ export default function LoginScreen() {
       const data = res.data;
 
       if (!data.success) {
-        Alert.alert('Login failed', data.message);
+        Alert.alert(t('auth.loginFailed', { defaultValue: 'Login failed' }), data.message);
         return;
       }
 
-      await SecureStore.setItemAsync('access_token', data.accessToken);
-
-      console.log('ACCESS TOKEN:', data.accessToken);
-
+      await saveTokens(data.accessToken, data.refreshToken);
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const errorMessage =
-        error &&
-        typeof error === 'object' &&
-        'response' in error &&
-        error.response &&
-        typeof error.response === 'object' &&
-        'data' in error.response &&
-        error.response.data &&
-        typeof error.response.data === 'object' &&
-        'message' in error.response.data
-          ? String(error.response.data.message)
-          : 'Server error';
-
-      Alert.alert('Error', errorMessage);
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        t('common.serverError', { defaultValue: 'Server error' });
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* HEADER WITH TOPOGRAPHIC PATTERN */}
-      <View style={styles.headerContainer}>
-        <LinearGradient colors={['#5AB9E0', '#3DA2CE']} style={styles.header}>
-          <TopoPattern />
-        </LinearGradient>
-        {/* WAVE CURVE */}
-        <WaveCurve />
-      </View>
+    <View className="flex-1 bg-[#F8FAFB]">
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="h-[42%] justify-center items-center">
+          <WavyHeader />
 
-      {/* CARD */}
-      <View style={styles.card}>
-        <Text style={styles.title}>Login in</Text>
-        <View style={styles.line} />
-
-        {/* EMAIL */}
-        <Text style={styles.label}>Email</Text>
-        <View style={styles.inputRow}>
-          <Mail size={18} color="#A0A0A0" style={styles.icon} />
-          <TextInput
-            placeholder="Supervisor@email.com"
-            placeholderTextColor="#B0B0B0"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-        </View>
-
-        {/* PASSWORD */}
-        <Text style={[styles.label, { marginTop: 24 }]}>Password</Text>
-        <View style={styles.inputRow}>
-          <Lock size={18} color="#A0A0A0" style={styles.icon} />
-          <TextInput
-            placeholder="enter your password"
-            placeholderTextColor="#B0B0B0"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-          />
-          <Pressable onPress={() => setShowPassword(!showPassword)}>
-            {showPassword ? (
-              <EyeOff size={18} color="#A0A0A0" />
-            ) : (
-              <Eye size={18} color="#A0A0A0" />
-            )}
-          </Pressable>
-        </View>
-
-        {/* REMEMBER & FORGOT */}
-        <View style={styles.row}>
-          <View style={styles.rememberRow}>
-            <Checkbox
-              value={remember}
-              onValueChange={setRemember}
-              color={remember ? '#3DA2CE' : undefined}
-            />
-            <Text style={styles.rememberText}>Remember Me</Text>
+          <View className="items-center z-10">
+            <View className="w-20 h-20 rounded-3xl bg-white/20 justify-center items-center mb-5 border border-white/30">
+              <Mail size={32} color="#fff" />
+            </View>
+            <Text className="text-[28px] font-antigravity-bold text-white mb-2">
+              {t('auth.welcomeBack', { defaultValue: 'Welcome Back' })}
+            </Text>
+            <Text className="text-[15px] text-white/80 font-antigravity-medium">
+              {t('auth.signInToManage', { defaultValue: 'Sign in to manage your team' })}
+            </Text>
           </View>
-          <Pressable>
-            <Text style={styles.forgot}>Forgot Password?</Text>
-          </Pressable>
         </View>
 
-        {/* LOGIN BUTTON */}
-        <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Login</Text>
-          )}
-        </Pressable>
-      </View>
+        <View className="mx-6 -mt-[60px] bg-white rounded-[32px] p-6 shadow-xl border border-[#F1F5F9]">
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            {/* EMAIL */}
+            <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-2.5 ml-1 uppercase">
+              {t('auth.officialEmail', { defaultValue: 'OFFICIAL EMAIL' })}
+            </Text>
+            <View className="flex-row items-center h-14 bg-[#F8FAFB] rounded-2xl px-3 border border-[#F1F5F9]">
+              <View className="w-9 h-9 rounded-xl bg-white justify-center items-center mr-2.5 shadow-sm">
+                <Mail size={18} color="#0EA5E9" />
+              </View>
+              <TextInput
+                placeholder="supervisor@cleaning.com"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={setEmail}
+                className="flex-1 text-sm font-antigravity-bold text-[#1E293B]"
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* PASSWORD */}
+            <Text className="text-[11px] font-antigravity-bold text-[#94A3B8] tracking-[1.5px] mb-2.5 ml-1 mt-6 uppercase">
+              {t('auth.securePassword', { defaultValue: 'SECURE PASSWORD' })}
+            </Text>
+            <View className="flex-row items-center h-14 bg-[#F8FAFB] rounded-2xl px-3 border border-[#F1F5F9]">
+              <View className="w-9 h-9 rounded-xl bg-white justify-center items-center mr-2.5 shadow-sm">
+                <Lock size={18} color="#0EA5E9" />
+              </View>
+              <TextInput
+                placeholder="••••••••"
+                placeholderTextColor="#94A3B8"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                className="flex-1 text-sm font-antigravity-bold text-[#1E293B]"
+              />
+              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2">
+                {showPassword ? (
+                  <EyeOff size={20} color="#94A3B8" />
+                ) : (
+                  <Eye size={20} color="#94A3B8" />
+                )}
+              </Pressable>
+            </View>
+
+            {/* REMEMBER & FORGOT */}
+            <View className="flex-row justify-between items-center mt-5 mb-8 px-1">
+              <View className="flex-row items-center gap-2">
+                <Checkbox
+                  value={remember}
+                  onValueChange={setRemember}
+                  color={remember ? '#0EA5E9' : '#CBD5E1'}
+                  className="rounded-md w-5 h-5"
+                />
+                <Text className="text-[13px] text-[#64748B] font-antigravity-semibold">
+                  {t('auth.rememberMe', { defaultValue: 'Remember me' })}
+                </Text>
+              </View>
+              <Pressable>
+                <Text className="text-[13px] text-[#0EA5E9] font-antigravity-bold">
+                  {t('auth.forgot', { defaultValue: 'Forgot?' })}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* LOGIN BUTTON */}
+            <Pressable
+              className="h-[60px] rounded-[20px] overflow-hidden shadow-lg"
+              style={({ pressed }) => [
+                { transform: [{ scale: pressed ? 0.98 : 1 }], opacity: pressed ? 0.9 : 1 },
+              ]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {(() => {
+                const LinearGradientComponent = LinearGradient as any;
+                return (
+                  <LinearGradientComponent
+                    colors={['#0EA5E9', '#0284C7']}
+                    className="flex-1 flex-row justify-center items-center gap-2.5"
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Text className="text-white text-[15px] font-antigravity-bold tracking-[1.5px] uppercase">
+                          {t('auth.signInNow', { defaultValue: 'SIGN IN NOW' })}
+                        </Text>
+                        <ChevronRight size={18} color="#fff" opacity={0.6} />
+                      </>
+                    )}
+                  </LinearGradientComponent>
+                );
+              })()}
+            </Pressable>
+          </KeyboardAvoidingView>
+        </View>
+
+        <View className="flex-row justify-center items-center mt-10 pb-10">
+          <Text className="text-sm text-[#64748B] font-antigravity-medium">
+            {t('auth.needAccount', { defaultValue: 'Need an account?' })}{' '}
+          </Text>
+          <Pressable>
+            <Text className="text-sm text-[#0EA5E9] font-antigravity-bold">
+              {t('auth.contactAdmin', { defaultValue: 'Contact Admin' })}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-
-  headerContainer: {
-    height: height * 0.4,
-    position: 'relative',
-  },
-
-  header: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-
-  wave: {
-    position: 'absolute',
-    bottom: -1, // Slightly overlap to remove any gap
-    left: 0,
-    right: 0,
-  },
-
-  card: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-    paddingHorizontal: 32,
-    paddingTop: 8, // Reduced from 20 to 8
-  },
-
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#2C2C2C',
-    marginBottom: 2, // Reduced from 4 to 2
-  },
-
-  line: {
-    width: 40,
-    height: 3,
-    backgroundColor: '#3DA2CE',
-    marginBottom: 20, // Reduced from 24 to 20
-    borderRadius: 2,
-  },
-
-  label: {
-    fontSize: 14,
-    color: '#4A4A4A',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#3DA2CE',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-
-  icon: {
-    marginRight: 12,
-  },
-
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#2C2C2C',
-    padding: 0,
-  },
-
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  rememberText: {
-    fontSize: 13,
-    color: '#4A4A4A',
-  },
-
-  forgot: {
-    fontSize: 13,
-    color: '#3DA2CE',
-    fontWeight: '500',
-  },
-
-  button: {
-    backgroundColor: '#4FB3D9',
-    height: 52,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 32,
-    shadowColor: '#3DA2CE',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-    letterSpacing: 0.5,
-  },
-});

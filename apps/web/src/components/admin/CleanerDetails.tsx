@@ -1,409 +1,609 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { getCleanerFullDetails } from '../../services/allAPI';
 import {
-  getCleanerDetail,
-  toggleCleanerStatus,
-  deleteCleaner,
-  type CleanerDetail,
-  type CleanerTask,
-  type CleanerIncentive,
-  type CleanerPenalty,
-} from '../../services/allAPI';
-import Toast from '../shared/Toast';
-import DeleteConfirmModal from '../shared/DeleteConfirmModal';
+  CalendarIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  CurrencyDollarIcon,
+  CheckCircleIcon,
+  UserIcon,
+  MapPinIcon,
+  BuildingOfficeIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  TrophyIcon,
+  ExclamationCircleIcon,
+  XMarkIcon,
+  PhotoIcon,
+  CheckIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
-const initials = (n: string) =>
-  n
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
-const COLORS = [
-  '#3B5BDB',
-  '#1971C2',
-  '#0C8599',
-  '#2F9E44',
-  '#E67700',
-  '#C2255C',
-  '#9C36B5',
-  '#5C7CFA',
-];
-const ac = (n: string) => COLORS[n.charCodeAt(0) % COLORS.length];
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-const fmtShort = (s: string) =>
-  new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-const errMsg = (e: unknown) => {
-  if (e instanceof Error) return e.message;
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? 'Something went wrong';
-};
-
-type Tab = 'overview' | 'tasks' | 'incentives' | 'penalties';
-interface TS {
-  message: string;
-  type: 'success' | 'error';
+interface CleanerTask {
+  id: string;
+  vehicle_type: string | null;
+  car_number: string | null;
+  car_model: string | null;
+  car_color: string | null;
+  car_type: string | null;
+  building_name: string | null;
+  building_location: string | null;
+  floor_name: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  task_amount: string;
+  final_price: string | null;
+  status: string;
+  before_photo_url: string | null;
+  after_photo_url: string | null;
+  after_wash_image_url: string | null;
+  car_image_url: string | null;
+  rating: number | null;
+  comment: string | null;
+  owner_name: string | null;
+  owner_phone: string | null;
+  payment_method: string | null;
+  created_at: string;
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
-const StatCard: React.FC<{
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent: string;
-  icon: React.ReactNode;
-}> = ({ label, value, sub, accent, icon }) => (
-  <div
-    className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5"
-    style={{ borderTop: `3px solid ${accent}` }}
-  >
-    <div
-      className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-      style={{ background: `${accent}18`, color: accent }}
-    >
-      {icon}
-    </div>
-    <p className="text-2xl font-extrabold text-slate-900 tracking-tight">{value}</p>
-    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1">{label}</p>
-    {sub && <p className="text-xs text-slate-300 mt-0.5">{sub}</p>}
-  </div>
-);
+interface CleanerIncentive {
+  id: string;
+  amount: number;
+  reason: string | null;
+  created_at: string;
+}
 
-// ─── Info row ─────────────────────────────────────────────────────────────────
-const InfoRow: React.FC<{ label: string; value?: string | number | null; link?: string }> = ({
-  label,
-  value,
-  link,
-}) => (
-  <div className="flex justify-between items-center py-2.5 border-b border-slate-50 last:border-0">
-    <span className="text-xs text-slate-400 font-medium">{label}</span>
-    {link ? (
-      <a
-        href={link}
-        target="_blank"
-        rel="noreferrer"
-        className="text-xs font-semibold text-blue-600 hover:underline"
-      >
-        View ↗
-      </a>
-    ) : (
-      <span className="text-xs font-semibold text-slate-800 text-right max-w-[60%] truncate">
-        {value ?? '—'}
-      </span>
-    )}
-  </div>
-);
+interface CleanerPenalty {
+  id: string;
+  amount: number;
+  reason: string | null;
+  created_at: string;
+}
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-const SBadge: React.FC<{ status: string }> = ({ status }) => {
-  const m: Record<string, string> = {
-    completed: 'bg-emerald-50 text-emerald-700',
-    'in-progress': 'bg-blue-50 text-blue-700',
-    pending: 'bg-amber-50 text-amber-700',
+interface AssignedVehicle {
+  id: string;
+  car_number: string;
+  car_model: string;
+  car_type: string;
+  car_color: string | null;
+  owner_name: string | null;
+  owner_phone: string | null;
+  created_at: string;
+}
+
+interface AssignmentHistory {
+  id: string;
+  assignment_type: 'supervisor' | 'floor';
+  previous_value: string | null;
+  new_value: string | null;
+  changed_by_name: string | null;
+  prev_supervisor_name: string | null;
+  current_supervisor_name: string | null;
+  prev_floor_name: string | null;
+  current_floor_name: string | null;
+  created_at: string;
+}
+
+interface CleanerDetailsResponse {
+  cleanerId: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  age: number | null;
+  nationality: string | null;
+  documentId: string | null;
+  baseSalary: number;
+  profileImage: string | null;
+  joiningDate: string | null;
+  buildingName: string | null;
+  buildingLocation: string | null;
+  floorName: string | null;
+  supervisorName: string | null;
+  summary: {
+    totalTasks: number;
+    totalTaskAmount: number;
+    totalIncentives: number;
+    totalPenalties: number;
+    netEarning: number;
   };
-  return (
-    <span
-      className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${m[status] ?? 'bg-slate-100 text-slate-600'}`}
-    >
-      {status}
-    </span>
-  );
-};
+  tasks: CleanerTask[];
+  incentives: CleanerIncentive[];
+  penalties: CleanerPenalty[];
+  assignedVehicles: AssignedVehicle[];
+  assignmentHistory: AssignmentHistory[];
+}
 
-// ─── Image placeholder ────────────────────────────────────────────────────────
-const NoImagePlaceholder: React.FC = () => (
-  <div className="w-full h-72 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2">
-    <svg
-      className="w-10 h-10 text-slate-300"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
-      />
-    </svg>
-    <p className="text-sm text-slate-400">No image available</p>
-  </div>
-);
-// ─── Image verification modal ─────────────────────────────────────────────────
-const ImageModal: React.FC<{ task: CleanerTask; onClose: () => void }> = ({ task, onClose }) => {
-  const before = task.before_photo_url ?? task.car_image_url;
-  const after = task.after_photo_url ?? task.after_wash_image_url;
+const CleanerDetails = () => {
+  const { cleanerId } = useParams<{ cleanerId: string }>();
+  const [data, setData] = useState<CleanerDetailsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<CleanerTask | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!cleanerId) return;
+
+    try {
+      setLoading(true);
+      const response = await getCleanerFullDetails(cleanerId, {
+        date: selectedDate || undefined,
+      });
+      console.log(response);
+      setData(response.data);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: unknown } };
+      console.log('ERROR RESPONSE:', err.response?.data);
+    } finally {
+      setLoading(false);
+    }
+  }, [cleanerId, selectedDate]);
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-white">Task Image Verification</h2>
-            <p className="text-blue-200 text-xs mt-0.5">
-              {task.car_type ?? task.vehicle_type ?? 'Vehicle'} · {task.car_number ?? '—'} ·{' '}
-              {fmtShort(task.created_at)}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 grid grid-cols-4 gap-4 shrink-0">
-          {[
-            ['Car Type', task.car_type ?? '—'],
-            ['Plate', task.car_number ?? '—'],
-            ['Owner', task.owner_name ?? '—'],
-            ['Amount', `${fmt(Number(task.final_price ?? task.task_amount ?? 0))} AED`],
-          ].map(([l, v]) => (
-            <div key={l}>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{l}</p>
-              <p className="text-sm font-semibold text-slate-900 mt-0.5 truncate">{v}</p>
-            </div>
-          ))}
-        </div>
-        <div className="overflow-y-auto flex-1 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-sm font-bold text-slate-700 mb-3">Before Cleaning</p>
-              {before ? (
-                <img
-                  src={before}
-                  alt="Before"
-                  className="w-full h-72 object-cover rounded-xl border border-slate-200"
-                />
-              ) : (
-                <NoImagePlaceholder />
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-700 mb-3">After Cleaning</p>
-              {after ? (
-                <img
-                  src={after}
-                  alt="After"
-                  className="w-full h-72 object-cover rounded-xl border border-slate-200"
-                />
-              ) : (
-                <NoImagePlaceholder />
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end bg-white shrink-0">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+    fetchData();
+  }, [fetchData]);
 
-// ─── Overview tab ─────────────────────────────────────────────────────────────
-const OverviewTab: React.FC<{ data: CleanerDetail }> = ({ data }) => (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-4 pb-3 border-b border-slate-50">
-        Personal
-      </p>
-      <InfoRow label="Nationality" value={data.nationality} />
-      <InfoRow label="Age" value={data.age} />
-      <InfoRow label="Document ID" value={data.documentId} />
-      {data.document && <InfoRow label="Document" link={data.document} />}
-    </div>
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-teal-600 mb-4 pb-3 border-b border-slate-50">
-        Contact
-      </p>
-      <InfoRow label="Email" value={data.email} />
-      <InfoRow label="Phone" value={data.phone} />
-      <InfoRow label="Base Salary" value={data.baseSalary ? `${fmt(data.baseSalary)} AED` : null} />
-      <InfoRow label="Joined" value={data.joiningDate ? fmtDate(data.joiningDate) : null} />
-    </div>
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 mb-4 pb-3 border-b border-slate-50">
-        Assignment
-      </p>
-      <InfoRow label="Building" value={data.building?.name} />
-      <InfoRow label="Location" value={data.building?.location} />
-      <InfoRow
-        label="Floor"
-        value={data.floor ? `F${data.floor.number} · ${data.floor.name}` : null}
-      />
-      <InfoRow label="Supervisor" value={data.supervisor?.name} />
-    </div>
-  </div>
-);
+  const handleClearFilter = () => {
+    setSelectedDate('');
+    setTimeout(fetchData, 0);
+  };
 
-// ─── Tasks tab ────────────────────────────────────────────────────────────────
-const TasksTab: React.FC<{ tasks: CleanerTask[]; onViewImages: (t: CleanerTask) => void }> = ({
-  tasks,
-  onViewImages,
-}) => {
-  if (!tasks.length)
+  const openImageModal = (task: CleanerTask) => {
+    setSelectedTask(task);
+    setImageModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalOpen(false);
+    setSelectedTask(null);
+  };
+
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <svg
-          className="w-12 h-12 text-slate-200"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <p className="text-sm text-slate-400">No tasks found for this period</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading cleaner details...</p>
+        </div>
       </div>
     );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <ExclamationCircleIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-xl text-gray-600">No Data Found</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
+      {/* Header Section */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              {data.profileImage ? (
+                <img
+                  src={data.profileImage}
+                  alt={data.fullName}
+                  className="w-20 h-20 rounded-full object-cover border-4 border-blue-100"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold border-4 border-blue-100">
+                  {data.fullName.charAt(0)}
+                </div>
+              )}
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">{data.fullName}</h1>
+                <p className="text-gray-500 mt-1">ID: {data.cleanerId.slice(0, 8)}...</p>
+              </div>
+            </div>
+
+            {/* Date Filter */}
+            <div className="flex items-center gap-3 bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
+              <CalendarIcon className="w-5 h-5 text-gray-600" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-3 py-1 text-gray-700"
+              />
+              <button
+                onClick={fetchData}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-sm"
+              >
+                Apply
+              </button>
+              {selectedDate && (
+                <button
+                  onClick={handleClearFilter}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <SummaryCard
+            title="Total Tasks"
+            value={data.summary.totalTasks}
+            icon={<CheckCircleIcon className="w-6 h-6" />}
+            color="blue"
+          />
+          <SummaryCard
+            title="Task Amount"
+            value={`$${data.summary.totalTaskAmount.toFixed(2)}`}
+            icon={<CurrencyDollarIcon className="w-6 h-6" />}
+            color="green"
+          />
+          <SummaryCard
+            title="Incentives"
+            value={`$${data.summary.totalIncentives.toFixed(2)}`}
+            icon={<ArrowTrendingUpIcon className="w-6 h-6" />}
+            color="emerald"
+          />
+          <SummaryCard
+            title="Penalties"
+            value={`$${data.summary.totalPenalties.toFixed(2)}`}
+            icon={<ArrowTrendingDownIcon className="w-6 h-6" />}
+            color="red"
+          />
+          <SummaryCard
+            title="Net Earning"
+            value={`$${data.summary.netEarning.toFixed(2)}`}
+            icon={<TrophyIcon className="w-6 h-6" />}
+            color={data.summary.netEarning >= 0 ? 'purple' : 'red'}
+          />
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex border-b border-gray-200 bg-gray-50 overflow-x-auto">
+            <TabButton
+              active={activeTab === 'overview'}
+              onClick={() => setActiveTab('overview')}
+              label="Overview"
+            />
+            <TabButton
+              active={activeTab === 'tasks'}
+              onClick={() => setActiveTab('tasks')}
+              label={`Tasks (${data.tasks.length})`}
+            />
+            <TabButton
+              active={activeTab === 'incentives'}
+              onClick={() => setActiveTab('incentives')}
+              label={`Incentives (${data.incentives.length})`}
+            />
+            <TabButton
+              active={activeTab === 'penalties'}
+              onClick={() => setActiveTab('penalties')}
+              label={`Penalties (${data.penalties.length})`}
+            />
+            <TabButton
+              active={activeTab === 'vehicles'}
+              onClick={() => setActiveTab('vehicles')}
+              label={`Vehicles (${data.assignedVehicles.length})`}
+            />
+            <TabButton
+              active={activeTab === 'history'}
+              onClick={() => setActiveTab('history')}
+              label="History"
+            />
+          </div>
+
+          <div className="p-6">
+            {activeTab === 'overview' && <Overview data={data} />}
+            {activeTab === 'tasks' && <TasksTab tasks={data.tasks} onViewImages={openImageModal} />}
+            {activeTab === 'incentives' && <IncentivesTab incentives={data.incentives} />}
+            {activeTab === 'penalties' && <PenaltiesTab penalties={data.penalties} />}
+            {activeTab === 'vehicles' && (
+              <VehiclesTab
+                cleanerId={data.cleanerId}
+                vehicles={data.assignedVehicles}
+                onRefresh={fetchData}
+              />
+            )}
+            {activeTab === 'history' && <HistoryTab history={data.assignmentHistory} />}
+          </div>
+        </div>
+      </div>
+
+      {/* Image Verification Modal */}
+      {imageModalOpen && selectedTask && (
+        <ImageVerificationModal task={selectedTask} onClose={closeImageModal} />
+      )}
+    </div>
+  );
+};
+
+const SummaryCard = ({
+  title,
+  value,
+  icon,
+  color,
+}: {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color: string;
+}) => {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    green: 'bg-green-50 text-green-600 border-green-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    red: 'bg-red-50 text-red-600 border-red-100',
+    purple: 'bg-purple-50 text-purple-600 border-purple-100',
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]}`}>
+          {icon}
+        </div>
+      </div>
+      <p className="text-gray-600 text-sm font-medium mb-1">{title}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    </div>
+  );
+};
+
+const TabButton = ({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) => (
+  <button
+    onClick={onClick}
+    className={`px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${active ? 'text-blue-600 bg-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+      }`}
+  >
+    {label}
+    {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>}
+  </button>
+);
+
+const Overview = ({ data }: { data: CleanerDetailsResponse }) => {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <UserIcon className="w-5 h-5 text-blue-600" />
+          Personal Information
+        </h3>
+        <InfoRow icon={<UserIcon className="w-4 h-4" />} label="Full Name" value={data.fullName} />
+        <InfoRow icon={<EnvelopeIcon className="w-4 h-4" />} label="Email" value={data.email} />
+        <InfoRow
+          icon={<PhoneIcon className="w-4 h-4" />}
+          label="Phone"
+          value={data.phone || 'N/A'}
+        />
+        <InfoRow
+          icon={<UserIcon className="w-4 h-4" />}
+          label="Age"
+          value={data.age?.toString() || 'N/A'}
+        />
+        <InfoRow
+          icon={<MapPinIcon className="w-4 h-4" />}
+          label="Nationality"
+          value={data.nationality || 'N/A'}
+        />
+        <InfoRow
+          icon={<UserIcon className="w-4 h-4" />}
+          label="Document ID"
+          value={data.documentId || 'N/A'}
+        />
+        <InfoRow
+          icon={<CurrencyDollarIcon className="w-4 h-4" />}
+          label="Base Salary"
+          value={`$${data.baseSalary}`}
+        />
+        <InfoRow
+          icon={<CalendarIcon className="w-4 h-4" />}
+          label="Joining Date"
+          value={data.joiningDate ? new Date(data.joiningDate).toLocaleDateString() : 'N/A'}
+        />
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <BuildingOfficeIcon className="w-5 h-5 text-blue-600" />
+          Work Assignment
+        </h3>
+        <InfoRow
+          icon={<BuildingOfficeIcon className="w-4 h-4" />}
+          label="Building"
+          value={data.buildingName || 'N/A'}
+        />
+        <InfoRow
+          icon={<MapPinIcon className="w-4 h-4" />}
+          label="Location"
+          value={data.buildingLocation || 'N/A'}
+        />
+        <InfoRow
+          icon={<BuildingOfficeIcon className="w-4 h-4" />}
+          label="Floor"
+          value={data.floorName || 'N/A'}
+        />
+        <InfoRow
+          icon={<UserIcon className="w-4 h-4" />}
+          label="Supervisor"
+          value={data.supervisorName || 'N/A'}
+        />
+      </div>
+    </div>
+  );
+};
+
+const InfoRow = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) => (
+  <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+    <div className="text-gray-400 mt-0.5">{icon}</div>
+    <div className="flex-1">
+      <p className="text-sm text-gray-500 mb-0.5">{label}</p>
+      <p className="text-gray-900 font-medium">{value}</p>
+    </div>
+  </div>
+);
+
+const TasksTab = ({
+  tasks,
+  onViewImages,
+}: {
+  tasks: CleanerTask[];
+  onViewImages: (task: CleanerTask) => void;
+}) => {
+  if (tasks.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <CheckCircleIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No tasks found</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {tasks.map((t) => {
-        const hasBefore = !!(t.before_photo_url ?? t.car_image_url);
-        const hasAfter = !!(t.after_photo_url ?? t.after_wash_image_url);
+      {tasks.map((task) => {
+        const beforeImage = task.before_photo_url || task.car_image_url;
+        const afterImage = task.after_photo_url || task.after_wash_image_url;
+
         return (
           <div
-            key={t.id}
-            className="border border-slate-200 rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow"
+            key={task.id}
+            className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all bg-white"
           >
-            <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 px-5 py-3.5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <SBadge status={t.status} />
-                <span className="text-xs text-slate-400">{fmtShort(t.created_at)}</span>
-                {t.car_number && (
-                  <span className="text-xs font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                    {t.car_number}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest">Amount</p>
-                  <p className="text-base font-extrabold text-blue-600">
-                    {fmt(Number(t.final_price ?? t.task_amount ?? 0))} AED
-                  </p>
-                </div>
-                {(hasBefore || hasAfter) && (
-                  <button
-                    onClick={() => onViewImages(t)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+            {/* Task Header */}
+            <div className="bg-linear-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${task.status === 'completed'
+                      ? 'bg-green-100 text-green-700'
+                      : task.status === 'in-progress'
+                        ? 'bg-blue-100 text-blue-700'
+                        : task.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
                   >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
+                    {task.status}
+                  </span>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <ClockIcon className="w-4 h-4" />
+                    {new Date(task.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Final Price</p>
+                    <p className="text-xl font-bold text-blue-600">
+                      ${task.final_price || task.task_amount || '0'}
+                    </p>
+                  </div>
+                  {(beforeImage || afterImage) && (
+                    <button
+                      onClick={() => onViewImages(task)}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z"
-                      />
-                    </svg>
-                    Verify Images
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                  Vehicle
-                </p>
-                {[
-                  ['Type', t.car_type ?? t.vehicle_type],
-                  ['Model', t.car_model],
-                  ['Color', t.car_color],
-                  ['Plate', t.car_number],
-                ].map(([l, v]) => (
-                  <div key={l} className="mb-2">
-                    <p className="text-[10px] text-slate-400">{l}</p>
-                    <p className="text-xs font-semibold text-slate-900">{v ?? '—'}</p>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                  Owner
-                </p>
-                {[
-                  ['Name', t.owner_name],
-                  ['Phone', t.owner_phone],
-                  ['Payment', t.payment_method],
-                ].map(([l, v]) => (
-                  <div key={l} className="mb-2">
-                    <p className="text-[10px] text-slate-400">{l}</p>
-                    <p className="text-xs font-semibold text-slate-900">{v ?? '—'}</p>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-                  Location & Time
-                </p>
-                {[
-                  ['Building', t.building_name],
-                  ['Floor', t.floor_name],
-                  ['Completed', t.completed_at ? new Date(t.completed_at).toLocaleString() : null],
-                ].map(([l, v]) => (
-                  <div key={l} className="mb-2">
-                    <p className="text-[10px] text-slate-400">{l}</p>
-                    <p className="text-xs font-semibold text-slate-900">{v ?? '—'}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {t.rating && (
-              <div className="px-5 pb-5 pt-0 border-t border-slate-50">
-                <div className="flex items-center gap-3 pt-4">
-                  <div className="flex">
-                    {[...Array(5)].map((_, i) => (
-                      <span key={i} className={i < t.rating! ? 'text-amber-400' : 'text-slate-200'}>
-                        ★
-                      </span>
-                    ))}
-                  </div>
-                  <span className="text-xs font-semibold text-slate-700">{t.rating}/5</span>
-                  {t.comment && (
-                    <p className="text-xs text-slate-400 italic">&ldquo;{t.comment}&rdquo;</p>
+                      <PhotoIcon className="w-4 h-4" />
+                      Verify Images
+                    </button>
                   )}
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Task Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Vehicle Details */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-3">
+                    Vehicle Details
+                  </h4>
+                  <DetailItem label="Car Type" value={task.car_type || 'N/A'} />
+                  <DetailItem label="Model" value={task.car_model || 'N/A'} />
+                  <DetailItem label="Number" value={task.car_number || 'N/A'} />
+                  <DetailItem label="Color" value={task.car_color || 'N/A'} />
+                </div>
+
+                {/* Owner Details */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-3">
+                    Owner Details
+                  </h4>
+                  <DetailItem label="Name" value={task.owner_name || 'N/A'} />
+                  <DetailItem label="Phone" value={task.owner_phone || 'N/A'} />
+                  <DetailItem label="Payment" value={task.payment_method || 'N/A'} />
+                </div>
+
+                {/* Location & Time */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-3">
+                    Location & Time
+                  </h4>
+                  <DetailItem label="Building" value={task.building_name || 'N/A'} />
+                  <DetailItem label="Floor" value={task.floor_name || 'N/A'} />
+                  {task.completed_at && (
+                    <DetailItem
+                      label="Completed"
+                      value={new Date(task.completed_at).toLocaleString()}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Rating Section */}
+              {task.rating && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <span
+                            key={i}
+                            className={
+                              i < task.rating! ? 'text-yellow-400 text-xl' : 'text-gray-300 text-xl'
+                            }
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700">{task.rating}/5</span>
+                    </div>
+                    {task.comment && (
+                      <p className="text-sm text-gray-600 italic flex-1">"{task.comment}"</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         );
       })}
@@ -411,553 +611,380 @@ const TasksTab: React.FC<{ tasks: CleanerTask[]; onViewImages: (t: CleanerTask) 
   );
 };
 
-// ─── Incentives tab ───────────────────────────────────────────────────────────
-const IncentivesTab: React.FC<{ incentives: CleanerIncentive[] }> = ({ incentives }) => {
-  if (!incentives.length)
+const DetailItem = ({ label, value }: { label: string; value: string }) => (
+  <div>
+    <p className="text-xs text-gray-500 mb-1">{label}</p>
+    <p className="text-sm font-medium text-gray-900">{value}</p>
+  </div>
+);
+
+const IncentivesTab = ({ incentives }: { incentives: CleanerIncentive[] }) => {
+  if (incentives.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-2">
-        <svg
-          className="w-12 h-12 text-slate-200"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"
-          />
-        </svg>
-        <p className="text-sm text-slate-400">No incentives found</p>
+      <div className="text-center py-12">
+        <ArrowTrendingUpIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No incentives found</p>
       </div>
     );
+  }
+
   return (
     <div className="space-y-3">
-      {incentives.map((x) => (
+      {incentives.map((incentive) => (
         <div
-          key={x.id}
-          className="flex items-center justify-between p-5 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100/60 transition-colors"
+          key={incentive.id}
+          className="flex items-center justify-between p-5 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-100 rounded-xl">
-              <svg
-                className="w-5 h-5 text-emerald-600"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22"
-                />
-              </svg>
+            <div className="p-3 bg-green-100 rounded-lg">
+              <ArrowTrendingUpIcon className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="font-semibold text-slate-900 text-sm">{x.reason || 'Incentive'}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{fmtShort(x.created_at)}</p>
+              <p className="font-semibold text-gray-900">{incentive.reason || 'Incentive'}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {new Date(incentive.created_at).toLocaleDateString()} at{' '}
+                {new Date(incentive.created_at).toLocaleTimeString()}
+              </p>
             </div>
           </div>
-          <p className="text-xl font-extrabold text-emerald-600">+{fmt(x.amount)} AED</p>
+          <p className="text-2xl font-bold text-green-600">+${incentive.amount}</p>
         </div>
       ))}
     </div>
   );
 };
 
-// ─── Penalties tab ────────────────────────────────────────────────────────────
-const PenaltiesTab: React.FC<{ penalties: CleanerPenalty[] }> = ({ penalties }) => {
-  if (!penalties.length)
+const PenaltiesTab = ({ penalties }: { penalties: CleanerPenalty[] }) => {
+  if (penalties.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-2">
-        <svg
-          className="w-12 h-12 text-slate-200"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898m0 0l3.182-5.511m-3.182 5.51l-5.511-3.181"
-          />
-        </svg>
-        <p className="text-sm text-slate-400">No penalties found</p>
+      <div className="text-center py-12">
+        <ArrowTrendingDownIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No penalties found</p>
       </div>
     );
+  }
+
   return (
     <div className="space-y-3">
-      {penalties.map((x) => (
+      {penalties.map((penalty) => (
         <div
-          key={x.id}
-          className="flex items-center justify-between p-5 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100/60 transition-colors"
+          key={penalty.id}
+          className="flex items-center justify-between p-5 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-100 rounded-xl">
-              <svg
-                className="w-5 h-5 text-red-500"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898"
-                />
-              </svg>
+            <div className="p-3 bg-red-100 rounded-lg">
+              <ArrowTrendingDownIcon className="w-6 h-6 text-red-600" />
             </div>
             <div>
-              <p className="font-semibold text-slate-900 text-sm">{x.reason || 'Penalty'}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{fmtShort(x.created_at)}</p>
+              <p className="font-semibold text-gray-900">{penalty.reason || 'Penalty'}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {new Date(penalty.created_at).toLocaleDateString()} at{' '}
+                {new Date(penalty.created_at).toLocaleTimeString()}
+              </p>
             </div>
           </div>
-          <p className="text-xl font-extrabold text-red-500">-{fmt(x.amount)} AED</p>
+          <p className="text-2xl font-bold text-red-600">-${penalty.amount}</p>
         </div>
       ))}
     </div>
   );
 };
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-const CleanerDetails: React.FC = () => {
-  const { cleanerId } = useParams<{ cleanerId: string }>();
-  const navigate = useNavigate();
-  const { loading: authLoading, isAuthenticated } = useAuth();
+const ImageVerificationModal = ({ task, onClose }: { task: CleanerTask; onClose: () => void }) => {
+  const beforeImage = task.before_photo_url || task.car_image_url;
+  const afterImage = task.after_photo_url || task.after_wash_image_url;
 
-  const [data, setData] = useState<CleanerDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [selDate, setSelDate] = useState('');
-  const [imgTask, setImgTask] = useState<CleanerTask | null>(null);
-  const [toggling, setToggling] = useState(false);
-  const [showDel, setShowDel] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [toast, setToast] = useState<TS | null>(null);
-
-  const showToast = (m: string, t: TS['type']) => setToast({ message: m, type: t });
-
-  const fetchData = useCallback(
-    async (date?: string) => {
-      if (!cleanerId) return;
-      try {
-        setLoading(true);
-        const r = await getCleanerDetail(cleanerId, date);
-        setData(r.data);
-      } catch (e) {
-        showToast(errMsg(e), 'error');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [cleanerId]
-  );
-
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) void fetchData();
-  }, [authLoading, isAuthenticated, fetchData]);
-
-  const handleApplyDate = () => void fetchData(selDate || undefined);
-  const handleClearDate = () => {
-    setSelDate('');
-    void fetchData(undefined);
+  const handleApprove = () => {
+    // Add your approval logic here
+    console.log('Task approved:', task.id);
+    alert('Task verified and approved!');
+    onClose();
   };
 
-  const handleToggle = async () => {
-    if (!data) return;
-    setToggling(true);
-    try {
-      const next = !data.isActive;
-      await toggleCleanerStatus(data.cleanerId, next);
-      setData((d) => (d ? { ...d, isActive: next } : d));
-      showToast(`Cleaner ${next ? 'activated' : 'deactivated'}`, 'success');
-    } catch (e) {
-      showToast(errMsg(e), 'error');
-    } finally {
-      setToggling(false);
-    }
+  const handleReject = () => {
+    // Add your rejection logic here
+    console.log('Task rejected:', task.id);
+    alert('Task rejected. Please provide feedback to the cleaner.');
+    onClose();
   };
 
-  const handleDelete = async () => {
-    if (!data) return;
-    setDeleting(true);
-    try {
-      await deleteCleaner(data.cleanerId);
-      showToast('Cleaner deleted', 'success');
-      navigate('/admin/cleaners');
-    } catch (e) {
-      showToast(errMsg(e), 'error');
-      setShowDel(false);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  if (loading)
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-sm text-slate-400">Loading cleaner details…</p>
-        </div>
-      </div>
-    );
-  if (!data)
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="text-center">
-          <svg
-            className="w-16 h-16 text-slate-300 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        {/* Modal Header */}
+        <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Task Image Verification</h2>
+            <p className="text-blue-100 text-sm mt-1">Task ID: {task.id.slice(0, 8)}...</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-            />
-          </svg>
-          <p className="text-slate-500">Cleaner not found</p>
+            <XMarkIcon className="w-6 h-6 text-white" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+          {/* Task Info Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Vehicle</p>
+                <p className="font-semibold text-gray-900">{task.car_type || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Car Number</p>
+                <p className="font-semibold text-gray-900">{task.car_number || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Owner</p>
+                <p className="font-semibold text-gray-900">{task.owner_name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Amount</p>
+                <p className="font-semibold text-blue-600">
+                  ${task.final_price || task.task_amount}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Image Comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Before Image */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">Before Cleaning</h3>
+                {!beforeImage && <span className="text-sm text-red-500">No image available</span>}
+              </div>
+              {beforeImage ? (
+                <div className="relative group">
+                  <img
+                    src={beforeImage}
+                    alt="Before"
+                    className="w-full h-96 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-96 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                  <div className="text-center">
+                    <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">No before image</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* After Image */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">After Cleaning</h3>
+                {!afterImage && <span className="text-sm text-red-500">No image available</span>}
+              </div>
+              {afterImage ? (
+                <div className="relative group">
+                  <img
+                    src={afterImage}
+                    alt="After"
+                    className="w-full h-96 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-96 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                  <div className="text-center">
+                    <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">No after image</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between gap-4">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+          >
+            Close
+          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleReject}
+              className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+            >
+              <XMarkIcon className="w-5 h-5" />
+              Reject
+            </button>
+            <button
+              onClick={handleApprove}
+              className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+            >
+              <CheckIcon className="w-5 h-5" />
+              Approve Task
+            </button>
+          </div>
         </div>
       </div>
-    );
+    </div>
+  );
+};
+
+const VehiclesTab = ({ cleanerId, vehicles, onRefresh }: { cleanerId: string, vehicles: AssignedVehicle[], onRefresh: () => void }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    car_number: '',
+    car_model: '',
+    car_type: 'Sedan',
+    car_color: '',
+    owner_name: '',
+    owner_phone: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const { assignVehicle } = await import('../../services/allAPI');
+      await assignVehicle({ ...form, cleaner_id: cleanerId });
+      setShowForm(false);
+      setForm({ car_number: '', car_model: '', car_type: 'Sedan', car_color: '', owner_name: '', owner_phone: '' });
+      onRefresh();
+    } catch (err) {
+      alert('Failed to assign vehicle');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnassign = async (id: string) => {
+    if (!confirm('Are you sure you want to unassign this vehicle?')) return;
+    try {
+      const { unassignVehicle } = await import('../../services/allAPI');
+      await unassignVehicle(id);
+      onRefresh();
+    } catch (err) {
+      alert('Failed to unassign vehicle');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {imgTask && <ImageModal task={imgTask} onClose={() => setImgTask(null)} />}
-      {showDel && (
-        <DeleteConfirmModal
-          isOpen={showDel}
-          title="Delete Cleaner?"
-          message={
-            <>
-              Permanently delete{' '}
-              <span className="font-semibold">&ldquo;{data?.fullName}&rdquo;</span>? Cleaners with
-              active or pending tasks cannot be deleted.
-            </>
-          }
-          confirmText="Delete"
-          cancelText="Cancel"
-          loading={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setShowDel(false)}
-        />
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-gray-900">Permanent Vehicle Assignments</h3>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          {showForm ? 'Cancel' : 'Add Vehicle'}
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Car Number*</label>
+            <input
+              required
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={form.car_number}
+              onChange={e => setForm({ ...form, car_number: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Model*</label>
+            <input
+              required
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={form.car_model}
+              onChange={e => setForm({ ...form, car_model: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Type*</label>
+            <select
+              required
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              value={form.car_type}
+              onChange={e => setForm({ ...form, car_type: e.target.value })}
+            >
+              <option>Sedan</option>
+              <option>SUV</option>
+              <option>Luxury</option>
+              <option>Hatchback</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="md:col-span-3 bg-blue-600 text-white py-2 rounded-lg text-sm font-bold disabled:opacity-50"
+          >
+            {submitting ? 'Adding...' : 'Assign Vehicle'}
+          </button>
+        </form>
       )}
 
-      {/* sticky top bar */}
-      <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
-        <div className="max-w-screen-xl mx-auto px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/admin/cleaners')}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-                />
-              </svg>
-            </button>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                Admin / Cleaners
-              </p>
-              <p className="text-sm font-bold text-slate-900">{data.fullName}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={toggling}
-              onClick={() => void handleToggle()}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${data.isActive ? 'bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-600' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
-            >
-              {toggling && (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              )}
-              {data.isActive ? 'Deactivate' : 'Activate'}
-            </button>
-            <button
-              onClick={() => navigate(`/admin/cleaner/${data.cleanerId}/edit`)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
-                />
-              </svg>
-              Edit Profile
-            </button>
-            <button
-              onClick={() => setShowDel(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                />
-              </svg>
-              Delete
-            </button>
-          </div>
+      {vehicles.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+          <p className="text-gray-400">No permanent vehicles assigned yet.</p>
         </div>
-      </div>
-
-      <div className="max-w-screen-xl mx-auto px-6 py-8 space-y-6">
-        {/* hero card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center gap-6 flex-wrap">
-          <div className="relative shrink-0">
-            {data.profileImage ? (
-              <img
-                src={data.profileImage}
-                alt={data.fullName}
-                className="w-20 h-20 rounded-2xl object-cover border-2 border-slate-100"
-              />
-            ) : (
-              <div
-                className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold border-2 border-slate-100"
-                style={{ background: ac(data.fullName) }}
-              >
-                {initials(data.fullName)}
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {vehicles.map(v => (
+            <div key={v.id} className="p-4 bg-white border border-gray-200 rounded-xl flex justify-between items-center shadow-sm">
+              <div>
+                <p className="font-bold text-gray-900">{v.car_number}</p>
+                <p className="text-sm text-gray-500">{v.car_model} ({v.car_type})</p>
+                {v.owner_name && <p className="text-xs text-gray-400 mt-1">Owner: {v.owner_name}</p>}
               </div>
-            )}
-            <span
-              className={`absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full border-2 border-white ${data.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-extrabold text-slate-900">{data.fullName}</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Cleaner · #{data.documentId ?? data.cleanerId.slice(0, 8)}
-            </p>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${data.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}
+              <button
+                onClick={() => handleUnassign(v.id)}
+                className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50"
               >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${data.isActive ? 'bg-emerald-500' : 'bg-red-500'}`}
-                />
-                {data.isActive ? 'Active — can log in' : 'Inactive — login blocked'}
-              </span>
-              {data.building && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700">
-                  {data.building.name}
-                </span>
-              )}
-              {data.floor && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
-                  F{data.floor.number} · {data.floor.name}
-                </span>
-              )}
-              {data.joiningDate && (
-                <span className="text-xs text-slate-400">{fmtDate(data.joiningDate)}</span>
-              )}
+                <XMarkIcon className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-          {/* date filter */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex-wrap">
-            <svg
-              className="w-4 h-4 text-slate-400 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
-              />
-            </svg>
-            <input
-              type="date"
-              value={selDate}
-              onChange={(e) => setSelDate(e.target.value)}
-              className="border-0 bg-transparent text-sm text-slate-700 focus:outline-none w-36"
-            />
-            <button
-              onClick={handleApplyDate}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
-            >
-              Apply
-            </button>
-            {selDate && (
-              <button
-                onClick={handleClearDate}
-                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+          ))}
         </div>
+      )}
+    </div>
+  );
+};
 
-        {/* stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard
-            label="Total Tasks"
-            value={data.summary.totalTasks}
-            accent="#3B5BDB"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Task Amount"
-            value={`${fmt(data.summary.totalTaskAmount)} AED`}
-            accent="#2F9E44"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Incentives"
-            value={`${fmt(data.summary.totalIncentives)} AED`}
-            accent="#0C8599"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Penalties"
-            value={`${fmt(data.summary.totalPenalties)} AED`}
-            accent="#E03131"
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Net Earning"
-            value={`${fmt(data.summary.netEarning)} AED`}
-            sub={data.summary.netEarning >= 0 ? 'positive' : 'negative'}
-            accent={data.summary.netEarning >= 0 ? '#9C36B5' : '#E03131'}
-            icon={
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"
-                />
-              </svg>
-            }
-          />
-        </div>
-
-        {/* tabs */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex border-b border-slate-100 bg-slate-50 overflow-x-auto">
-            {(
-              [
-                ['overview', 'Overview'],
-                ['tasks', `Tasks (${data.tasks.length})`],
-                ['incentives', `Incentives (${data.incentives.length})`],
-                ['penalties', `Penalties (${data.penalties.length})`],
-              ] as [Tab, string][]
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`px-6 py-4 text-sm font-semibold whitespace-nowrap relative transition-colors ${activeTab === key ? 'text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'}`}
-              >
-                {label}
-                {activeTab === key && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="p-6">
-            {activeTab === 'overview' && <OverviewTab data={data} />}
-            {activeTab === 'tasks' && <TasksTab tasks={data.tasks} onViewImages={setImgTask} />}
-            {activeTab === 'incentives' && <IncentivesTab incentives={data.incentives} />}
-            {activeTab === 'penalties' && <PenaltiesTab penalties={data.penalties} />}
-          </div>
-        </div>
+const HistoryTab = ({ history }: { history: AssignmentHistory[] }) => {
+  if (history.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <ClockIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No assignment history found</p>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {history.map((h) => (
+        <div key={h.id} className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+          <div className="flex items-center gap-3 mb-2">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${h.assignment_type === 'supervisor' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              {h.assignment_type} Change
+            </span>
+            <span className="text-xs text-gray-400">
+              {new Date(h.created_at).toLocaleString()}
+            </span>
+          </div>
+          <p className="text-sm text-gray-700">
+            Changed from <span className="font-semibold text-gray-900">{h.assignment_type === 'supervisor' ? (h.prev_supervisor_name || 'None') : (h.prev_floor_name || 'None')}</span> to <span className="font-semibold text-gray-900">{h.assignment_type === 'supervisor' ? h.current_supervisor_name : h.current_floor_name}</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-2">
+            By: {h.changed_by_name || 'System'}
+          </p>
+        </div>
+      ))}
     </div>
   );
 };

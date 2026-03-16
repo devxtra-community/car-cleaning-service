@@ -1,7 +1,14 @@
 import express from 'express';
 import { protect } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
-import { completeTaskController, createTaskController, GetTaskpending } from './tasks_controller';
+import {
+  completeTaskController,
+  createTaskController,
+  GetTaskpending,
+  getSupervisorCompletedTasks,
+  verifyTaskController,
+  getSupervisorCollections,
+} from './tasks_controller';
 
 const router = express.Router();
 router.post(
@@ -19,4 +26,25 @@ router.patch(
   completeTaskController
 );
 
+// Supervisor routes
+router.get(
+  '/supervisor/completed',
+  protect,
+  allowRoles('supervisor', 'admin', 'super_admin'),
+  getSupervisorCompletedTasks
+);
+router.patch(
+  '/:id/verify',
+  protect,
+  allowRoles('supervisor', 'admin', 'super_admin'),
+  verifyTaskController
+);
+router.get(
+  '/collections/supervisor',
+  protect,
+  allowRoles('supervisor', 'admin', 'super_admin'),
+  getSupervisorCollections
+);
+
 export default router;
+

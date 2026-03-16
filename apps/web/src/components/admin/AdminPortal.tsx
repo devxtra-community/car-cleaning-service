@@ -10,16 +10,19 @@ import {
   TruckIcon,
   SparklesIcon,
   UserIcon,
+  CurrencyRupeeIcon,
   CheckBadgeIcon,
   DocumentChartBarIcon,
   BanknotesIcon,
   GiftIcon,
   ChartBarIcon,
-  WalletIcon,
-  ShieldCheckIcon,
+  TrophyIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 const AdminPortal = () => {
+  const { i18n, t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, loading, logout } = useAuth();
 
@@ -57,11 +60,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/dashboard">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <HomeIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Dashboard</span>
@@ -72,14 +74,41 @@ const AdminPortal = () => {
           <NavLink to="/admin/supervisors">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <UserIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Supervisors Management</span>
+                <span className="text-sm">Supervisors</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/targets">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Target Management</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/operational-reports">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <ChartBarIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Operational Reports</span>
               </div>
             )}
           </NavLink>
@@ -87,42 +116,13 @@ const AdminPortal = () => {
           <NavLink to="/admin/cleaners">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <SparklesIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Cleaners Management</span>
-              </div>
-            )}
-          </NavLink>
-          <NavLink to="/admin/admins">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <ShieldCheckIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Admin Management</span>
-              </div>
-            )}
-          </NavLink>
-          <NavLink to="/admin/accountants">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <WalletIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Accountant Management</span>
+                <span className="text-sm">Cleaners</span>
               </div>
             )}
           </NavLink>
@@ -130,14 +130,13 @@ const AdminPortal = () => {
           <NavLink to="/admin/buildings">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <BuildingOffice2Icon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Buildings Management</span>
+                <span className="text-sm">Buildings</span>
               </div>
             )}
           </NavLink>
@@ -145,11 +144,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/vechicles">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <TruckIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Vehicle Management</span>
@@ -164,14 +162,15 @@ const AdminPortal = () => {
             </p>
           </div>
 
+
+
           <NavLink to="/admin/incentives">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <GiftIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Incentive Targets</span>
@@ -182,11 +181,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/analyticsProgress">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <ChartBarIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Analysis</span>
@@ -197,11 +195,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/salaryFinalization">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <CheckBadgeIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Finalization</span>
@@ -212,11 +209,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/salary-cycles">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Cycles</span>
@@ -227,14 +223,27 @@ const AdminPortal = () => {
           <NavLink to="/admin/salary-summary">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <BanknotesIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Salary Summary</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/role-salaries">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <UserGroupIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Role-Based Salary</span>
               </div>
             )}
           </NavLink>
@@ -247,11 +256,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/monthlyReport">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Monthly Report</span>
@@ -262,11 +270,10 @@ const AdminPortal = () => {
           <NavLink to="/admin/reconciliation">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Reconciliation</span>
@@ -277,14 +284,27 @@ const AdminPortal = () => {
           <NavLink to="/admin/revenueReport">
             {({ isActive }) => (
               <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <BanknotesIcon className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Revenue Report</span>
+              </div>
+            )}
+          </NavLink>
+
+          <NavLink to="/admin/insights">
+            {({ isActive }) => (
+              <div
+                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                <TrophyIcon className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Performance Insights</span>
               </div>
             )}
           </NavLink>
@@ -301,6 +321,21 @@ const AdminPortal = () => {
               <p className="text-sm font-medium text-gray-900 truncate">Athulya R Chandra</p>
               <p className="text-xs text-gray-500">Admin</p>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tighter mb-2 px-1">
+              Select Language
+            </label>
+            <select
+              value={i18n.language}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              <option value="en">English (US)</option>
+              <option value="ar">العربية (Arabic)</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+            </select>
           </div>
 
           <button

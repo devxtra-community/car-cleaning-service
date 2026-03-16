@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { api } from '../../services/commonAPI';
 
 interface MonthData {
   month: string;
@@ -22,101 +23,50 @@ interface BuildingData {
 
 const MonthlyReport = () => {
   const [viewMode, setViewMode] = useState<'monthly' | 'quarterly'>('monthly');
+  const [monthlyData, setMonthlyData] = useState<MonthData[]>([]);
+  const [buildingData, setBuildingData] = useState<BuildingData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - replace with actual API calls
-  const monthlyData: MonthData[] = [
-    {
-      month: 'Jan 2026',
-      baseSalary: 120000,
-      incentives: 25000,
-      penalties: 5000,
-      netPayout: 140000,
-      status: 'current',
-    },
-    {
-      month: 'Dec 2025',
-      baseSalary: 118000,
-      incentives: 22000,
-      penalties: 4000,
-      netPayout: 136000,
-      status: 'finalized',
-    },
-    {
-      month: 'Nov 2025',
-      baseSalary: 115000,
-      incentives: 20000,
-      penalties: 3500,
-      netPayout: 131500,
-      status: 'finalized',
-    },
-    {
-      month: 'Oct 2025',
-      baseSalary: 117000,
-      incentives: 21000,
-      penalties: 4500,
-      netPayout: 133500,
-      status: 'paid',
-    },
-    {
-      month: 'Sep 2025',
-      baseSalary: 116000,
-      incentives: 19000,
-      penalties: 3000,
-      netPayout: 132000,
-      status: 'paid',
-    },
-    {
-      month: 'Aug 2025',
-      baseSalary: 114000,
-      incentives: 18000,
-      penalties: 3200,
-      netPayout: 128800,
-      status: 'paid',
-    },
-  ];
+  const fetchReport = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/salary/monthly-report');
+      const { history, buildings } = res.data.data;
 
-  const buildingData: BuildingData[] = [
-    {
-      id: '1',
-      name: 'Building A',
-      icon: '🏢',
-      cleanersCount: 52,
-      totalSalary: 68400,
-      expectedSalary: 1629,
-      incentives: 5200,
-      penalties: 2100,
-    },
-    {
-      id: '2',
-      name: 'Building B',
-      icon: '🏗️',
-      cleanersCount: 48,
-      totalSalary: 62800,
-      expectedSalary: 1508,
-      incentives: 4800,
-      penalties: 1900,
-    },
-    {
-      id: '3',
-      name: 'Building C',
-      icon: '🏛️',
-      cleanersCount: 35,
-      totalSalary: 45200,
-      expectedSalary: 1291,
-      incentives: 3500,
-      penalties: 1200,
-    },
-    {
-      id: '4',
-      name: 'Building D',
-      icon: '🏬',
-      cleanersCount: 41,
-      totalSalary: 54100,
-      expectedSalary: 1320,
-      incentives: 4100,
-      penalties: 1600,
-    },
-  ];
+      // Map History
+      const mappedHistory: MonthData[] = history.map((h: any) => ({
+        month: h.month_key,
+        baseSalary: Number(h.base_salary),
+        incentives: Number(h.incentives),
+        penalties: Number(h.penalties),
+        netPayout: Number(h.net_payout),
+        status: h.status,
+      }));
+
+      // Map Buildings
+      const mappedBuildings: BuildingData[] = buildings.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        icon: '🏢',
+        cleanersCount: b.cleaners_count,
+        totalSalary: Number(b.total_salary),
+        expectedSalary: b.cleaners_count > 0 ? Number(b.total_salary) / b.cleaners_count : 0,
+        incentives: Number(b.incentives),
+        penalties: Number(b.penalties),
+      }));
+
+      setMonthlyData(mappedHistory);
+      setBuildingData(mappedBuildings);
+    } catch (err) {
+      console.error('Failed to fetch monthly report', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
 
   // Calculate totals
   const totalBase = monthlyData.reduce((sum, m) => sum + m.baseSalary, 0);
@@ -125,8 +75,21 @@ const MonthlyReport = () => {
   const totalNet = monthlyData.reduce((sum, m) => sum + m.netPayout, 0);
 
   const handleExportReport = () => {
-    console.log('Exporting report...');
-    // Implement export functionality
+    if (!monthlyData.length) return;
+    const headers = ['Month', 'Base Salary', 'Incentives', 'Penalties', 'Net Payout', 'Status'];
+    const csvRows = monthlyData.map(m =>
+      [m.month, m.baseSalary, m.incentives, m.penalties, m.netPayout, m.status].join(',')
+    );
+    const csv = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'monthly_report.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -156,21 +119,19 @@ const MonthlyReport = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('monthly')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                viewMode === 'monthly'
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${viewMode === 'monthly'
+                ? 'bg-blue-600 text-white'
+                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setViewMode('quarterly')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                viewMode === 'quarterly'
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${viewMode === 'quarterly'
+                ? 'bg-blue-600 text-white'
+                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
             >
               Quarterly
             </button>
@@ -207,9 +168,23 @@ const MonthlyReport = () => {
             </thead>
 
             <tbody className="divide-y divide-gray-200">
-              {monthlyData.map((row, index) => (
-                <SalaryRow key={index} data={row} />
-              ))}
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-gray-500 italic">
+                    Loading records from database...
+                  </td>
+                </tr>
+              ) : monthlyData.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-gray-500">
+                    No salary records found for the last 12 months.
+                  </td>
+                </tr>
+              ) : (
+                monthlyData.map((row, index) => (
+                  <SalaryRow key={index} data={row} />
+                ))
+              )}
             </tbody>
 
             {/* Totals Footer */}
@@ -327,13 +302,12 @@ function SalaryRow({ data }: { data: MonthData }) {
       </td>
       <td className="p-4 text-center">
         <span
-          className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${
-            data.status === 'current'
-              ? 'bg-green-100 text-green-700'
-              : data.status === 'finalized'
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600'
-          }`}
+          className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${data.status === 'current'
+            ? 'bg-green-100 text-green-700'
+            : data.status === 'finalized'
+              ? 'bg-blue-100 text-blue-700'
+              : 'bg-gray-100 text-gray-600'
+            }`}
         >
           {data.status === 'current' && '🟢 '}
           {data.status === 'finalized' && '✓ '}
@@ -411,9 +385,8 @@ function BuildingCard({ data }: { data: BuildingData }) {
           <span className="text-xs text-gray-600">Net Impact</span>
           <div className="flex items-center gap-1">
             <span
-              className={`text-sm font-semibold ${
-                netChange >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}
+              className={`text-sm font-semibold ${netChange >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
             >
               {netChange >= 0 ? '+' : ''}₹{Math.abs(netChange).toLocaleString('en-IN')}
             </span>

@@ -1,216 +1,197 @@
-import { RequestHandler } from 'express';
-import {
-  createBuildingService,
-  getAllBuildingsWithStatsService,
-  getAllBuildingsService,
-  getBuildingByIdService,
-  getBuildingDetailsService,
-  getFloorsByBuildingService,
-  getSupervisorsByBuildingService,
-  updateBuildingService,
-  assignSupervisorToBuildingService,
-  removeSupervisorFromBuildingService,
-  toggleSupervisorActiveService,
-  deleteBuildingService,
-  getUnassignedSupervisorsService,
-} from './buildings_service';
+import { Request, Response } from 'express';
+import * as buildingService from './buildings_service';
 
-// ── POST /api/buildings ────────────────────────────────────────────────────────
-
-export const createBuilding: RequestHandler = async (req, res, next) => {
+export const createBuilding = async (req: Request, res: Response) => {
   try {
     const { building_name, location, latitude, longitude, radius, floors } = req.body;
 
     if (!building_name) {
-      res.status(400).json({ success: false, message: 'Building name is required' });
-      return;
-    }
-    if (!latitude || !longitude) {
-      res.status(400).json({ success: false, message: 'Latitude and longitude are required' });
-      return;
+      return res.status(400).json({
+        success: false,
+        message: 'Building name is required',
+      });
     }
 
-    const building = await createBuildingService({
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: 'Building GPS location is required',
+      });
+    }
+
+    if (!floors || !Array.isArray(floors) || floors.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one floor is required',
+      });
+    }
+
+    const building = await buildingService.createBuilding({
       building_name,
       location,
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-      radius: radius ? parseInt(radius) : 100,
+      latitude,
+      longitude,
+      radius,
       floors,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Building created successfully',
+      message: 'Building and floors created successfully',
       data: building,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    console.error('Error creating building:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create building',
+    });
   }
 };
 
-// ── GET /api/buildings/stats ───────────────────────────────────────────────────
-
-export const getAllBuildingsWithStats: RequestHandler = async (_req, res, next) => {
+// Get all buildings with their floors
+export const getAllBuildings = async (req: Request, res: Response) => {
   try {
-    const buildings = await getAllBuildingsWithStatsService();
-    res.status(200).json({ success: true, data: buildings });
-  } catch (err) {
-    next(err);
+    const buildings = await buildingService.getAllBuildings();
+    return res.status(200).json({
+      success: true,
+      data: buildings,
+    });
+  } catch (error) {
+    console.error('Error fetching buildings:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch buildings',
+    });
   }
 };
 
-// ── GET /api/buildings ─────────────────────────────────────────────────────────
-
-export const getAllBuildings: RequestHandler = async (_req, res, next) => {
+// Get all buildings with statistics (for main page)
+export const getAllBuildingsWithStats = async (req: Request, res: Response) => {
   try {
-    const buildings = await getAllBuildingsService();
-    res.status(200).json({ success: true, data: buildings });
-  } catch (err) {
-    next(err);
+    const buildings = await buildingService.getAllBuildingsWithStats();
+    return res.status(200).json({
+      success: true,
+      data: buildings,
+    });
+  } catch (error) {
+    console.error('Error fetching buildings with stats:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch buildings',
+    });
   }
 };
 
-// ── GET /api/buildings/:id ─────────────────────────────────────────────────────
-
-export const getBuildingById: RequestHandler = async (req, res, next) => {
+// Get building by ID with floors
+export const getBuildingById = async (req: Request, res: Response) => {
   try {
-    const building = await getBuildingByIdService(req.params['id'] as string);
-    res.status(200).json({ success: true, data: building });
-  } catch (err) {
-    next(err);
+    const { id } = req.params;
+    const building = await buildingService.getBuildingById(id as string);
+
+    if (!building) {
+      return res.status(404).json({
+        success: false,
+        message: 'Building not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: building,
+    });
+  } catch (error) {
+    console.error('Error fetching building:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch building',
+    });
   }
 };
 
-// ── GET /api/buildings/:id/details ────────────────────────────────────────────
-
-export const getBuildingDetails: RequestHandler = async (req, res, next) => {
+// Get building details with comprehensive statistics
+export const getBuildingDetails = async (req: Request, res: Response) => {
   try {
-    const building = await getBuildingDetailsService(req.params['id'] as string);
-    res.status(200).json({ success: true, data: building });
-  } catch (err) {
-    next(err);
+    const { id } = req.params;
+    const building = await buildingService.getBuildingDetails(id as string);
+
+    if (!building) {
+      return res.status(404).json({
+        success: false,
+        message: 'Building not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: building,
+    });
+  } catch (error) {
+    console.error('Error fetching building details:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch building details',
+    });
   }
 };
 
-// ── GET /api/buildings/:id/floors ─────────────────────────────────────────────
-
-export const getFloorsByBuilding: RequestHandler = async (req, res, next) => {
+// Update building
+export const updateBuilding = async (req: Request, res: Response) => {
   try {
-    const floors = await getFloorsByBuildingService(req.params['id'] as string);
-    res.status(200).json({ success: true, data: floors });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ── GET /api/buildings/:id/supervisors ────────────────────────────────────────
-
-export const getSupervisorsByBuilding: RequestHandler = async (req, res, next) => {
-  try {
-    const supervisors = await getSupervisorsByBuildingService(req.params['id'] as string);
-    res.status(200).json({ success: true, data: supervisors });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ── PUT /api/buildings/:id ─────────────────────────────────────────────────────
-
-export const updateBuilding: RequestHandler = async (req, res, next) => {
-  try {
+    const { id } = req.params;
     const { building_name, location, latitude, longitude, radius } = req.body;
-    const building = await updateBuildingService(req.params['id'] as string, {
+
+    const building = await buildingService.updateBuilding(id as string, {
       building_name,
       location,
-      latitude: latitude !== undefined ? parseFloat(latitude) : undefined,
-      longitude: longitude !== undefined ? parseFloat(longitude) : undefined,
-      radius: radius !== undefined ? parseInt(radius) : undefined,
+      latitude,
+      longitude,
+      radius,
     });
-    res.status(200).json({
+
+    if (!building) {
+      return res.status(404).json({
+        success: false,
+        message: 'Building not found',
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       message: 'Building updated successfully',
       data: building,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    console.error('Error updating building:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update building',
+    });
   }
 };
 
-// ── POST /api/buildings/:id/supervisors ───────────────────────────────────────
-
-export const assignSupervisorToBuilding: RequestHandler = async (req, res, next) => {
+// Delete building (cascades to floors in database)
+export const deleteBuilding = async (req: Request, res: Response) => {
   try {
-    const { supervisorId } = req.body as { supervisorId: string };
-    if (!supervisorId) {
-      res.status(400).json({ success: false, message: 'supervisorId is required' });
-      return;
+    const { id } = req.params;
+    const building = await buildingService.deleteBuilding(id as string);
+
+    if (!building) {
+      return res.status(404).json({
+        success: false,
+        message: 'Building not found',
+      });
     }
-    const supervisor = await assignSupervisorToBuildingService(
-      req.params['id'] as string,
-      supervisorId
-    );
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
-      message: 'Supervisor assigned to building successfully',
-      data: supervisor,
+      message: 'Building deleted successfully',
     });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ── DELETE /api/buildings/:id/supervisors/:supervisorId ───────────────────────
-
-export const removeSupervisorFromBuilding: RequestHandler = async (req, res, next) => {
-  try {
-    const supervisor = await removeSupervisorFromBuildingService(
-      req.params['id'] as string,
-      req.params['supervisorId'] as string
-    );
-    res.status(200).json({
-      success: true,
-      message: 'Supervisor removed from building',
-      data: supervisor,
+  } catch (error) {
+    console.error('Error deleting building:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete building',
     });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ── PATCH /api/buildings/:id/supervisors/:supervisorId/toggle ─────────────────
-
-export const toggleSupervisorActive: RequestHandler = async (req, res, next) => {
-  try {
-    const supervisor = await toggleSupervisorActiveService(
-      req.params['id'] as string,
-      req.params['supervisorId'] as string
-    );
-    res.status(200).json({
-      success: true,
-      message: `Supervisor ${supervisor.is_active ? 'activated' : 'deactivated'} successfully`,
-      data: supervisor,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ── DELETE /api/buildings/:id ─────────────────────────────────────────────────
-
-export const deleteBuilding: RequestHandler = async (req, res, next) => {
-  try {
-    await deleteBuildingService(req.params['id'] as string);
-    res.status(200).json({ success: true, message: 'Building deleted successfully' });
-  } catch (err) {
-    next(err);
-  }
-};
-export const getUnassignedSupervisors: RequestHandler = async (_req, res, next) => {
-  try {
-    const supervisors = await getUnassignedSupervisorsService();
-    res.status(200).json({ success: true, data: supervisors });
-  } catch (err) {
-    next(err);
   }
 };

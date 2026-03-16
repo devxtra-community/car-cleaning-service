@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   Pressable,
   Image,
@@ -10,34 +9,65 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
-import { Picker } from '@react-native-picker/picker';
-import { Camera, ArrowLeft } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import { Camera, ArrowLeft, User, Phone, Car, Info, MapPin } from 'lucide-react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import axios from 'axios';
+import { BlurView } from 'expo-blur';
 import api from '../../src/api/api';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
-/* ================= TYPES ================= */
-
-interface FieldProps {
+interface InputFieldProps {
+  icon: React.ReactNode;
+  label: string;
   placeholder: string;
   value: string;
   onChange: (text: string) => void;
+  keyboard?: 'default' | 'phone-pad' | 'numeric' | 'email-address';
 }
 
-interface LabelProps {
-  title: string;
-}
-
-/* ================= COMPONENT ================= */
+const InputField = ({
+  icon,
+  label,
+  placeholder,
+  value,
+  onChange,
+  keyboard = 'default',
+}: InputFieldProps) => {
+  return (
+    <View className="mb-6">
+      <Text className="text-[10px] font-label uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
+        {label}
+      </Text>
+      <View className="clay-card flex-row items-center px-4 py-4 bg-white border border-gray-100">
+        <View className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-[#E0F2FE]">
+          {icon}
+        </View>
+        <TextInput
+          className="flex-1 font-heading text-base text-clay-text"
+          placeholder={placeholder}
+          placeholderTextColor="#94A3B8"
+          value={value}
+          onChangeText={onChange}
+          keyboardType={keyboard}
+        />
+      </View>
+    </View>
+  );
+};
 
 export default function AddJob() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [image, setImage] = useState<ImagePickerAsset | null>(null);
-
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [carNumber, setCarNumber] = useState('');
@@ -46,91 +76,111 @@ export default function AddJob() {
   const [carType, setCarType] = useState('');
   const [types, setTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingTypes, setLoadingTypes] = useState(true);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [showTypePicker, setShowTypePicker] = useState(false);
 
-  /* ================= LOAD VEHICLE TYPES ================= */
+  // Clear fields whenever this screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setImage(null);
+      setOwnerName('');
+      setOwnerPhone('');
+      setCarNumber('');
+      setCarModel('');
+      setCarColor('');
+      setCarType('');
+    }, [])
+  );
 
   useEffect(() => {
-    const init = async () => {
+    (async () => {
       try {
-        const res = await api.get('/api/vehicle/allVehicles');
-        const raw = res.data.data as { type: string }[];
-        const unique = [...new Set(raw.map((v) => v.type))];
-        setTypes(unique);
-      } catch {
-        Alert.alert('Failed to load vehicles');
+        const res = await api.get('/api/vehicle');
+        const list = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+            ? res.data.data
+            : [];
+        setTypes([...new Set(list.map((v: { type: string }) => String(v.type)))] as string[]);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingTypes(false);
       }
-    };
-
-    init();
+    })();
   }, []);
-
-  /* ================= CAMERA ================= */
 
   const openCamera = async () => {
     const p = await ImagePicker.requestCameraPermissionsAsync();
-    if (!p.granted) return;
-
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!res.canceled) setImage(res.assets[0]);
+    if (p.granted) {
+      const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      if (!res.canceled) setImage(res.assets[0]);
+    }
   };
 
-  /* ================= S3 UPLOAD ================= */
-
-  const uploadToS3 = async (image: ImagePickerAsset): Promise<string> => {
-    const presign = await api.post('/s3/presign', {
-      fileType: 'image/jpeg',
-    });
-
+  const uploadToS3 = async (img: ImagePickerAsset) => {
+    const presign = await api.post('/s3/presign', { fileType: 'image/jpeg' });
     const { uploadUrl, fileUrl } = presign.data;
-
-    const blob = await (await fetch(image.uri)).blob();
-
+    const blob = await (await fetch(img.uri)).blob();
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'image/jpeg',
-      },
+      headers: { 'Content-Type': 'image/jpeg' },
       body: blob,
     });
-
-    if (!uploadRes.ok) {
-      throw new Error('S3 upload failed');
-    }
-
+    if (!uploadRes.ok) throw new Error('S3 upload failed');
     return fileUrl;
   };
 
-  const canSubmit =
-    image && ownerName && ownerPhone && carNumber && carModel && carColor && carType;
+  const submit = async () => {
+    if (!image || !ownerName || !ownerPhone || !carNumber || !carType || !carModel) {
+      return Alert.alert(t('addJob.missingInfo'), t('addJob.missingInfoMessage'));
+    }
 
-  /* ================= SUBMIT ================= */
+    const finalColor = carColor.trim() || 'Standard';
+    const finalModel = carModel.trim();
 
-  const confirm = async () => {
-    if (!canSubmit) return Alert.alert('Please fill all fields');
-
-    Alert.alert('Confirm Submission', 'Submit this job?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('addJob.confirmTitle'), t('addJob.confirmMessage'), [
+      { text: t('addJob.review'), style: 'cancel' },
       {
-        text: 'Yes',
+        text: t('common.confirm'),
         onPress: async () => {
           try {
             setLoading(true);
-            if (!image) return;
+            setGettingLocation(true);
 
-            const imageUrl = await uploadToS3(image);
+            // Request location permission
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+              setGettingLocation(false);
+              setLoading(false);
+              return Alert.alert(
+                t('addJob.permissionDenied'),
+                t('addJob.gpsRequired')
+              );
+            }
 
+            // Get current location
+            const location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            });
+
+            setGettingLocation(false);
+
+            const iUrl = await uploadToS3(image);
             await api.post('/tasks', {
               owner_name: ownerName,
               owner_phone: ownerPhone,
               car_number: carNumber,
-              car_model: carModel,
-              car_color: carColor,
+              car_model: finalModel,
+              car_color: finalColor,
               car_type: carType,
-              car_image_url: imageUrl,
+              car_image_url: iUrl,
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
             });
 
-            Alert.alert('Success', 'Job Added Successfully');
-
+            // Reset all state fields on success
             setImage(null);
             setOwnerName('');
             setOwnerPhone('');
@@ -140,147 +190,208 @@ export default function AddJob() {
             setCarType('');
 
             router.replace('/(tabs)/Homepage');
-          } catch (err: unknown) {
-            if (axios.isAxiosError(err)) {
-              console.log('UPLOAD ERROR:', err.response?.data);
-            } else {
-              console.log('UNKNOWN ERROR:', err);
-            }
-
-            Alert.alert('Upload failed');
+          } catch (error: unknown) {
+            console.error('Task submission error:', error);
+            const err = error as { response?: { data?: { message?: string } }; message?: string };
+            const errorMessage =
+              err.response?.data?.message ||
+              (error instanceof Error ? error.message : 'Could not save task. Try again.');
+            Alert.alert('Failed', errorMessage);
           } finally {
             setLoading(false);
+            setGettingLocation(false);
           }
         },
       },
     ]);
   };
 
-  /* ================= UI ================= */
-
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View className="flex-1 bg-[#E0F2FE]">
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
+      />
+
+      {/* Custom Type Picker Modal */}
+      <Modal
+        visible={showTypePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTypePicker(false)}
+      >
+        <BlurView intensity={20} style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <View
+            className="rounded-t-[40px] pb-8 bg-white/90"
+            style={{ paddingBottom: insets.bottom + 20 }}
+          >
+            <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-100">
+              <Text className="text-xl font-heading text-clay-text">{t('addJob.selectType')}</Text>
+              <Pressable onPress={() => setShowTypePicker(false)}>
+                <Text className="font-heading text-base text-[#0EA5E9]">{t('common.confirm')}</Text>
+              </Pressable>
+            </View>
+            <ScrollView className="max-h-96">
+              {types.map((type) => (
+                <Pressable
+                  key={type}
+                  onPress={() => {
+                    setCarType(type);
+                    setShowTypePicker(false);
+                  }}
+                  className={`px-6 py-5 border-b border-gray-100 ${carType === type ? 'bg-[#E0F2FE]' : 'transparent'
+                    }`}
+                >
+                  <Text
+                    className={`text-lg font-heading ${carType === type ? 'text-[#0EA5E9]' : 'text-clay-text'
+                      }`}
+                  >
+                    {type}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </BlurView>
+      </Modal>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        className="flex-1"
       >
-        <LinearGradient colors={['#fff', '#fff']} style={styles.header}>
-          <Pressable onPress={() => router.back()}>
-            <ArrowLeft color="black" />
-          </Pressable>
-        </LinearGradient>
+        <View
+          className="pb-6 rounded-b-[40px] shadow-sm bg-white/80 z-10"
+          style={{ paddingTop: insets.top + 10 }}
+        >
+          <View className="flex-row items-center justify-between px-6">
+            <Pressable
+              onPress={() => router.push('/(tabs)/Homepage')}
+              className="w-10 h-10 rounded-xl items-center justify-center bg-white shadow-sm border border-gray-100"
+            >
+              <ArrowLeft size={24} color="#1E293B" />
+            </Pressable>
+            <Text className="text-xl font-heading tracking-tight text-clay-text">
+              {t('addJob.entry')}
+            </Text>
+            <View className="w-10" />
+          </View>
+        </View>
 
-        <ScrollView style={styles.container}>
-          <Pressable style={styles.uploadBox} onPress={openCamera}>
+        <ScrollView
+          className="flex-1 px-6"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
+        >
+          <Pressable
+            onPress={openCamera}
+            className="h-60 rounded-[32px] overflow-hidden border-2 border-dashed border-clay-secondary/30 justify-center items-center mb-8 bg-white/50"
+          >
             {image ? (
-              <Image source={{ uri: image.uri }} style={styles.preview} />
+              <Image source={{ uri: image.uri }} className="w-full h-full" />
             ) : (
-              <>
-                <Camera size={36} color="#bbb" />
-                <Text style={{ color: '#bbb' }}>Add Photo of Car</Text>
-              </>
+              <View className="items-center">
+                <View className="w-20 h-20 rounded-full items-center justify-center shadow-sm mb-4 bg-[#E0F2FE]">
+                  <Camera size={40} color="#0EA5E9" />
+                </View>
+                <Text className="font-heading text-xs uppercase tracking-widest text-clay-secondary">
+                  {t('addJob.takePhoto')}
+                </Text>
+              </View>
             )}
+            <View className="absolute bottom-4 right-4 bg-white/80 px-3 py-1 rounded-full">
+              <View className="flex-row items-center gap-1">
+                <MapPin size={12} color="#0EA5E9" />
+                <Text className="text-[10px] font-bold text-clay-secondary">{t('addJob.taggingLocation')}</Text>
+              </View>
+            </View>
           </Pressable>
 
-          <Field placeholder="Owner Name" value={ownerName} onChange={setOwnerName} />
-          <Label title="Phone Number" />
-          <Field placeholder="Owner Number" value={ownerPhone} onChange={setOwnerPhone} />
-          <Label title="Vehicle Number" />
-          <Field placeholder="Vehicle Number" value={carNumber} onChange={setCarNumber} />
-          <Label title="Car Model" />
-          <Field placeholder="" value={carModel} onChange={setCarModel} />
+          <View className="gap-2">
+            <InputField
+              icon={<User size={20} color="#0EA5E9" />}
+              label={t('addJob.ownerName')}
+              placeholder="Eg: Rahul Sharma"
+              value={ownerName}
+              onChange={setOwnerName}
+            />
+            <InputField
+              icon={<Phone size={20} color="#0EA5E9" />}
+              label={t('addJob.ownerPhone')}
+              placeholder="99000 00000"
+              value={ownerPhone}
+              onChange={setOwnerPhone}
+              keyboard="phone-pad"
+            />
+            <InputField
+              icon={<Car size={20} color="#0EA5E9" />}
+              label={t('addJob.carNumber')}
+              placeholder="DL 01 AB 1234"
+              value={carNumber}
+              onChange={setCarNumber}
+            />
 
-          <View style={styles.row}>
-            <View style={styles.pill}>
-              <TextInput
-                style={styles.pillInput}
-                placeholder="Color"
-                value={carColor}
-                onChangeText={setCarColor}
-              />
-            </View>
-
-            <View style={styles.pill}>
-              <Picker selectedValue={carType} onValueChange={setCarType}>
-                <Picker.Item label="Type" value="" />
-                {types.map((t) => (
-                  <Picker.Item key={t} label={t} value={t} />
-                ))}
-              </Picker>
+            <View className="flex-row gap-4 mb-4">
+              <View className="flex-[1.2]">
+                <InputField
+                  icon={<Info size={20} color="#0EA5E9" />}
+                  label={t('addJob.modelColor')}
+                  placeholder="White Nexon"
+                  value={carColor && carModel ? `${carColor} ${carModel}` : carColor || carModel}
+                  onChange={(txt: string) => {
+                    const parts = txt.trim().split(/\s+/);
+                    if (parts.length > 1) {
+                      setCarColor(parts[0]);
+                      setCarModel(parts.slice(1).join(' '));
+                    } else {
+                      setCarColor('');
+                      setCarModel(txt.trim());
+                    }
+                  }}
+                />
+              </View>
+              <View className="flex-1 mb-6">
+                <Text className="text-[10px] font-label uppercase tracking-widest mb-2 ml-1 text-clay-secondary/80">
+                  {t('addJob.carType')}
+                </Text>
+                <Pressable
+                  onPress={() => setShowTypePicker(true)}
+                  className="clay-card h-[60px] justify-center px-4 bg-white border border-gray-100"
+                >
+                  {loadingTypes ? (
+                    <ActivityIndicator size="small" color="#0EA5E9" />
+                  ) : (
+                    <Text
+                      className={`text-base font-heading ${carType ? 'text-clay-text' : 'text-gray-400'
+                        }`}
+                    >
+                      {carType || t('addJob.selectType')}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
           </View>
 
-          <Pressable style={styles.submitBtn} disabled={loading} onPress={confirm}>
-            <Text style={styles.submitText}>
-              {loading ? 'Submitting...' : 'Confirm & Submit Job'}
-            </Text>
+          <Pressable
+            onPress={submit}
+            disabled={loading}
+            className="w-full py-5 rounded-[22px] shadow-lg shadow-blue-200 items-center clay-button bg-[#0EA5E9]"
+          >
+            {loading ? (
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator color="white" size="small" />
+                <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
+                  {gettingLocation ? t('addJob.gettingLocation') : t('addJob.submitting')}
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-white font-heading text-[12px] tracking-widest uppercase">
+                {t('addJob.submitJob')}
+              </Text>
+            )}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-/* ================= SMALL COMPONENTS ================= */
-
-function Field({ placeholder, value, onChange }: FieldProps) {
-  return (
-    <TextInput
-      style={styles.input}
-      placeholder={placeholder}
-      value={value}
-      onChangeText={onChange}
-    />
-  );
-}
-
-function Label({ title }: LabelProps) {
-  return <Text style={styles.label}>{title}</Text>;
-}
-
-/* ================= STYLES ================= */
-
-const styles = StyleSheet.create({
-  header: { padding: 20 },
-  container: { paddingHorizontal: 20, backgroundColor: '#fff' },
-
-  uploadBox: {
-    height: 180,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-
-  preview: { width: '100%', height: '100%', borderRadius: 16 },
-
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    height: 48,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-
-  label: { fontSize: 12, color: '#666', marginBottom: 4 },
-
-  row: { flexDirection: 'row', gap: 10 },
-
-  pill: { flex: 1, backgroundColor: '#f2f2f2', borderRadius: 12 },
-
-  pillInput: { height: 48, paddingHorizontal: 12 },
-
-  submitBtn: {
-    height: 55,
-    backgroundColor: '#1B86C6',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 30,
-  },
-
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});

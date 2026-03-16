@@ -1,22 +1,59 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import {
-  getAllCleaners,
-  toggleCleanerStatus,
-  deleteCleaner,
-  type CleanerListItem,
-} from '../../services/allAPI';
-import Toast from '../shared/Toast';
-import DeleteConfirmModal from '../shared/DeleteConfirmModal';
+import { Link } from 'react-router-dom';
+import { api } from '../../services/commonAPI';
+import axios from 'axios';
 
-const initials = (n: string) =>
-  n
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Cleaner {
+  cleaner_id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  document_id: string;
+  age: number;
+  nationality: string;
+  floor_id?: string;
+  total_tasks: number;
+  total_earning: number;
+  building_name?: string;
+  building_id?: string;
+  floor_name?: string;
+  supervisor_name?: string;
+  average_rating?: number;
+  total_reviews?: number;
+  supervisor_id?: string;
+  profile_image?: string;
+  base_salary?: number;
+  is_active: boolean;
+}
+
+interface EditForm {
+  full_name: string;
+  email: string;
+  phone: string;
+  age: string;
+  nationality: string;
+  document_id: string;
+  base_salary: string;
+}
+
+interface Toast {
+  message: string;
+  type: 'success' | 'error';
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const initials = (name: string) =>
+  name
     .split(' ')
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('');
-const COLORS = [
+
+const AVATAR_COLORS = [
   '#3B5BDB',
   '#1971C2',
   '#0C8599',
@@ -25,79 +62,318 @@ const COLORS = [
   '#C2255C',
   '#9C36B5',
   '#5C7CFA',
+  '#099268',
+  '#D6336C',
 ];
-const ac = (n: string) => COLORS[n.charCodeAt(0) % COLORS.length];
-const fmt = (n: number) =>
-  new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-const fmtD = (s: string) =>
-  new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-const errMsg = (e: unknown) => {
-  if (e instanceof Error) return e.message;
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? 'Something went wrong';
+const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+const deleteCleaner = (id: string) => api.delete(`/workers/cleaners/${id}`);
+
+const updateCleaner = (id: string, payload: Partial<EditForm>) =>
+  api.patch(`/workers/cleaners/${id}`, payload);
+
+const toggleUserStatus = (id: string, isActive: boolean) =>
+  api.patch(`/api/auth/users/${id}/status`, { is_active: isActive });
+
+const resetUserPassword = (id: string, newPassword: string) =>
+  api.patch(`/api/auth/users/${id}/reset-password`, { new_password: newPassword });
+
+// ─── Toast Component ──────────────────────────────────────────────────────────
+
+const ToastAlert = ({ toast, onClose }: { toast: Toast; onClose: () => void }) => {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3500);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div
+      className={`fixed top-5 right-5 z-[200] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border text-sm font-medium animate-slide-in
+        ${toast.type === 'success'
+          ? 'bg-white border-green-200 text-green-800'
+          : 'bg-white border-red-200 text-red-800'
+        }`}
+    >
+      <span className={`text-lg ${toast.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+        {toast.type === 'success' ? '✓' : '✕'}
+      </span>
+      {toast.message}
+      <button
+        onClick={onClose}
+        className="ml-2 text-gray-400 hover:text-gray-600 text-base leading-none"
+      >
+        ×
+      </button>
+    </div>
+  );
 };
 
-type SortKey = 'full_name' | 'building_name' | 'total_tasks' | 'total_earning' | 'joining_date';
-type SortDir = 'asc' | 'desc';
-interface TS {
-  message: string;
-  type: 'success' | 'error';
-}
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
 
-const PER_PAGE = 10;
-const ROW_H = 68; // must match the style={{ height: ROW_H }} on every <tr>
-const BODY_H = ROW_H * PER_PAGE; // fixed tbody height so pagination never moves
+const EditModal = ({
+  cleaner,
+  onClose,
+  onSaved,
+}: {
+  cleaner: Cleaner;
+  onClose: () => void;
+  onSaved: (updated: Partial<Cleaner>) => void;
+}) => {
+  const [form, setForm] = useState<EditForm>({
+    full_name: cleaner.full_name ?? '',
+    email: cleaner.email ?? '',
+    phone: cleaner.phone ?? '',
+    age: cleaner.age?.toString() ?? '',
+    nationality: cleaner.nationality ?? '',
+    document_id: cleaner.document_id ?? '',
+    base_salary: cleaner.base_salary?.toString() ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-const SortTh: React.FC<{
-  label: string;
-  col: SortKey;
-  cur: SortKey;
-  dir: SortDir;
-  onSort: (c: SortKey) => void;
-  cls?: string;
-}> = ({ label, col, cur, dir, onSort, cls = '' }) => (
-  <th
-    className={`px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400 cursor-pointer select-none hover:text-slate-600 whitespace-nowrap ${cls}`}
-    onClick={() => onSort(col)}
-  >
-    <span className="inline-flex items-center gap-1">
-      {label}
-      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
-        {cur === col ? (
-          dir === 'asc' ? (
-            <path d="M8 4l4 6H4z" />
-          ) : (
-            <path d="M8 12L4 6h8z" />
-          )
-        ) : (
-          <path opacity=".3" d="M8 4l4 6H4zM8 12L4 6h8z" />
-        )}
-      </svg>
-    </span>
-  </th>
-);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-const Cleaners: React.FC = () => {
-  const navigate = useNavigate();
-  const { loading: authLoading, isAuthenticated } = useAuth();
-  const [cleaners, setCleaners] = useState<CleanerListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusF, setStatusF] = useState<'all' | 'active' | 'inactive'>('all');
-  const [sortKey, setSortKey] = useState<SortKey>('full_name');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [page, setPage] = useState(1);
-  const [delTarget, setDelTarget] = useState<CleanerListItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [toggling, setToggling] = useState<string | null>(null);
-  const [toast, setToast] = useState<TS | null>(null);
+  const handleSubmit = async () => {
+    if (!form.full_name.trim() || !form.email.trim()) {
+      setError('Name and email are required.');
+      return;
+    }
+    try {
+      setSaving(true);
+      setError('');
+      const res = await updateCleaner(cleaner.cleaner_id, form);
+      onSaved(res.data.data ?? form);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error?.message ??
+          err.response?.data?.message ??
+          err.message ??
+          'Failed to update cleaner.'
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update cleaner.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const showToast = (m: string, t: TS['type']) => setToast({ message: m, type: t });
+  const fields: { label: string; name: keyof EditForm; type?: string }[] = [
+    { label: 'Full Name', name: 'full_name' },
+    { label: 'Email', name: 'email', type: 'email' },
+    { label: 'Phone', name: 'phone', type: 'tel' },
+    { label: 'Age', name: 'age', type: 'number' },
+    { label: 'Nationality', name: 'nationality' },
+    { label: 'Document ID', name: 'document_id' },
+    { label: 'Base Salary', name: 'base_salary', type: 'number' },
+  ];
 
-  const fetchData = useCallback(async () => {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        style={{ animation: 'modalPop 0.2s ease' }}
+      >
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              style={{ background: avatarColor(cleaner.full_name) }}
+            >
+              {initials(cleaner.full_name)}
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Edit Cleaner</h2>
+              <p className="text-xs text-slate-400">#{cleaner.cleaner_id.slice(0, 8)}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 grid grid-cols-2 gap-4 max-h-[65vh] overflow-y-auto">
+          {fields.map(({ label, name, type }) => (
+            <div
+              key={name}
+              className={name === 'full_name' || name === 'email' ? 'col-span-2' : ''}
+            >
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                {label}
+              </label>
+              <input
+                name={name}
+                type={type ?? 'text'}
+                value={form[name]}
+                onChange={handleChange}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-slate-50
+                  focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+          {error ? <p className="text-xs text-red-500 flex-1">{error}</p> : <span />}
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors shadow-sm"
+            >
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
+
+const DeleteModal = ({
+  cleaner,
+  onClose,
+  onDeleted,
+}: {
+  cleaner: Cleaner;
+  onClose: () => void;
+  onDeleted: () => void;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleDelete = async () => {
     try {
       setLoading(true);
-      setCleaners(await getAllCleaners());
+      setError('');
+      await deleteCleaner(cleaner.cleaner_id);
+      onDeleted();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(
+          err.response?.data?.error?.message ??
+          err.response?.data?.message ??
+          err.message ??
+          'Cannot delete cleaner. Please try again.'
+        );
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Cannot delete cleaner. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8"
+        onClick={(e) => e.stopPropagation()}
+        style={{ animation: 'modalPop 0.2s ease' }}
+      >
+        {/* Icon */}
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-5">
+          <svg
+            className="w-7 h-7 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+            />
+          </svg>
+        </div>
+
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Cleaner?</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-1">
+          You're about to permanently delete{' '}
+          <span className="font-semibold text-slate-700">{cleaner.full_name}</span>. This action
+          cannot be undone.
+        </p>
+        <p className="text-slate-400 text-xs mb-6">
+          Cleaners with active or pending tasks cannot be deleted.
+        </p>
+
+        {error && (
+          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
+          >
+            {loading ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+const PER_PAGE = 8;
+
+const Cleaners: React.FC = () => {
+  const [cleaners, setCleaners] = useState<Cleaner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const [editTarget, setEditTarget] = useState<Cleaner | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Cleaner | null>(null);
+
+  const showToast = (message: string, type: Toast['type']) => setToast({ message, type });
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
+  const fetchCleaners = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/api/auth/cleaners');
+      if (res.data.success) setCleaners(res.data.data);
     } catch {
       showToast('Failed to load cleaners', 'error');
     } finally {
@@ -106,558 +382,461 @@ const Cleaners: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) void fetchData();
-  }, [authLoading, isAuthenticated, fetchData]);
+    fetchCleaners();
+  }, [fetchCleaners]);
 
-  const handleSort = (col: SortKey) => {
-    if (col === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    else {
-      setSortKey(col);
-      setSortDir('asc');
-    }
-    setPage(1);
-  };
-
+  // ── Filter + Paginate ────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return cleaners
-      .filter((c) => {
-        const ms =
-          c.full_name.toLowerCase().includes(q) ||
-          (c.email ?? '').toLowerCase().includes(q) ||
-          (c.building_name ?? '').toLowerCase().includes(q) ||
-          (c.supervisor_name ?? '').toLowerCase().includes(q) ||
-          (c.document_id ?? '').toLowerCase().includes(q);
-        const mf = statusF === 'all' || (statusF === 'active' ? c.is_active : !c.is_active);
-        return ms && mf;
-      })
-      .sort((a, b) => {
-        const av = a[sortKey] ?? '';
-        const bv = b[sortKey] ?? '';
-        return av < bv ? (sortDir === 'asc' ? -1 : 1) : av > bv ? (sortDir === 'asc' ? 1 : -1) : 0;
-      });
-  }, [cleaners, search, statusF, sortKey, sortDir]);
+    return cleaners.filter(
+      (c) =>
+        c.full_name?.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.building_name?.toLowerCase().includes(q) ||
+        c.document_id?.toLowerCase().includes(q) ||
+        c.supervisor_name?.toLowerCase().includes(q)
+    );
+  }, [cleaners, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const ghostCount = Math.max(0, PER_PAGE - paginated.length);
 
-  const totalActive = cleaners.filter((c) => c.is_active).length;
-  const totalInactive = cleaners.length - totalActive;
-  const totalAssigned = cleaners.filter((c) => c.building_id !== null).length;
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleEditSaved = (updated: Partial<Cleaner>) => {
+    setCleaners((prev) =>
+      prev.map((c) => (c.cleaner_id === editTarget?.cleaner_id ? { ...c, ...updated } : c))
+    );
+    showToast('Cleaner updated successfully', 'success');
+    setEditTarget(null);
+  };
 
-  const handleToggle = async (c: CleanerListItem) => {
-    const next = !c.is_active;
-    setToggling(c.cleaner_id);
+  const handleDeleted = () => {
+    setCleaners((prev) => prev.filter((c) => c.cleaner_id !== deleteTarget?.cleaner_id));
+    showToast('Cleaner deleted', 'success');
+    setDeleteTarget(null);
+  };
+
+  const handleToggleStatus = async (cleaner: Cleaner) => {
     try {
-      await toggleCleanerStatus(c.cleaner_id, next);
-      setCleaners((p) =>
-        p.map((x) => (x.cleaner_id === c.cleaner_id ? { ...x, is_active: next } : x))
+      const newStatus = !cleaner.is_active;
+      await toggleUserStatus(cleaner.user_id, newStatus);
+      setCleaners((prev) =>
+        prev.map((c) => (c.user_id === cleaner.user_id ? { ...c, is_active: newStatus } : c))
       );
-      showToast(`Cleaner ${next ? 'activated' : 'deactivated'}`, 'success');
+      showToast(`User ${newStatus ? 'enabled' : 'disabled'}`, 'success');
     } catch {
       showToast('Failed to update status', 'error');
-    } finally {
-      setToggling(null);
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!delTarget) return;
-    setDeleting(true);
+  const handleResetPassword = async (cleaner: Cleaner) => {
+    const newPass = prompt(`Enter new password for ${cleaner.full_name}:`);
+    if (!newPass) return;
+    if (newPass.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return;
+    }
     try {
-      await deleteCleaner(delTarget.cleaner_id);
-      setCleaners((p) => p.filter((c) => c.cleaner_id !== delTarget.cleaner_id));
-      showToast(`"${delTarget.full_name}" deleted`, 'success');
-      setDelTarget(null);
-    } catch (err) {
-      showToast(errMsg(err), 'error');
-    } finally {
-      setDeleting(false);
+      await resetUserPassword(cleaner.user_id, newPass);
+      showToast('Password reset successfully', 'success');
+    } catch {
+      showToast('Failed to reset password', 'error');
     }
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {delTarget && (
-        <DeleteConfirmModal
-          isOpen={!!delTarget}
-          title="Delete Cleaner?"
-          message={
-            <>
-              Permanently delete{' '}
-              <span className="font-semibold">&ldquo;{delTarget?.full_name}&rdquo;</span>? Cleaners
-              with active or pending tasks cannot be deleted.
-            </>
-          }
-          confirmText="Delete"
-          cancelText="Cancel"
-          loading={deleting}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => setDelTarget(null)}
+    <div className="min-h-screen bg-slate-50 px-6 py-9 font-['Plus_Jakarta_Sans',sans-serif]">
+      <style>{`
+        @keyframes modalPop {
+          from { opacity: 0; transform: scale(0.94) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes rowIn {
+          from { opacity: 0; transform: translateY(5px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in {
+          from { opacity: 0; transform: translateX(24px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in { animation: slide-in 0.25s ease; }
+        .row-in { animation: rowIn 0.22s ease both; }
+      `}</style>
+
+      {/* Toast */}
+      {toast && <ToastAlert toast={toast} onClose={() => setToast(null)} />}
+
+      {/* Edit Modal */}
+      {editTarget && (
+        <EditModal
+          cleaner={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={handleEditSaved}
         />
       )}
 
-      {/* top bar */}
-      <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
-        <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-              Admin / People
-            </p>
-            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">Cleaners</h1>
-          </div>
-          <Link
-            to="/admin/register/cleaner"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Cleaner
-          </Link>
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <DeleteModal
+          cleaner={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={handleDeleted}
+        />
+      )}
+
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between mb-7 flex-wrap gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-1">
+            Admin / People
+          </p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Cleaners</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {loading ? '…' : `${filtered.length} cleaner${filtered.length !== 1 ? 's' : ''} total`}
+          </p>
         </div>
+
+        <Link
+          to="/admin/register/cleaner"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Add Cleaner
+        </Link>
       </div>
 
-      <div className="max-w-screen-xl mx-auto px-6 py-8 space-y-6">
-        {/* stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(
-            [
-              {
-                label: 'Total',
-                value: cleaners.length,
-                sub: 'registered',
-                color: 'text-slate-900',
-              },
-              { label: 'Active', value: totalActive, sub: 'can log in', color: 'text-emerald-600' },
-              {
-                label: 'Inactive',
-                value: totalInactive,
-                sub: 'login blocked',
-                color: 'text-red-500',
-              },
-              {
-                label: 'Assigned',
-                value: totalAssigned,
-                sub: 'to a building',
-                color: 'text-blue-600',
-              },
-            ] as const
-          ).map((s) => (
-            <div
-              key={s.label}
-              className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5"
-            >
-              <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                {s.label}
-              </p>
-              <p className="text-xs text-slate-300 mt-0.5">{s.sub}</p>
-            </div>
-          ))}
+      {/* ── Toolbar ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="relative flex-1 min-w-[240px] max-w-sm">
+          <svg
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            viewBox="0 0 20 20"
+          >
+            <circle cx="9" cy="9" r="6" />
+            <path strokeLinecap="round" d="M15 15l-3.5-3.5" />
+          </svg>
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by name, email, building…"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-800
+              focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all"
+          />
         </div>
 
-        {/* table card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* toolbar */}
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-52">
-              <svg
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 pointer-events-none"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                viewBox="0 0 24 24"
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path strokeLinecap="round" d="M17 17l4 4" />
-              </svg>
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search name, email, building, supervisor…"
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+        {search && (
+          <button
+            onClick={() => {
+              setSearch('');
+              setPage(1);
+            }}
+            className="text-xs text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* ── Table Card ───────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-9 h-9 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+            <p className="text-sm text-slate-400 font-medium">Loading cleaners…</p>
+          </div>
+        ) : paginated.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <svg
+              className="w-12 h-12 text-slate-300"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
               />
-            </div>
+            </svg>
+            <p className="text-sm text-slate-400">
+              {search ? 'No cleaners match your search' : 'No cleaners yet'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  {[
+                    'Cleaner',
+                    'Contact',
+                    'Building / Supervisor',
+                    'Tasks',
+                    'Rating',
+                    'Earning',
+                    'Status',
+                    'Actions',
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className={`px-5 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-400
+                        ${h === 'Actions' || h === 'Tasks' || h === 'Earning' || h === 'Rating' || h === 'Status' ? 'text-center' : 'text-left'}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((c, idx) => (
+                  <tr
+                    key={c.cleaner_id}
+                    className="row-in border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                    style={{ animationDelay: `${idx * 35}ms` }}
+                  >
+                    {/* Cleaner */}
+                    <td className="px-5 py-4">
+                      <Link
+                        to={`/admin/cleaner/${c.cleaner_id}`}
+                        className="flex items-center gap-3 group"
+                      >
+                        {c.profile_image ? (
+                          <img
+                            src={c.profile_image}
+                            alt={c.full_name}
+                            className="w-10 h-10 rounded-full object-cover border-2 border-slate-100 flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                            style={{ background: avatarColor(c.full_name) }}
+                          >
+                            {initials(c.full_name)}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                            {c.full_name}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            #{c.document_id || c.cleaner_id.slice(0, 8)}
+                          </p>
+                        </div>
+                      </Link>
+                    </td>
+
+                    {/* Contact */}
+                    <td className="px-5 py-4">
+                      <p className="text-slate-700 text-sm">{c.email || '—'}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{c.phone || '—'}</p>
+                    </td>
+
+                    {/* Building / Supervisor */}
+                    <td className="px-5 py-4">
+                      {c.building_name ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-sky-50 text-sky-700 text-xs font-medium rounded-md">
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <path d="M9 22V12h6v10M3 9h18" />
+                          </svg>
+                          {c.building_name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-300 italic">Unassigned</span>
+                      )}
+                      {c.supervisor_name && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          <span className="text-slate-300">↳</span> {c.supervisor_name}
+                        </p>
+                      )}
+                    </td>
+
+                    {/* Tasks */}
+                    <td className="px-5 py-4 text-center">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                        {c.total_tasks ?? 0}
+                      </span>
+                    </td>
+
+                    {/* Rating */}
+                    <td className="px-5 py-4 text-center">
+                      <span className="flex items-center justify-center gap-1">
+                        <span className="text-yellow-500">★</span>
+                        {c.average_rating ? Number(c.average_rating).toFixed(1) : '0.0'}
+                        <span className="text-xs text-slate-400">({c.total_reviews || 0})</span>
+                      </span>
+                    </td>
+                    {/* Earning */}
+                    <td className="px-5 py-4 text-center">
+                      <span className="font-bold text-slate-700">
+                        ₹{Number(c.total_earning || 0).toLocaleString()}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-5 py-4 text-center">
+                      <button
+                        onClick={() => handleToggleStatus(c)}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
+                          ${c.is_active
+                            ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                            : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                      >
+                        {c.is_active ? 'Active' : 'Disabled'}
+                      </button>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        {/* View */}
+                        <Link
+                          to={`/admin/cleaner/${c.cleaner_id}`}
+                          title="View details"
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
+                            hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8-10-8-10-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </Link>
+
+                        {/* Edit */}
+                        <button
+                          onClick={() => setEditTarget(c)}
+                          title="Edit cleaner"
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
+                            hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+
+
+                        {/* Reset Password */}
+                        <button
+                          onClick={() => handleResetPassword(c)}
+                          title="Reset Password"
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
+                            hover:bg-amber-50 hover:border-amber-200 hover:text-amber-600 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                          </svg>
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          onClick={() => setDeleteTarget(c)}
+                          title="Delete cleaner"
+                          className="w-8 h-8 rounded-lg border border-red-100 flex items-center justify-center text-red-400
+                            hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Pagination ───────────────────────────────────────────────────────── */}
+      {
+        !loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
+              hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              ← Previous
+            </button>
+
             <div className="flex gap-1.5">
-              {(['all', 'active', 'inactive'] as const).map((f) => (
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
                 <button
-                  key={f}
-                  onClick={() => {
-                    setStatusF(f);
-                    setPage(1);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${statusF === f ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all
+                  ${page === n
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'border border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
+                    }`}
                 >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                  {n}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-400 ml-auto whitespace-nowrap">
-              {filtered.length} cleaner{filtered.length !== 1 ? 's' : ''}
-            </p>
-          </div>
 
-          {/* FIXED-HEIGHT body */}
-          {loading ? (
-            <div
-              style={{ height: BODY_H }}
-              className="flex flex-col items-center justify-center gap-3"
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
+              hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              <div className="w-8 h-8 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin" />
-              <p className="text-sm text-slate-400">Loading cleaners…</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <SortTh
-                      label="Cleaner"
-                      col="full_name"
-                      cur={sortKey}
-                      dir={sortDir}
-                      onSort={handleSort}
-                      cls="text-left"
-                    />
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400 text-left">
-                      Contact
-                    </th>
-                    <SortTh
-                      label="Building"
-                      col="building_name"
-                      cur={sortKey}
-                      dir={sortDir}
-                      onSort={handleSort}
-                      cls="text-left"
-                    />
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400 text-left">
-                      Floor / Supervisor
-                    </th>
-                    <SortTh
-                      label="Tasks"
-                      col="total_tasks"
-                      cur={sortKey}
-                      dir={sortDir}
-                      onSort={handleSort}
-                      cls="text-center"
-                    />
-                    <SortTh
-                      label="Earning"
-                      col="total_earning"
-                      cur={sortKey}
-                      dir={sortDir}
-                      onSort={handleSort}
-                      cls="text-right"
-                    />
-                    <SortTh
-                      label="Joined"
-                      col="joining_date"
-                      cur={sortKey}
-                      dir={sortDir}
-                      onSort={handleSort}
-                      cls="text-right"
-                    />
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400 text-center">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-slate-400 text-right">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={9}>
-                        <div
-                          style={{ height: BODY_H }}
-                          className="flex flex-col items-center justify-center gap-3"
-                        >
-                          <svg
-                            className="w-10 h-10 text-slate-200"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"
-                            />
-                          </svg>
-                          <p className="text-sm text-slate-400">
-                            {search ? `No results for "${search}"` : 'No cleaners yet'}
-                          </p>
-                          {!search && (
-                            <Link
-                              to="/admin/register/cleaner"
-                              className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl"
-                            >
-                              Add First Cleaner
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    <>
-                      {paginated.map((c) => {
-                        const busy = toggling === c.cleaner_id;
-                        return (
-                          <tr
-                            key={c.cleaner_id}
-                            style={{ height: ROW_H }}
-                            className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors"
-                          >
-                            {/* name */}
-                            <td className="px-4">
-                              <div className="flex items-center gap-3">
-                                {c.profile_image ? (
-                                  <img
-                                    src={c.profile_image}
-                                    alt={c.full_name}
-                                    className="w-8 h-8 rounded-xl object-cover shrink-0"
-                                  />
-                                ) : (
-                                  <div
-                                    className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0"
-                                    style={{ background: ac(c.full_name) }}
-                                  >
-                                    {initials(c.full_name)}
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <p
-                                    className="font-semibold text-slate-900 truncate cursor-pointer hover:text-blue-600 transition-colors"
-                                    onClick={() => navigate(`/admin/cleaner/${c.cleaner_id}`)}
-                                  >
-                                    {c.full_name}
-                                  </p>
-                                  <p className="text-xs text-slate-400">
-                                    #{c.document_id ?? c.cleaner_id.slice(0, 8)}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            {/* contact */}
-                            <td className="px-4">
-                              <p className="text-xs text-slate-700 truncate max-w-[160px]">
-                                {c.email}
-                              </p>
-                              <p className="text-xs text-slate-400 mt-0.5">{c.phone ?? '—'}</p>
-                            </td>
-                            {/* building */}
-                            <td className="px-4">
-                              {c.building_name ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-100 text-sky-700 text-xs font-medium">
-                                  <svg
-                                    className="w-3 h-3 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18"
-                                    />
-                                  </svg>
-                                  {c.building_name}
-                                </span>
-                              ) : (
-                                <span className="text-xs italic text-slate-300">Unassigned</span>
-                              )}
-                            </td>
-                            {/* floor/sup */}
-                            <td className="px-4">
-                              {c.floor_number !== null && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold">
-                                  F{c.floor_number}
-                                  {c.floor_name ? ` · ${c.floor_name}` : ''}
-                                </span>
-                              )}
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {c.supervisor_name ?? (
-                                  <span className="italic text-slate-300">No supervisor</span>
-                                )}
-                              </p>
-                            </td>
-                            {/* tasks */}
-                            <td className="px-4 text-center">
-                              <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-700 font-bold text-sm">
-                                {c.total_tasks ?? 0}
-                              </span>
-                            </td>
-                            {/* earning */}
-                            <td className="px-4 text-right font-semibold text-emerald-600 text-sm whitespace-nowrap">
-                              {fmt(Number(c.total_earning ?? 0))} AED
-                            </td>
-                            {/* joined */}
-                            <td className="px-4 text-right text-xs text-slate-400 whitespace-nowrap">
-                              {c.joining_date ? fmtD(c.joining_date) : '—'}
-                            </td>
-                            {/* status */}
-                            <td className="px-4 text-center">
-                              <button
-                                disabled={busy}
-                                onClick={() => void handleToggle(c)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all disabled:opacity-60 ${c.is_active ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                              >
-                                {busy ? (
-                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${c.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                                  />
-                                )}
-                                {c.is_active ? 'Active' : 'Inactive'}
-                              </button>
-                            </td>
-                            {/* actions */}
-                            <td className="px-4">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  title="View"
-                                  onClick={() => navigate(`/admin/cleaner/${c.cleaner_id}`)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                                    />
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  title="Edit"
-                                  onClick={() => navigate(`/admin/cleaner/${c.cleaner_id}/edit`)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  title="Delete"
-                                  onClick={() => setDelTarget(c)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
-                                >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                                    />
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {/* ghost rows keep table height fixed */}
-                      {Array.from({ length: ghostCount }).map((_, i) => (
-                        <tr
-                          key={`g${i}`}
-                          style={{ height: ROW_H }}
-                          className="border-b border-slate-50/40"
-                        >
-                          <td colSpan={9} />
-                        </tr>
-                      ))}
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* pagination — always in same position */}
-          <div
-            className="px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap"
-            style={{ minHeight: 64 }}
-          >
-            {totalPages > 1 ? (
-              <>
-                <p className="text-xs text-slate-400">
-                  Page {page} of {totalPages}
-                </p>
-                <div className="flex gap-1.5 flex-wrap">
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    ← Prev
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setPage(n)}
-                      className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${page === n ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  <button
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next →
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-slate-300">
-                {!loading && `${filtered.length} of ${cleaners.length} cleaners`}
-              </p>
-            )}
+              Next →
+            </button>
           </div>
-        </div>
-      </div>
+        )
+      }
     </div>
   );
 };

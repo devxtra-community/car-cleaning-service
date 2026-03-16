@@ -1,0 +1,11 @@
+packages:
+  - apps/mobile/*
+  - apps/web
+  - backend
+  - shared
+
+ignoredBuiltDependencies:
+  - aws-sdk
+  - bcrypt
+  - esbuild
+  - unrs-resolver
