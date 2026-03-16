@@ -19,10 +19,108 @@ import {
   getDailyWorkRecordsWithIncentives,
   getMonthlyIncentiveSummary,
 } from './incentives_service';
-import { AuthRequest } from 'src/middlewares/authMiddleware';
+import { pool } from '../../database/connectDatabase';
+import { AuthRequest } from '../../middlewares/authMiddleware';
 
 const getParamString = (value: string | string[]): string =>
   Array.isArray(value) ? value[0] : value;
+
+/* ================= INCENTIVE TARGETS (simple task-count targets) ================= */
+
+export const getAllIncentiveTargetsController = async (_: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        it.*,
+        u.full_name as cleaner_name,
+        b.building_name,
+        f.floor_name
+       FROM incentive_targets it
+       LEFT JOIN cleaners c ON it.cleaner_id = c.id
+       LEFT JOIN users u ON c.user_id = u.id
+       LEFT JOIN buildings b ON it.building_id = b.id
+       LEFT JOIN floors f ON it.floor_id = f.id
+       ORDER BY it.created_at DESC`
+    );
+    return res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('GET TARGETS ERROR:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch targets' });
+  }
+};
+
+export const createIncentiveTargetController = async (req: Request, res: Response) => {
+  try {
+    const { target_tasks, reason, incentive_amount, cleaner_id, building_id, floor_id } = req.body;
+    if (!reason || target_tasks === undefined || incentive_amount === undefined) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+    const result = await pool.query(
+      `INSERT INTO incentive_targets (reason, target_tasks, incentive_amount, active, cleaner_id, building_id, floor_id)
+       VALUES ($1, $2, $3, true, $4, $5, $6) RETURNING *`,
+      [
+        reason,
+        Number(target_tasks),
+        Number(incentive_amount),
+        cleaner_id || null,
+        building_id || null,
+        floor_id || null,
+      ]
+    );
+    return res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('CREATE TARGET ERROR:', err);
+    return res.status(500).json({ success: false, message: 'Failed to create target' });
+  }
+};
+
+export const updateIncentiveTargetController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { target_tasks, reason, incentive_amount, cleaner_id, building_id, floor_id, active } =
+      req.body;
+    const result = await pool.query(
+      `UPDATE incentive_targets
+       SET reason = COALESCE($1, reason),
+           target_tasks = COALESCE($2, target_tasks),
+           incentive_amount = COALESCE($3, incentive_amount),
+           cleaner_id = COALESCE($4, cleaner_id),
+           building_id = COALESCE($5, building_id),
+           floor_id = COALESCE($6, floor_id),
+           active = COALESCE($7, active),
+           updated_at = NOW()
+       WHERE id = $8 RETURNING *`,
+      [
+        reason,
+        target_tasks !== undefined ? Number(target_tasks) : undefined,
+        incentive_amount !== undefined ? Number(incentive_amount) : undefined,
+        cleaner_id || null,
+        building_id || null,
+        floor_id || null,
+        active,
+        id,
+      ]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'Target not found' });
+    }
+    return res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('UPDATE TARGET ERROR:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update target' });
+  }
+};
+
+export const deleteIncentiveTargetController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM incentive_targets WHERE id = $1', [id]);
+    return res.json({ success: true, message: 'Target deleted' });
+  } catch (err) {
+    console.error('DELETE TARGET ERROR:', err);
+    return res.status(500).json({ success: false, message: 'Failed to delete target' });
+  }
+};
 
 /* ================= INCENTIVE TYPES ================= */
 

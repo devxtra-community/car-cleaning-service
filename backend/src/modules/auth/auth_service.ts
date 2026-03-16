@@ -632,3 +632,24 @@ export const resetPasswordService = async (
     client.release();
   }
 };
+
+export const toggleUserStatusService = async (userId: string, is_active: boolean) => {
+  const result = await pool.query(`UPDATE users SET is_active = $1 WHERE id = $2 RETURNING id`, [
+    is_active,
+    userId,
+  ]);
+  if (!result.rows.length) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+};
+
+export const resetUserPasswordService = async (userId: string, new_password: string) => {
+  const hashed = await bcrypt.hash(new_password, SALT_ROUNDS);
+  const result = await pool.query(`UPDATE users SET password = $1 WHERE id = $2 RETURNING id`, [
+    hashed,
+    userId,
+  ]);
+  if (!result.rows.length) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+};

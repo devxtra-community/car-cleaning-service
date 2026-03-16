@@ -1,6 +1,17 @@
 import { Request, Response } from 'express';
-<<<<<<< HEAD
-import { AttendanceService } from './attendance_service';
+import { AuthRequest } from '../../middlewares/authMiddleware';
+import { pool } from '../../database/connectDatabase';
+import {
+  AttendanceService,
+  checkTodayAttendance,
+  markAttendance as markAttendanceService,
+  getUserAttendanceInfo,
+  getAttendanceCalendar,
+} from './attendance_service';
+
+// ============================================================
+// ADMIN CLASS-BASED CONTROLLER (athulya)
+// ============================================================
 
 type UserRole = 'admin' | 'accountant' | 'supervisor' | 'worker';
 
@@ -36,10 +47,10 @@ export class AttendanceController {
     return res.json(list);
   }
 }
-=======
-import { AuthRequest } from '../../middlewares/authMiddleware';
-import * as attendanceService from './attendance_service';
-import { pool } from '../../database/connectDatabase';
+
+// ============================================================
+// MOBILE WORKER FUNCTIONAL CONTROLLERS (Sahileyy)
+// ============================================================
 
 export const checkStatus = async (req: AuthRequest, res: Response) => {
   try {
@@ -52,7 +63,7 @@ export const checkStatus = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const attendance = await attendanceService.checkTodayAttendance(userId);
+    const attendance = await checkTodayAttendance(userId);
 
     return res.json({
       success: true,
@@ -89,7 +100,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
     // Get user info (cleaner_id, building_id, supervisor_id)
     const role = req.user?.role || 'worker';
-    const workerInfo = await attendanceService.getUserAttendanceInfo(userId, role);
+    const workerInfo = await getUserAttendanceInfo(userId, role);
 
     if (!workerInfo) {
       return res.status(404).json({
@@ -106,7 +117,7 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const attendance = await attendanceService.markAttendance({
+    const attendance = await markAttendanceService({
       workerId: userId,
       cleanerId: workerInfo.cleaner_id, // This will be null for supervisors
       buildingId: workerInfo.building_id,
@@ -167,7 +178,7 @@ export const getCalendar = async (req: AuthRequest, res: Response) => {
     const createdAt = creationResult.rows[0]?.created_at;
 
     // Get calendar for current month
-    const calendar = await attendanceService.getAttendanceCalendar(userId, targetMonth, targetYear);
+    const calendar = await getAttendanceCalendar(userId, targetMonth, targetYear);
 
     // Get total attendance count
     const countQuery = `SELECT COUNT(*) as total FROM attendance WHERE worker_id = $1`;
@@ -203,7 +214,7 @@ export const getWorkerInfo = async (req: AuthRequest, res: Response) => {
     }
 
     const role = req.user?.role || 'worker';
-    const info = await attendanceService.getUserAttendanceInfo(userId, role);
+    const info = await getUserAttendanceInfo(userId, role);
 
     if (!info) {
       return res.status(404).json({
@@ -224,4 +235,3 @@ export const getWorkerInfo = async (req: AuthRequest, res: Response) => {
     });
   }
 };
->>>>>>> origin/Sahileyy
