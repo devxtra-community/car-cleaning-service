@@ -6,9 +6,10 @@ import ForgotPasswordModal from '../components/admin/Forgotpasswordmodal';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
-    email: '',
+    email: localStorage.getItem('rememberedEmail') || '',
     password: '',
   });
+  const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('rememberedEmail'));
   const [showForgot, setShowForgot] = useState(false);
 
   const navigate = useNavigate();
@@ -19,6 +20,12 @@ const Login = () => {
 
     try {
       const user = await login(loginInput.email, loginInput.password);
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', loginInput.email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
 
       if (user.role === 'accountant') {
         navigate('/accountant/dashboard');
@@ -82,6 +89,8 @@ const Login = () => {
                 <label className="flex items-center cursor-pointer">
                   <input
                     type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-300 text-[#00AEFF] focus:ring-[#00AEFF] focus:ring-offset-0"
                   />
                   <span className="ml-2 text-slate-600">Remember me</span>

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSupervisorCollections = exports.verifyTaskController = exports.getSupervisorCompletedTasks = exports.completeTaskController = exports.GetTaskpending = exports.createTaskController = void 0;
 const tasks_service_1 = require("./tasks_service");
 const connectDatabase_1 = require("../../database/connectDatabase");
+const notification_service_1 = require("../notifications/notification_service");
 /* ================= CREATE TASK ================= */
 const createTaskController = async (req, res) => {
     try {
@@ -10,9 +11,14 @@ const createTaskController = async (req, res) => {
         if (!workerId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const { owner_name, owner_phone, car_number, car_model, car_type, car_color, car_image_url, task_amount, latitude, longitude, } = req.body;
+        const { owner_name, owner_phone, car_number, car_model, car_type, car_color, car_image_url, task_amount, amount_charged, latitude, longitude, } = req.body;
         if (!owner_name || !owner_phone || !car_number || !car_model || !car_type || !car_color) {
             return res.status(400).json({ success: false, message: 'Missing fields' });
+        }
+        if ((task_amount ?? amount_charged) === undefined || (task_amount ?? amount_charged) <= 0) {
+            return res
+                .status(400)
+                .json({ success: false, message: 'Task amount must be greater than zero' });
         }
         // Validate GPS coordinates if provided
         if (latitude !== undefined || longitude !== undefined) {
@@ -22,12 +28,8 @@ const createTaskController = async (req, res) => {
                     message: 'Both latitude and longitude are required for GPS verification',
                 });
             }
-            // Validate coordinate ranges
             if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid GPS coordinates',
-                });
+                return res.status(400).json({ success: false, message: 'Invalid GPS coordinates' });
             }
         }
         // Get cleaner_id from cleaners table using workerId (user_id)
@@ -36,7 +38,6 @@ const createTaskController = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Cleaner profile not found' });
         }
         const cleanerId = cleanerRes.rows[0].id;
-        console.log('CreateTask: Found CleanerId:', cleanerId);
         const task = await (0, tasks_service_1.createTaskService)({
             owner_name,
             owner_phone,
@@ -46,22 +47,18 @@ const createTaskController = async (req, res) => {
             car_color,
             car_image_url: car_image_url ?? null,
             cleaner_id: cleanerId,
-            task_amount: task_amount ?? 0,
+            task_amount: task_amount ?? amount_charged ?? 0,
+            amount_charged: amount_charged ?? task_amount ?? 0,
             latitude: latitude ? parseFloat(latitude) : undefined,
             longitude: longitude ? parseFloat(longitude) : undefined,
         });
-        console.log('CreateTask: Task Inserted:', task);
         return res.status(201).json({ success: true, data: task });
     }
     catch (err) {
         console.log('CREATE TASK ERROR:', err);
-        // Handle GPS-related errors
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         if (errorMessage.includes('within') || errorMessage.includes('building')) {
-            return res.status(400).json({
-                success: false,
-                message: errorMessage,
-            });
+            return res.status(400).json({ success: false, message: errorMessage });
         }
         return res.status(500).json({ success: false, message: 'Failed to create task' });
     }
@@ -71,10 +68,8 @@ exports.createTaskController = createTaskController;
 const GetTaskpending = async (req, res) => {
     try {
         const workerId = req.user?.userId;
-        // Get cleaner_id from cleaners table using workerId (user_id)
         const cleanerRes = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [workerId]);
         if (!cleanerRes.rows.length) {
-            // If no cleaner profile, they can't have tasks
             return res.json([]);
         }
         const cleanerId = cleanerRes.rows[0].id;
@@ -94,7 +89,6 @@ const GetTaskpending = async (req, res) => {
     }
     catch (err) {
         console.error('GET TASK PENDING ERROR:', err);
-        console.error('Stack:', err instanceof Error ? err.stack : 'No stack');
         return res.status(500).json({ success: false });
     }
 };
@@ -110,9 +104,6 @@ const completeTaskController = async (req, res) => {
     const client = await connectDatabase_1.pool.connect();
     try {
         await client.query('BEGIN');
-        console.log('🚀 Starting Task Completion Process');
-        console.log('Task ID:', taskId);
-        console.log('Worker ID:', workerId);
         // Get cleaner_id from cleaners table using workerId (user_id)
         const cleanerProfileRes = await client.query('SELECT id FROM cleaners WHERE user_id = $1', [
             workerId,
@@ -121,8 +112,6 @@ const completeTaskController = async (req, res) => {
             throw new Error('CLEANER_NOT_FOUND');
         }
         const cleanerProfileId = cleanerProfileRes.rows[0].id;
-        console.log('✅ Cleaner Profile ID:', cleanerProfileId);
-        /* ================= COMPLETE TASK ================= */
         const taskRes = await client.query(`
       UPDATE tasks
       SET status = 'completed',
@@ -131,28 +120,29 @@ const completeTaskController = async (req, res) => {
           payment_method = COALESCE($4, payment_method),
           final_price = COALESCE($5, final_price)
       WHERE id = $1 AND cleaner_id = $2
-      RETURNING task_amount, final_price, DATE(completed_at) as completed_date
+      RETURNING task_amount, final_price, amount_charged, DATE(completed_at) as completed_date
       `, [taskId, cleanerProfileId, after_wash_image_url, payment_method, final_price]);
         if (!taskRes.rows.length) {
             throw new Error('TASK_NOT_FOUND');
         }
-        const taskAmount = Number(taskRes.rows[0].final_price || taskRes.rows[0].task_amount || 0);
+        const taskAmount = Number(taskRes.rows[0].final_price ||
+            taskRes.rows[0].amount_charged ||
+            taskRes.rows[0].task_amount ||
+            0);
         const completedDate = taskRes.rows[0].completed_date;
-        console.log('✅ Task marked as completed. Amount:', taskAmount, 'Date:', completedDate);
         /* ================= UPDATE CLEANER TASK COUNT ================= */
         const cleanerRes = await client.query(`
       UPDATE cleaners
       SET total_tasks = total_tasks + 1,
           total_earning = total_earning + $1
-      WHERE user_id = $2
+      WHERE id = $2
       RETURNING id, total_tasks
-      `, [taskAmount, workerId]);
+      `, [taskAmount, cleanerProfileId]);
         if (!cleanerRes.rows.length) {
             throw new Error('CLEANER_NOT_FOUND');
         }
         const cleanerId = cleanerRes.rows[0].id;
         const totalTasks = cleanerRes.rows[0].total_tasks;
-        console.log('✅ Cleaner Stats Updated. Total Tasks:', totalTasks);
         /* ================= COUNT TODAY'S TASKS ================= */
         const todayTasksRes = await client.query(`
       SELECT COUNT(*)::int as tasks_today
@@ -162,19 +152,33 @@ const completeTaskController = async (req, res) => {
         AND DATE(completed_at) = $2
       `, [cleanerId, completedDate]);
         const tasksCompletedToday = todayTasksRes.rows[0].tasks_today || 0;
-        console.log('✅ Tasks Completed Today:', tasksCompletedToday);
-        /* ================= UPDATE DAILY WORK RECORD & CALCULATE INCENTIVES ================= */
+        /* ================= UPDATE DAILY WORK RECORD & INCENTIVES ================= */
         const dailyIncentives = await (0, tasks_service_1.updateDailyWorkRecord)(client, cleanerId, tasksCompletedToday, completedDate);
-        /* ================= CHECK MILESTONE INCENTIVES ================= */
         const milestoneIncentives = await (0, tasks_service_1.checkMilestoneIncentives)(client, cleanerId, totalTasks);
         await client.query('COMMIT');
-        console.log('✅ Transaction Committed Successfully');
         const allIncentives = [...dailyIncentives.incentivesEarned, ...milestoneIncentives];
         const totalIncentiveAmount = allIncentives.reduce((sum, inc) => sum + inc.amount, 0);
-        console.log('🎉 Task Completion Summary:');
-        console.log('- Daily Incentives:', dailyIncentives.incentivesEarned.length);
-        console.log('- Milestone Incentives:', milestoneIncentives.length);
-        console.log('- Total Incentive Amount:', totalIncentiveAmount);
+        /* ================= SEND PUSH NOTIFICATION TO SUPERVISOR ================= */
+        try {
+            const notifyRes = await connectDatabase_1.pool.query(`
+        SELECT 
+          u.full_name as worker_name, 
+          b.building_name as society_name, 
+          s.user_id as supervisor_user_id
+        FROM cleaners c
+        JOIN users u ON c.user_id = u.id
+        JOIN buildings b ON c.building_id = b.id
+        JOIN supervisors s ON c.supervisor_id = s.id
+        WHERE c.id = $1
+        `, [cleanerId]);
+            if (notifyRes.rows.length > 0) {
+                const { worker_name, society_name, supervisor_user_id } = notifyRes.rows[0];
+                await (0, notification_service_1.sendNotificationToUser)(supervisor_user_id, '✅ Task Completed', `${worker_name} has completed the task at ${society_name}`, { type: 'task_completed', taskId, screen: 'TaskDetail' });
+            }
+        }
+        catch (pushErr) {
+            console.error('[PushNotification] Failed to notify supervisor:', pushErr);
+        }
         return res.json({
             success: true,
             data: {
@@ -190,7 +194,7 @@ const completeTaskController = async (req, res) => {
     }
     catch (err) {
         await client.query('ROLLBACK');
-        console.error('❌ COMPLETE TASK ERROR:', err);
+        console.error('COMPLETE TASK ERROR:', err);
         return res.status(500).json({
             success: false,
             message: err instanceof Error ? err.message : 'Failed to complete task',
@@ -240,7 +244,6 @@ const verifyTaskController = async (req, res) => {
         if (!supervisorId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        // Verify supervisor owns this task's cleaner
         const taskCheck = await connectDatabase_1.pool.query(`
       SELECT t.id 
       FROM tasks t
@@ -260,6 +263,28 @@ const verifyTaskController = async (req, res) => {
       WHERE id = $3
       RETURNING *
       `, [status || 'verified', remarks || null, taskId]);
+        if (status === 'flagged' || status === 'rejected') {
+            try {
+                const notifyRes = await connectDatabase_1.pool.query(`
+          SELECT 
+            u.id as worker_user_id,
+            b.building_name as society_name
+          FROM tasks t
+          JOIN cleaners c ON t.cleaner_id = c.id
+          JOIN users u ON c.user_id = u.id
+          JOIN buildings b ON c.building_id = b.id
+          WHERE t.id = $1
+          `, [taskId]);
+                if (notifyRes.rows.length > 0) {
+                    const { worker_user_id, society_name } = notifyRes.rows[0];
+                    const title = status === 'flagged' ? '⚠️ Fraud Detected' : '❌ Task Rejected';
+                    await (0, notification_service_1.sendNotificationToUser)(worker_user_id, title, `Your task at ${society_name} has been rejected. Reason: ${remarks || 'No reason provided'}`, { type: 'task_rejected', taskId, screen: 'TaskDetail' });
+                }
+            }
+            catch (pushErr) {
+                console.error('[PushNotification] Failed to notify worker:', pushErr);
+            }
+        }
         return res.json({ success: true, data: result.rows[0] });
     }
     catch (err) {
@@ -277,16 +302,16 @@ const getSupervisorCollections = async (req, res) => {
         }
         const result = await connectDatabase_1.pool.query(`
       SELECT 
-        SUM(final_price) as total_collected,
-        payment_method,
-        COUNT(*) as task_count
+        COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as total_collected,
+        COALESCE(t.payment_method, 'cash') as payment_method,
+        COUNT(*)::int as task_count
       FROM tasks t
       JOIN cleaners c ON t.cleaner_id = c.id
       JOIN supervisors s ON c.supervisor_id = s.id
       WHERE s.user_id = $1 
         AND t.status = 'completed'
-        AND DATE(t.completed_at) = CURRENT_DATE
-      GROUP BY payment_method
+        AND (t.completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+      GROUP BY t.payment_method
       `, [supervisorId]);
         return res.json({ success: true, data: result.rows });
     }

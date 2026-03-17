@@ -516,3 +516,140 @@ export const getAdminSummary = async () => {
   const response = await api.get('/api/analytics/summary');
   return response.data;
 };
+
+
+export interface AdminListItem {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  age: number | null;
+  nationality: string | null;
+  document_id: string | null;
+  base_salary: number | null;
+  profile_image: string | null;
+  building_id: string | null;
+  floor_id: string | null;
+  joining_date: string | null;
+  last_login: string | null;
+  created_at: string;
+  updated_at: string;
+  token_version: number;
+  // derived
+  is_active: boolean;
+}
+
+export interface AccountantListItem {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  age: number | null;
+  nationality: string | null;
+  document_id: string | null;
+  base_salary: number | null;
+  profile_image: string | null;
+  building_id: string | null;
+  floor_id: string | null;
+  joining_date: string | null;
+  last_login: string | null;
+  created_at: string;
+  updated_at: string;
+  token_version: number;
+  building_name: string | null;
+  floor_name: string | null;
+  floor_number: number | null;
+  // derived
+  is_active: boolean;
+}
+
+export interface UserUpdatePayload {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  age?: number;
+  nationality?: string;
+  document_id?: string;
+  base_salary?: number;
+  profile_image?: string;
+  joining_date?: string;
+  building_id?: string | null;
+  floor_id?: string | null;
+  password?: string;
+}
+
+// helper: derive is_active from token_version
+const withActive = <T extends { token_version: number }>(row: T): T & { is_active: boolean } => ({
+  ...row,
+  is_active: row.token_version >= 0,
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getAllAdmins = async (): Promise<AdminListItem[]> => {
+  const { data } = await api.get('/api/admins');
+  return (data as AdminListItem[]).map(withActive);
+};
+
+export const getAdminById = async (id: string): Promise<AdminListItem> => {
+  const { data } = await api.get(`/api/admins/${id}`);
+  return withActive(data as AdminListItem);
+};
+
+export const updateAdmin = async (
+  id: string,
+  payload: UserUpdatePayload
+): Promise<AdminListItem> => {
+  const { data } = await api.put(`/api/admins/${id}`, payload);
+  return withActive(data as AdminListItem);
+};
+
+export const deleteAdmin = async (id: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/admins/${id}`);
+  return data;
+};
+
+export const toggleAdminStatus = async (
+  id: string,
+  isActive: boolean
+): Promise<{ id: string; is_active: boolean }> => {
+  const { data } = await api.patch(`/api/admins/${id}/toggle-status`, { is_active: isActive });
+  return data;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCOUNTANT API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getAllAccountants = async (): Promise<AccountantListItem[]> => {
+  const { data } = await api.get('/api/accountants');
+  return (data as AccountantListItem[]).map(withActive);
+};
+
+export const getAccountantById = async (id: string): Promise<AccountantListItem> => {
+  const { data } = await api.get(`/api/accountants/${id}`);
+  return withActive(data as AccountantListItem);
+};
+
+export const updateAccountant = async (
+  id: string,
+  payload: UserUpdatePayload
+): Promise<AccountantListItem> => {
+  const { data } = await api.put(`/api/accountants/${id}`, payload);
+  return withActive(data as AccountantListItem);
+};
+
+export const deleteAccountant = async (id: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/api/accountants/${id}`);
+  return data;
+};
+
+export const toggleAccountantStatus = async (
+  id: string,
+  isActive: boolean
+): Promise<{ id: string; is_active: boolean }> => {
+  const { data } = await api.patch(`/api/accountants/${id}/toggle-status`, { is_active: isActive });
+  return data;
+};

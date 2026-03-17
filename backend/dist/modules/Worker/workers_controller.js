@@ -14,7 +14,9 @@ async function getOrCreateCleanerId(userId) {
         return existing.rows[0].id;
     // Auto-create a minimal cleaners record linked to this user.
     // ON CONFLICT DO NOTHING handles the race condition if two requests arrive at the same time.
-    await connectDatabase_1.pool.query(`INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [userId]);
+    await connectDatabase_1.pool.query(`INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [
+        userId,
+    ]);
     // Re-fetch after the insert (handles both success and conflict cases)
     const after = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE user_id = $1', [userId]);
     if (after.rows.length)
@@ -39,7 +41,7 @@ const getWorkerDashboard = async (req, res) => {
         }
         else {
             // Default 'day'
-            dateCondition = `AND t2.completed_at::date = $2::date`;
+            dateCondition = `AND t2.completed_at >= ($2::date + interval '0 hours') AND t2.completed_at < ($2::date + interval '24 hours')`;
         }
         // Revenue condition is same but on t3 alias
         const revenueCondition = dateCondition.replace(/t2/g, 't3');
@@ -51,6 +53,7 @@ const getWorkerDashboard = async (req, res) => {
         u.email,
         u.phone as phone_number,
         u.document_id as emp_id,
+        u.profile_image,
         s_u.full_name as supervisor_name,
         b.building_name as location,
         c.total_earning,
@@ -161,7 +164,7 @@ const getWorkerDashboard = async (req, res) => {
             name: data.full_name,
             email: data.email,
             phone: data.phone_number,
-            profilePhoto: null,
+            profilePhoto: data.profile_image,
             empId: data.emp_id,
             jobsDone: data.total_tasks || 0,
             totalRevenue: data.total_earning || 0,
@@ -275,7 +278,7 @@ const getWorkerWalletStats = async (req, res) => {
             dateCondition = `AND completed_at >= date_trunc('month', $2::date) AND completed_at < date_trunc('month', $2::date) + interval '1 month'`;
         }
         else {
-            dateCondition = `AND completed_at::date = $2::date`;
+            dateCondition = `AND completed_at >= ($2::date + interval '0 hours') AND completed_at < ($2::date + interval '24 hours')`;
         }
         // 1. Tasks Details - Only fetching tasks as per requirement
         const tasksQuery = `
@@ -300,20 +303,20 @@ const getWorkerWalletStats = async (req, res) => {
         WHERE dwr.cleaner_id = $1 AND dwr.date ${range === 'day'
             ? '= $2::date'
             : range === 'week'
-                ? '>= date_trunc(\'week\', $2::date) AND dwr.date < date_trunc(\'week\', $2::date) + interval \'1 week\''
-                : '>= date_trunc(\'month\', $2::date) AND dwr.date < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+                ? ">= date_trunc('week', $2::date) AND dwr.date < date_trunc('week', $2::date) + interval '1 week'"
+                : ">= date_trunc('month', $2::date) AND dwr.date < date_trunc('month', $2::date) + interval '1 month'"}
         UNION ALL
         SELECT amount FROM milestone_achievements WHERE cleaner_id = $1 AND achieved_at ${range === 'day'
             ? '::date = $2::date'
             : range === 'week'
-                ? '>= date_trunc(\'week\', $2::date) AND achieved_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-                : '>= date_trunc(\'month\', $2::date) AND achieved_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+                ? ">= date_trunc('week', $2::date) AND achieved_at < date_trunc('week', $2::date) + interval '1 week'"
+                : ">= date_trunc('month', $2::date) AND achieved_at < date_trunc('month', $2::date) + interval '1 month'"}
         UNION ALL
         SELECT amount FROM cleaner_incentives WHERE cleaner_id = $1 AND created_at ${range === 'day'
             ? '::date = $2::date'
             : range === 'week'
-                ? '>= date_trunc(\'week\', $2::date) AND created_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-                : '>= date_trunc(\'month\', $2::date) AND created_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+                ? ">= date_trunc('week', $2::date) AND created_at < date_trunc('week', $2::date) + interval '1 week'"
+                : ">= date_trunc('month', $2::date) AND created_at < date_trunc('month', $2::date) + interval '1 month'"}
       ) as all_incentives
     `;
         const milestoneQuery = `
@@ -321,16 +324,16 @@ const getWorkerWalletStats = async (req, res) => {
       WHERE cleaner_id = $1 AND achieved_at ${range === 'day'
             ? '::date = $2::date'
             : range === 'week'
-                ? '>= date_trunc(\'week\', $2::date) AND achieved_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-                : '>= date_trunc(\'month\', $2::date) AND achieved_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+                ? ">= date_trunc('week', $2::date) AND achieved_at < date_trunc('week', $2::date) + interval '1 week'"
+                : ">= date_trunc('month', $2::date) AND achieved_at < date_trunc('month', $2::date) + interval '1 month'"}
     `;
         const penaltyQuery = `
       SELECT COALESCE(SUM(amount), 0)::float as total FROM penalties 
       WHERE cleaner_id = $1 AND created_at ${range === 'day'
             ? '::date = $2::date'
             : range === 'week'
-                ? '>= date_trunc(\'week\', $2::date) AND created_at < date_trunc(\'week\', $2::date) + interval \'1 week\''
-                : '>= date_trunc(\'month\', $2::date) AND created_at < date_trunc(\'month\', $2::date) + interval \'1 month\''}
+                ? ">= date_trunc('week', $2::date) AND created_at < date_trunc('week', $2::date) + interval '1 week'"
+                : ">= date_trunc('month', $2::date) AND created_at < date_trunc('month', $2::date) + interval '1 month'"}
     `;
         const [incRes, milRes, penRes] = await Promise.all([
             connectDatabase_1.pool.query(incentiveQuery, [cleanerId, selectedDate]),
@@ -409,7 +412,8 @@ const getWorkerTaskLogs = async (req, res) => {
       FROM tasks
       WHERE cleaner_id = $1
         AND status = 'completed'
-        AND completed_at::date = $2::date
+        AND completed_at >= ($2::date + interval '0 hours') 
+        AND completed_at < ($2::date + interval '24 hours')
       ORDER BY completed_at DESC
     `;
         const tasksRes = await connectDatabase_1.pool.query(tasksQuery, [cleanerId, selectedDate]);

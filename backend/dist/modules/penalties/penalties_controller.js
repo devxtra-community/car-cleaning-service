@@ -118,11 +118,17 @@ const getSupervisorPenalties = async (req, res) => {
             dateCondition = `AND p.created_at::date = CURRENT_DATE`;
         }
         else if (period === 'month') {
-            dateCondition = `AND p.created_at >= date_trunc('month', CURRENT_DATE)`;
+            dateCondition = `
+        AND p.created_at >= date_trunc('month', CURRENT_DATE)
+        AND p.created_at < date_trunc('month', CURRENT_DATE) + interval '1 month'
+      `;
         }
         else {
             // default: week
-            dateCondition = `AND p.created_at >= date_trunc('week', CURRENT_DATE)`;
+            dateCondition = `
+        AND p.created_at >= date_trunc('week', CURRENT_DATE)
+        AND p.created_at < date_trunc('week', CURRENT_DATE) + interval '1 week'
+      `;
         }
         const result = await connectDatabase_1.pool.query(`SELECT
          p.id,

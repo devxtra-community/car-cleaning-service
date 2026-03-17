@@ -117,7 +117,7 @@ const Customers = () => {
           <div>
             <p className="text-sm opacity-90 flex items-center gap-2">💳 Today's Revenue</p>
             <p className="text-2xl font-semibold mt-1">
-              ₹ {loading ? '...' : todaySummary.totalRevenue.toLocaleString()}
+              {loading ? '...' : todaySummary.totalRevenue.toLocaleString()} AED
             </p>
             <p className="text-xs opacity-80 mt-1">Calculated based on completed jobs</p>
           </div>
@@ -165,7 +165,7 @@ const Customers = () => {
                   <td className="text-center">
                     {task.penalty_amount > 0 ? (
                       <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs">
-                        ₹{task.penalty_amount}
+                        {task.penalty_amount} AED
                       </span>
                     ) : (
                       <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs">
@@ -175,18 +175,17 @@ const Customers = () => {
                   </td>
                   <td className="text-center">
                     <span className="bg-green-100 text-green-600 px-2 py-1 rounded text-xs">
-                      ₹{task.final_price || task.task_amount || 0}
+                      {task.final_price || task.task_amount || 0} AED
                     </span>
                   </td>
                   <td className="text-center">
                     <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        task.status === 'completed'
-                          ? 'bg-green-100 text-green-600'
-                          : task.status === 'pending'
-                            ? 'bg-amber-100 text-amber-600'
-                            : 'bg-blue-100 text-blue-600'
-                      }`}
+                      className={`px-2 py-1 rounded text-xs ${task.status === 'completed'
+                        ? 'bg-green-100 text-green-600'
+                        : task.status === 'pending'
+                          ? 'bg-amber-100 text-amber-600'
+                          : 'bg-blue-100 text-blue-600'
+                        }`}
                     >
                       {task.status}
                     </span>

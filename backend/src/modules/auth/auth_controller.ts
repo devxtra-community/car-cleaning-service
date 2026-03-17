@@ -18,6 +18,9 @@ import {
   getAllAdminsService,
   toggleUserStatusService,
   resetUserPasswordService,
+  requestPasswordResetService,
+  verifyOTPService,
+  resetPasswordService,
 } from './auth_service';
 import { sendWelcomeMail } from '../../config/sendWelcomeMail';
 
@@ -29,6 +32,7 @@ const VALID_CLIENT_TYPES: ClientType[] = ['web', 'mobile'];
 
 export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // eslint-disable-next-line no-undef
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const documentFile = files?.document?.[0];
     const profilePhotoFile = files?.profile_image?.[0];
@@ -335,6 +339,61 @@ export const resetUserPasswordController = async (
     }
 
     return res.status(200).json({ success: true, message: 'Password reset successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ============================================================
+// FORGOT PASSWORD
+// ============================================================
+
+export const forgotPasswordController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body;
+    if (!email) throw new AppError('Email is required', 400, 'EMAIL_REQUIRED');
+
+    await requestPasswordResetService(email);
+
+    return res.status(200).json({
+      success: true,
+      message: 'If an account exists with this email, a reset code has been sent.',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyOTPController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) throw new AppError('Email and OTP are required', 400, 'FIELDS_REQUIRED');
+
+    const { resetToken } = await verifyOTPService(email, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully',
+      resetToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPasswordController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, resetToken, newPassword } = req.body;
+    if (!email || !resetToken || !newPassword) {
+      throw new AppError('Email, resetToken and newPassword are required', 400, 'FIELDS_REQUIRED');
+    }
+
+    await resetPasswordService(email, resetToken, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successful. You can now log in.',
+    });
   } catch (err) {
     next(err);
   }

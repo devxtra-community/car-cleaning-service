@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCompanyReconciliationSummary = exports.getBuildingReconciliation = void 0;
-const connectDatabase_1 = require("src/database/connectDatabase");
+const connectDatabase_1 = require("../../database/connectDatabase");
 const getBuildingReconciliation = async (cycleId) => {
     const cycleRes = await connectDatabase_1.pool.query(`SELECT start_date, end_date FROM salary_cycles WHERE id = $1`, [cycleId]);
     if (!cycleRes.rowCount)

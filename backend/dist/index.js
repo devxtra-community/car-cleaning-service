@@ -12,6 +12,7 @@ const connectDatabase_1 = require("./database/connectDatabase");
 const error_handler_1 = require("./middlewares/error-handler");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
 const auth_routes_1 = __importDefault(require("./modules/auth/auth_routes"));
 const vechicleRoutes_1 = __importDefault(require("./modules/vehicles/vechicleRoutes"));
 const attendance_routes_1 = __importDefault(require("./modules/attendance/attendance_routes"));
@@ -21,28 +22,36 @@ const workers_routes_1 = __importDefault(require("../src/modules/Worker/workers_
 const buildings_routes_1 = __importDefault(require("./modules/buildings/buildings_routes"));
 const incentives_routes_1 = __importDefault(require("./modules/incentives/incentives_routes"));
 const analytic_routes_1 = __importDefault(require("./modules/analytics/analytic_routes"));
-const review_routes_1 = __importDefault(require("./modules/feedback/review_routes"));
 const supervisor_routes_1 = __importDefault(require("./modules/supervisor/supervisor_routes"));
-const floorRoutes_1 = __importDefault(require("./modules/floors/floorRoutes"));
+const Adminaccountantrouter_1 = __importDefault(require("./modules/AdminAccountant/Adminaccountantrouter"));
 const s3_1 = __importDefault(require("./routes/s3"));
+const review_routes_1 = __importDefault(require("./modules/feedback/review_routes"));
+const floorRoutes_1 = __importDefault(require("./modules/floors/floorRoutes"));
 const penalties_routes_1 = __importDefault(require("./modules/penalties/penalties_routes"));
+const user_Routes_1 = __importDefault(require("./modules/users/user_Routes"));
 const fraud_routes_1 = __importDefault(require("./modules/fraud/fraud_routes"));
 const notification_routes_1 = __importDefault(require("./modules/notifications/notification_routes"));
 const system_routes_1 = __importDefault(require("./modules/system/system_routes"));
 const maintenance_1 = require("./middlewares/maintenance");
-const redis_1 = __importDefault(require("./config/redis"));
-const connectDatabase_2 = require("./database/connectDatabase");
-const os_1 = __importDefault(require("os"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
     console.log(`[REQUEST] ${req.method} ${req.url}`);
     next();
 });
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());
 app.use((0, cors_1.default)({
-    origin: true, // Reflects the request origin, required for credentials: true
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:8081',
+        'http://10.10.2.230:8081',
+        'http://10.10.1.203:8081',
+        'http://10.10.3.21:8081',
+        'http://10.10.3.182.1:8081',
+        'http://10.10.2.19.1:8081',
+        'http://10.10.1.164:8081',
+    ],
     credentials: true,
 }));
 // Register maintenance middleware early
@@ -50,17 +59,15 @@ app.use(maintenance_1.maintenanceMiddleware);
 const PORT = 3033;
 (0, connectDatabase_1.connectDatabase)();
 app.use('/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req, res) => {
     logger_1.logger.info('Health check requested');
-    const dbConnected = (0, connectDatabase_2.isDatabaseConnected)();
-    const redisStatus = redis_1.default.status;
+    const dbConnected = (0, connectDatabase_1.isDatabaseConnected)();
     const healthData = {
-        status: dbConnected && redisStatus === 'ready' ? 'ok' : 'degraded',
+        status: dbConnected ? 'ok' : 'degraded',
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
         services: {
             database: { status: dbConnected ? 'connected' : 'disconnected' },
-            redis: { status: redisStatus },
         },
         resources: {
             memory: {
@@ -70,23 +77,27 @@ app.get('/health', async (req, res) => {
             },
             cpu: {
                 load: os_1.default.loadavg()[0].toFixed(2),
-            }
-        }
+            },
+        },
     };
     res.status(healthData.status === 'ok' ? 200 : 503).json(healthData);
 });
+app.get('/test', (_req, res) => {
+    res.json({ message: 'Backend reachable' });
+});
+// Routes
 app.use('/api/auth', auth_routes_1.default);
-app.use('/attendance', attendance_routes_1.default);
+app.use('/api', attendance_routes_1.default);
 app.use('/s3', s3_1.default);
 app.use('/workers', workers_routes_1.default);
 app.use('/api/vehicle', vechicleRoutes_1.default);
 app.use('/api/buildings', buildings_routes_1.default);
+app.use('/api/users', user_Routes_1.default);
+app.use('/api/supervisor', supervisor_routes_1.default);
 app.use('/tasks', tasks_routes_1.default);
-app.use('/salary', salary_routes_1.default);
+app.use('/api/salary', salary_routes_1.default);
 app.use('/api/incentives', incentives_routes_1.default);
-// Register penalties correctly in the flow
 app.use('/penalties', penalties_routes_1.default);
-console.log('Penalties route registered at /penalties (NORMAL FLOW)');
 app.use('/analytics', analytic_routes_1.default);
 app.use('/feedback', review_routes_1.default);
 app.use('/supervisors', supervisor_routes_1.default);
@@ -94,11 +105,16 @@ app.use('/api/floors', floorRoutes_1.default);
 app.use('/fraud', fraud_routes_1.default);
 app.use('/api/notifications', notification_routes_1.default);
 app.use('/api/admin/system', system_routes_1.default);
+app.use('/api', Adminaccountantrouter_1.default);
+// Catch-all for unmatched routes
+app.use((req, res, _next) => {
+    console.log(`[404 NOT MATCHED] ${req.method} ${req.originalUrl}`);
+    res.status(404).json({
+        success: false,
+        message: `Route ${req.method} ${req.originalUrl} not found`,
+    });
+});
 app.use(error_handler_1.globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
-    console.log('Backend running on port 3033 - LATEST UPDATE');
+    console.log('Backend running on port 3033');
 });
-app.get('/test', (req, res) => {
-    res.json({ message: 'Backend reachable' });
-});
-// restart

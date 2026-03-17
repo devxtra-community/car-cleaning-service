@@ -1,7 +1,60 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getWorkerInfo = exports.getAttendanceCalendar = exports.markAttendance = exports.checkTodayAttendance = void 0;
+exports.getUserAttendanceInfo = exports.getAttendanceCalendar = exports.markAttendance = exports.checkTodayAttendance = exports.AttendanceService = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
+class AttendanceService {
+    static async markOnLogin(data) {
+        const now = new Date();
+        const lateTime = new Date();
+        lateTime.setHours(9, 30, 0);
+        const status = now > lateTime ? 'late' : 'present';
+        const result = await connectDatabase_1.pool.query(`
+      INSERT INTO attendance(user_id, check_in, status)
+      VALUES ($1,NOW(),$2)
+      ON CONFLICT (user_id, date)
+      DO NOTHING
+      RETURNING *
+      `, [data.user_id, status]);
+        return result.rows[0];
+    }
+    static async clockOut(user_id) {
+        const attendance = await connectDatabase_1.pool.query(`
+      SELECT check_in
+      FROM attendance
+      WHERE user_id=$1 AND date=CURRENT_DATE
+      `, [user_id]);
+        if (!attendance.rows.length)
+            return null;
+        const checkIn = attendance.rows[0].check_in;
+        await connectDatabase_1.pool.query(`
+      UPDATE attendance
+      SET check_out=NOW()
+      WHERE user_id=$1 AND date=CURRENT_DATE
+      `, [user_id]);
+        const hours = (Date.now() - new Date(checkIn).getTime()) / 3600000;
+        return hours.toFixed(2);
+    }
+    static async today() {
+        const result = await connectDatabase_1.pool.query(`
+      SELECT u.full_name,a.*
+      FROM attendance a
+      JOIN users u ON u.id=a.user_id
+      WHERE date=CURRENT_DATE
+    `);
+        return result.rows;
+    }
+    static async alreadyMarked(user_id) {
+        const result = await connectDatabase_1.pool.query(`
+      SELECT id FROM attendance
+      WHERE user_id=$1 AND date=CURRENT_DATE
+      `, [user_id]);
+        return result.rows.length > 0;
+    }
+}
+exports.AttendanceService = AttendanceService;
+// ============================================================
+// FUNCTIONAL (Mobile Worker) Attendance Service – Sahileyy
+// ============================================================
 // Calculate distance between two GPS coordinates (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3; // Earth's radius in meters
@@ -92,29 +145,47 @@ const getAttendanceCalendar = async (workerId, month, year) => {
     return result.rows;
 };
 exports.getAttendanceCalendar = getAttendanceCalendar;
-const getWorkerInfo = async (workerId) => {
+const getUserAttendanceInfo = async (userId, role) => {
     try {
-        const query = `
-      SELECT 
-        u.full_name as worker_name,
-        c.id as cleaner_id,
-        c.building_id,
-        b.building_name,
-        sup.full_name as supervisor_name,
-        c.supervisor_id
-      FROM users u
-      JOIN cleaners c ON u.id = c.user_id
-      LEFT JOIN buildings b ON c.building_id = b.id
-      LEFT JOIN users sup ON c.supervisor_id = sup.id
-      WHERE u.id = $1
-    `;
-        const result = await connectDatabase_1.pool.query(query, [workerId]);
-        console.log('Worker info result:', result.rows[0]);
-        return result.rows[0] || null;
+        if (role === 'supervisor') {
+            const query = `
+        SELECT 
+          u.full_name as worker_name,
+          NULL as cleaner_id,
+          s.building_id,
+          b.building_name,
+          u.full_name as supervisor_name,
+          NULL as supervisor_id
+        FROM users u
+        JOIN supervisors s ON u.id = s.user_id
+        LEFT JOIN buildings b ON s.building_id = b.id
+        WHERE u.id = $1
+      `;
+            const result = await connectDatabase_1.pool.query(query, [userId]);
+            return result.rows[0] || null;
+        }
+        else {
+            const query = `
+        SELECT 
+          u.full_name as worker_name,
+          c.id as cleaner_id,
+          c.building_id,
+          b.building_name,
+          sup.full_name as supervisor_name,
+          c.supervisor_id
+        FROM users u
+        JOIN cleaners c ON u.id = c.user_id
+        LEFT JOIN buildings b ON c.building_id = b.id
+        LEFT JOIN users sup ON c.supervisor_id = sup.id
+        WHERE u.id = $1
+      `;
+            const result = await connectDatabase_1.pool.query(query, [userId]);
+            return result.rows[0] || null;
+        }
     }
     catch (error) {
-        console.error('getWorkerInfo SQL Error:', error);
+        console.error('getUserAttendanceInfo SQL Error:', error);
         throw error;
     }
 };
-exports.getWorkerInfo = getWorkerInfo;
+exports.getUserAttendanceInfo = getUserAttendanceInfo;

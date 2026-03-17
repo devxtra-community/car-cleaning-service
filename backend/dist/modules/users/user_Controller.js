@@ -19,7 +19,8 @@ const getMe = async (req, res) => {
         u.age, 
         u.nationality, 
         u.document,
-        u.profile_image
+        u.profile_image,
+        u.phone
       FROM users u
       WHERE u.id = $1
     `;
@@ -36,6 +37,7 @@ const getMe = async (req, res) => {
           u.nationality, 
           u.document,
           u.profile_image,
+          u.phone,
           s.id as supervisor_id,
           b.building_name,
           b.id as building_id
@@ -57,6 +59,7 @@ const getMe = async (req, res) => {
           u.age, 
           u.nationality, 
           u.document,
+          u.phone,
           c.id as cleaner_id,
           c.total_tasks,
           c.total_earning,

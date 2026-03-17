@@ -1,58 +1,38 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFraudTrendsService = exports.getCustomerRatingSummaryService = exports.getBuildingComparisonService = exports.getPeakActivity = exports.getCollectionsReconciliation = exports.getCleanerPerformance = exports.getMonthlyProgress = exports.getWeeklyProgress = exports.getDailyProgress = void 0;
+exports.getCustomerReportService = exports.getAdminSummaryService = exports.getFraudTrendsService = exports.getCustomerRatingSummaryService = exports.getBuildingComparisonService = exports.getPeakActivity = exports.getCollectionsReconciliation = exports.getCleanerPerformance = exports.getMonthlyProgress = exports.getWeeklyProgress = exports.getDailyProgress = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
-const redis_1 = require("../../config/redis");
 const getDailyProgress = async (date) => {
-    const cacheKey = `analytics:daily:${date || 'all'}`;
-    const cached = await (0, redis_1.getCache)(cacheKey);
-    if (cached)
-        return cached;
     const res = await connectDatabase_1.pool.query(`
     SELECT *
     FROM daily_progress_view
     WHERE ($1::date IS NULL OR date = $1)
     ORDER BY date DESC
     `, [date || null]);
-    await (0, redis_1.setCache)(cacheKey, res.rows, 300); // 5 min cache
     return res.rows;
 };
 exports.getDailyProgress = getDailyProgress;
 const getWeeklyProgress = async (weekStart) => {
-    const cacheKey = `analytics:weekly:${weekStart || 'all'}`;
-    const cached = await (0, redis_1.getCache)(cacheKey);
-    if (cached)
-        return cached;
     const res = await connectDatabase_1.pool.query(`
     SELECT *
     FROM weekly_progress_view
     WHERE ($1::date IS NULL OR week_start = $1)
     ORDER BY week_start DESC
     `, [weekStart || null]);
-    await (0, redis_1.setCache)(cacheKey, res.rows, 1800); // 30 min cache
     return res.rows;
 };
 exports.getWeeklyProgress = getWeeklyProgress;
 const getMonthlyProgress = async (month) => {
-    const cacheKey = `analytics:monthly:${month || 'all'}`;
-    const cached = await (0, redis_1.getCache)(cacheKey);
-    if (cached)
-        return cached;
     const res = await connectDatabase_1.pool.query(`
     SELECT *
     FROM monthly_progress_view
     WHERE ($1::date IS NULL OR month = DATE_TRUNC('month', $1::date))
     ORDER BY month DESC
     `, [month || null]);
-    await (0, redis_1.setCache)(cacheKey, res.rows, 3600); // 1 hour cache
     return res.rows;
 };
 exports.getMonthlyProgress = getMonthlyProgress;
 const getCleanerPerformance = async (period) => {
-    const cacheKey = `analytics:cleaner_perf:${period || 'all'}`;
-    const cached = await (0, redis_1.getCache)(cacheKey);
-    if (cached)
-        return cached;
     // period can be 'daily', 'weekly', 'monthly' or null for all time
     let dateFilter = '';
     if (period === 'daily')
@@ -73,7 +53,6 @@ const getCleanerPerformance = async (period) => {
      LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${dateFilter}
      GROUP BY c.id, u.full_name, b.building_name
      ORDER BY completed_tasks DESC`);
-    await (0, redis_1.setCache)(cacheKey, res.rows, 600); // 10 min cache
     return res.rows;
 };
 exports.getCleanerPerformance = getCleanerPerformance;
@@ -149,10 +128,6 @@ const getCustomerRatingSummaryService = async () => {
 };
 exports.getCustomerRatingSummaryService = getCustomerRatingSummaryService;
 const getFraudTrendsService = async () => {
-    const cacheKey = 'analytics:fraud_trends';
-    const cached = await (0, redis_1.getCache)(cacheKey);
-    if (cached)
-        return cached;
     const query = `
     SELECT 
       DATE(f.created_at) as date,
@@ -166,7 +141,53 @@ const getFraudTrendsService = async () => {
     ORDER BY DATE(f.created_at) DESC, incident_count DESC;
   `;
     const { rows } = await connectDatabase_1.pool.query(query);
-    await (0, redis_1.setCache)(cacheKey, rows, 1800); // 30 min cache
     return rows;
 };
 exports.getFraudTrendsService = getFraudTrendsService;
+const getAdminSummaryService = async () => {
+    const res = await connectDatabase_1.pool.query(`
+    SELECT
+      (SELECT COALESCE(SUM(paid_amount), 0)::float FROM salaries WHERE date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)) as total_salary_paid,
+      (SELECT COUNT(*)::int FROM cleaners WHERE is_active = true) as total_cleaners,
+      (SELECT COUNT(*)::int FROM cleaner_assigned_vehicles WHERE is_active = true) as total_vehicles,
+      (SELECT COUNT(*)::int FROM buildings) as total_buildings,
+      (SELECT COUNT(*)::int FROM incentive_rules WHERE is_active = true) as active_incentive_rules,
+      (SELECT COUNT(*)::int FROM users WHERE role = 'supervisor' AND is_active = true) as total_supervisors,
+      (SELECT COUNT(*)::int FROM attendance WHERE date = CURRENT_DATE AND cleaner_id IS NOT NULL) as cleaners_present,
+      (SELECT COUNT(*)::int FROM attendance WHERE date = CURRENT_DATE AND cleaner_id IS NULL) as supervisors_present,
+      (SELECT COUNT(*)::int FROM tasks WHERE status = 'completed' AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = CURRENT_DATE) as tasks_done_today,
+      (SELECT COUNT(*)::int FROM tasks WHERE status = 'pending') as tasks_pending,
+      (SELECT COUNT(*)::int FROM tasks WHERE status IN ('started', 'working')) as tasks_active
+  `);
+    const summary = res.rows[0];
+    return summary;
+};
+exports.getAdminSummaryService = getAdminSummaryService;
+const getCustomerReportService = async () => {
+    const res = await connectDatabase_1.pool.query(`
+    SELECT
+      t.id,
+      cav.owner_name,
+      cav.car_number,
+      cav.car_type,
+      u.full_name as cleaner_name,
+      COALESCE(
+        (SELECT SUM(p.amount) FROM penalties p WHERE p.task_id = t.id), 0
+      )::float as penalty_amount,
+      COALESCE(t.task_amount, 0)::float as task_amount,
+      COALESCE(t.final_price, t.task_amount, 0)::float as final_price,
+      t.status,
+      t.completed_at
+    FROM tasks t
+    LEFT JOIN cleaner_assigned_vehicles cav ON t.vehicle_id = cav.id
+    LEFT JOIN cleaners c ON t.cleaner_id = c.id
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE (t.completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = 
+          (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date
+       OR t.status != 'completed'
+    ORDER BY t.created_at DESC
+    LIMIT 100
+  `);
+    return res.rows;
+};
+exports.getCustomerReportService = getCustomerReportService;

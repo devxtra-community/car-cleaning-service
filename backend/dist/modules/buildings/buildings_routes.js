@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // building.routes.ts
 const express_1 = require("express");
 const buildings_controller_1 = require("./buildings_controller");
-const authMiddleware_1 = require("src/middlewares/authMiddleware");
-const roleMiddleware_1 = require("src/middlewares/roleMiddleware");
+const authMiddleware_1 = require("../../middlewares/authMiddleware");
+const roleMiddleware_1 = require("../../middlewares/roleMiddleware");
 const router = (0, express_1.Router)();
 // Get all buildings with statistics (NEW - for main page with revenue)
 router.get('/stats', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin', 'super_admin'), buildings_controller_1.getAllBuildingsWithStats);

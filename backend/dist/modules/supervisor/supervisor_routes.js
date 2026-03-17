@@ -18,6 +18,8 @@ router.get('/report', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)
 router.get('/tasks', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.getSupervisorTasks);
 router.post('/tasks', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.assignTaskToWorker);
 router.patch('/tasks/:id', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.updateTask);
+router.get('/dashboard-summary', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor', 'super_admin'), supervisor_controller_1.getSupervisorDashboardSummary);
+router.get('/analytics', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.getSupervisorAnalytics);
 // Profile (supervisor self-update)
 router.patch('/profile', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('supervisor'), supervisor_controller_1.updateSupervisorProfile);
 console.log(' Supervisor profile route registered: PATCH /api/supervisor/profile');

@@ -1,41 +1,32 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getWorkerInfo = exports.getCalendar = exports.markAttendance = exports.checkStatus = void 0;
-const attendanceService = __importStar(require("./attendance_service"));
+exports.getWorkerInfo = exports.getCalendar = exports.markAttendance = exports.checkStatus = exports.AttendanceController = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
+const attendance_service_1 = require("./attendance_service");
+class AttendanceController {
+    static async markAttendance(req, res) {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        const { userId, role } = req.user;
+        const exists = await attendance_service_1.AttendanceService.alreadyMarked(userId);
+        if (exists)
+            return res.json({ message: 'Already marked' });
+        const attendance = await attendance_service_1.AttendanceService.markOnLogin({
+            user_id: userId,
+            role,
+        });
+        return res.json(attendance);
+    }
+    static async today(req, res) {
+        const list = await attendance_service_1.AttendanceService.today();
+        return res.json(list);
+    }
+}
+exports.AttendanceController = AttendanceController;
+// ============================================================
+// MOBILE WORKER FUNCTIONAL CONTROLLERS (Sahileyy)
+// ============================================================
 const checkStatus = async (req, res) => {
     try {
         const userId = req.user?.userId;
@@ -45,7 +36,7 @@ const checkStatus = async (req, res) => {
                 message: 'Unauthorized',
             });
         }
-        const attendance = await attendanceService.checkTodayAttendance(userId);
+        const attendance = await (0, attendance_service_1.checkTodayAttendance)(userId);
         return res.json({
             success: true,
             marked: !!attendance,
@@ -77,22 +68,13 @@ const markAttendance = async (req, res) => {
                 message: 'GPS location is required',
             });
         }
-        // Get worker info (cleaner_id, building_id, supervisor_id)
-        let workerInfo = await attendanceService.getWorkerInfo(userId);
-        if (!workerInfo) {
-            // Auto-create a cleaners record for this user so next steps can proceed
-            try {
-                await connectDatabase_1.pool.query(`INSERT INTO cleaners (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [userId]);
-                workerInfo = await attendanceService.getWorkerInfo(userId);
-            }
-            catch (_e) {
-                // if insert fails (e.g. unique constraint not on user_id), just leave as null
-            }
-        }
+        // Get user info (cleaner_id, building_id, supervisor_id)
+        const role = req.user?.role || 'worker';
+        const workerInfo = await (0, attendance_service_1.getUserAttendanceInfo)(userId, role);
         if (!workerInfo) {
             return res.status(404).json({
                 success: false,
-                message: 'Worker profile not found. Please contact your admin.',
+                message: `${role === 'supervisor' ? 'Supervisor' : 'Worker'} profile not found. Please contact your admin.`,
             });
         }
         if (!workerInfo.building_id) {
@@ -101,11 +83,11 @@ const markAttendance = async (req, res) => {
                 message: 'No building is assigned to your profile yet. Please contact your supervisor or admin to assign a building.',
             });
         }
-        const attendance = await attendanceService.markAttendance({
+        const attendance = await (0, attendance_service_1.markAttendance)({
             workerId: userId,
-            cleanerId: workerInfo.cleaner_id,
+            cleanerId: workerInfo.cleaner_id, // This will be null for supervisors
             buildingId: workerInfo.building_id,
-            supervisorId: workerInfo.supervisor_id,
+            supervisorId: workerInfo.supervisor_id, // This will be null for supervisors
             latitude: parseFloat(latitude),
             longitude: parseFloat(longitude),
         });
@@ -155,7 +137,7 @@ const getCalendar = async (req, res) => {
         const creationResult = await connectDatabase_1.pool.query(creationQuery, [userId]);
         const createdAt = creationResult.rows[0]?.created_at;
         // Get calendar for current month
-        const calendar = await attendanceService.getAttendanceCalendar(userId, targetMonth, targetYear);
+        const calendar = await (0, attendance_service_1.getAttendanceCalendar)(userId, targetMonth, targetYear);
         // Get total attendance count
         const countQuery = `SELECT COUNT(*) as total FROM attendance WHERE worker_id = $1`;
         const countResult = await connectDatabase_1.pool.query(countQuery, [userId]);
@@ -187,11 +169,12 @@ const getWorkerInfo = async (req, res) => {
                 message: 'Unauthorized',
             });
         }
-        const info = await attendanceService.getWorkerInfo(userId);
+        const role = req.user?.role || 'worker';
+        const info = await (0, attendance_service_1.getUserAttendanceInfo)(userId, role);
         if (!info) {
             return res.status(404).json({
                 success: false,
-                message: 'Worker info not found',
+                message: `${role === 'supervisor' ? 'Supervisor' : 'Worker'} info not found`,
             });
         }
         return res.json({

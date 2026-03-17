@@ -33,7 +33,14 @@ const createIncentiveTargetController = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
         const result = await connectDatabase_1.pool.query(`INSERT INTO incentive_targets (reason, target_tasks, incentive_amount, active, cleaner_id, building_id, floor_id)
-       VALUES ($1, $2, $3, true, $4, $5, $6) RETURNING *`, [reason, Number(target_tasks), Number(incentive_amount), cleaner_id || null, building_id || null, floor_id || null]);
+       VALUES ($1, $2, $3, true, $4, $5, $6) RETURNING *`, [
+            reason,
+            Number(target_tasks),
+            Number(incentive_amount),
+            cleaner_id || null,
+            building_id || null,
+            floor_id || null,
+        ]);
         return res.status(201).json({ success: true, data: result.rows[0] });
     }
     catch (err) {
@@ -63,7 +70,7 @@ const updateIncentiveTargetController = async (req, res) => {
             building_id || null,
             floor_id || null,
             active,
-            id
+            id,
         ]);
         if (result.rowCount === 0) {
             return res.status(404).json({ success: false, message: 'Target not found' });

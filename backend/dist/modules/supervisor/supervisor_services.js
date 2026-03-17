@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteSupervisorService = exports.toggleSupervisorStatusService = exports.updateSupervisorService = exports.getSupervisorDetailsService = exports.supervisorReportService = exports.updateWorkerAssignmentService = exports.getSupervisorWorkersAttendanceService = exports.getSupervisorWorkersService = void 0;
+exports.getSupervisorAnalyticsService = exports.deleteSupervisorService = exports.toggleSupervisorStatusService = exports.updateSupervisorService = exports.getSupervisorDetailsService = exports.getSupervisorDashboardSummaryService = exports.supervisorReportService = exports.updateWorkerAssignmentService = exports.getSupervisorWorkersAttendanceService = exports.getSupervisorWorkersService = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const getSupervisorWorkersService = async (supervisorId) => {
@@ -64,14 +64,18 @@ const updateWorkerAssignmentService = async (cleanerId, floorId) => {
     return result.rows[0];
 };
 exports.updateWorkerAssignmentService = updateWorkerAssignmentService;
+// Helper to convert a UTC timestamp to IST date string for consistent date comparison
+const IST_NOW = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+const IST_DATE = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date`;
+const taskIST = (col) => `(${col} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
 const supervisorReportService = async (supervisorId, period) => {
     let filter = '';
     if (period === 'day')
-        filter = `t.completed_at::date = CURRENT_DATE`;
+        filter = `${taskIST('t.completed_at')}::date = ${IST_DATE}`;
     else if (period === 'week')
-        filter = `t.completed_at >= date_trunc('week', NOW())`;
+        filter = `${taskIST('t.completed_at')} >= date_trunc('week', ${IST_NOW})`;
     else
-        filter = `t.completed_at >= date_trunc('month', NOW())`;
+        filter = `${taskIST('t.completed_at')} >= date_trunc('month', ${IST_NOW})`;
     const result = await connectDatabase_1.pool.query(`
     SELECT 
       u.id as worker_id,
@@ -90,6 +94,62 @@ const supervisorReportService = async (supervisorId, period) => {
     return result.rows;
 };
 exports.supervisorReportService = supervisorReportService;
+const getSupervisorDashboardSummaryService = async (supervisorUserId) => {
+    const IST_DATE_EXPR = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date`;
+    const toIST = (col) => `(${col} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+    const result = await connectDatabase_1.pool.query(`
+    SELECT 
+      COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as total_earnings,
+      COUNT(t.id)::int as total_jobs,
+      COALESCE(AVG(r.rating), 0)::float as avg_rating,
+      (
+        SELECT COUNT(DISTINCT c.id)::int
+        FROM cleaners c
+        WHERE c.supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
+          AND EXISTS (
+            SELECT 1 FROM tasks t2 
+            WHERE t2.cleaner_id = c.id AND t2.status != 'completed'
+          )
+      ) as live_workers,
+      (
+        SELECT COUNT(t3.id)::int
+        FROM tasks t3
+        JOIN cleaners c2 ON c2.id = t3.cleaner_id
+        WHERE c2.supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
+          AND t3.status != 'completed'
+      ) as pending_jobs,
+      (
+        SELECT COALESCE(SUM(COALESCE(t4.final_price, t4.task_amount, 0)), 0)::float
+        FROM tasks t4
+        JOIN cleaners c3 ON c3.id = t4.cleaner_id
+        JOIN supervisors s2 ON c3.supervisor_id = s2.id
+        WHERE s2.user_id = $1
+          AND t4.status = 'completed'
+          AND ${toIST('t4.completed_at')}::date = ${IST_DATE_EXPR} - interval '1 day'
+      ) as yesterday_earnings
+    FROM tasks t
+    JOIN cleaners c ON c.id = t.cleaner_id
+    JOIN supervisors s ON c.supervisor_id = s.id
+    LEFT JOIN reviews r ON r.task_id = t.id
+    WHERE s.user_id = $1
+      AND t.status = 'completed'
+      AND ${toIST('t.completed_at')}::date = ${IST_DATE_EXPR}
+    `, [supervisorUserId]);
+    const summary = result.rows[0];
+    if (!summary)
+        return null;
+    const earnings_growth = summary.yesterday_earnings > 0
+        ? parseFloat((((summary.total_earnings - summary.yesterday_earnings) / summary.yesterday_earnings) *
+            100).toFixed(1))
+        : summary.total_earnings > 0
+            ? 100
+            : 0;
+    return {
+        ...summary,
+        earnings_growth,
+    };
+};
+exports.getSupervisorDashboardSummaryService = getSupervisorDashboardSummaryService;
 // Get supervisor details (your existing code)
 const getSupervisorDetailsService = async (supervisorId) => {
     try {
@@ -368,3 +428,102 @@ const deleteSupervisorService = async (supervisorId) => {
     }
 };
 exports.deleteSupervisorService = deleteSupervisorService;
+// Get detailed analytics for supervisor
+const getSupervisorAnalyticsService = async (supervisorUserId) => {
+    const client = await connectDatabase_1.pool.connect();
+    try {
+        // Helper to get totals and car type breakdown for a period
+        // IST-safe date/time helpers for analytics period filters
+        const IST_DATE_EXPR = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date`;
+        const IST_TS_EXPR = `(CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+        const toIST = (col) => `(${col} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')`;
+        const getDataForPeriod = async (periodFilter) => {
+            // FIX #2 (Analytics side) + #4: Use COALESCE(final_price, task_amount) for consistency with Dashboard.
+            // This ensures Analytics and Dashboard always show the same earnings numbers.
+            const overview = await client.query(`SELECT 
+          COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as total_earnings,
+          COUNT(t.id)::int as total_jobs
+         FROM tasks t
+         JOIN cleaners c ON t.cleaner_id = c.id
+         JOIN supervisors s ON c.supervisor_id = s.id
+         WHERE s.user_id = $1 AND t.status = 'completed' AND ${periodFilter}`, [supervisorUserId]);
+            const carTypeBreakdown = await client.query(`SELECT 
+          t.car_type as type,
+          COUNT(*)::int as count,
+          COALESCE(SUM(COALESCE(t.final_price, t.task_amount, 0)), 0)::float as amount
+         FROM tasks t
+         JOIN cleaners c ON t.cleaner_id = c.id
+         JOIN supervisors s ON c.supervisor_id = s.id
+         WHERE s.user_id = $1 AND t.status = 'completed' AND ${periodFilter}
+         GROUP BY t.car_type
+         ORDER BY count DESC`, [supervisorUserId]);
+            return {
+                total_earnings: overview.rows[0].total_earnings,
+                total_jobs: overview.rows[0].total_jobs,
+                carTypeBreakdown: carTypeBreakdown.rows,
+            };
+        };
+        const dailyFilter = `${toIST('t.completed_at')}::date = ${IST_DATE_EXPR}`;
+        const yesterdayFilter = `${toIST('t.completed_at')}::date = ${IST_DATE_EXPR} - interval '1 day'`;
+        const weeklyFilter = `${toIST('t.completed_at')} >= date_trunc('week', ${IST_TS_EXPR})`;
+        const lastWeekFilter = `${toIST('t.completed_at')} >= date_trunc('week', ${IST_TS_EXPR}) - interval '1 week' AND ${toIST('t.completed_at')} < date_trunc('week', ${IST_TS_EXPR})`;
+        const monthlyFilter = `${toIST('t.completed_at')} >= date_trunc('month', ${IST_TS_EXPR})`;
+        const lastMonthFilter = `${toIST('t.completed_at')} >= date_trunc('month', ${IST_TS_EXPR}) - interval '1 month' AND ${toIST('t.completed_at')} < date_trunc('month', ${IST_TS_EXPR})`;
+        const getEnhancedDataForPeriod = async (currentFilter, previousFilter) => {
+            const current = await getDataForPeriod(currentFilter);
+            const previous = await getDataForPeriod(previousFilter);
+            const calculateGrowth = (curr, prev) => {
+                if (prev === 0)
+                    return curr > 0 ? 100 : 0;
+                return parseFloat((((curr - prev) / prev) * 100).toFixed(1));
+            };
+            return {
+                ...current,
+                earnings_growth: calculateGrowth(current.total_earnings, previous.total_earnings),
+                jobs_growth: calculateGrowth(current.total_jobs, previous.total_jobs),
+            };
+        };
+        const daily = await getEnhancedDataForPeriod(dailyFilter, yesterdayFilter);
+        const weekly = await getEnhancedDataForPeriod(weeklyFilter, lastWeekFilter);
+        const monthly = await getEnhancedDataForPeriod(monthlyFilter, lastMonthFilter);
+        // Weekly Performance (Last 7 Days) for the chart
+        const weeklyPerformance = await client.query(`SELECT 
+        TO_CHAR(d.day, 'Dy') as day,
+        TO_CHAR(d.day, 'YYYY-MM-DD') as date,
+        COALESCE(COUNT(t.id), 0)::int as tasks
+       FROM (
+         SELECT generate_series(CURRENT_DATE - interval '6 days', CURRENT_DATE, '1 day')::date as day
+       ) d
+       LEFT JOIN tasks t ON DATE(t.completed_at) = d.day 
+         AND t.status = 'completed'
+         AND t.cleaner_id IN (
+           SELECT id FROM cleaners WHERE supervisor_id = (SELECT id FROM supervisors WHERE user_id = $1)
+         )
+       GROUP BY d.day
+       ORDER BY d.day`, [supervisorUserId]);
+        // Task Breakdown (Overall/Monthly)
+        const taskBreakdown = await client.query(`SELECT 
+        status,
+        COUNT(*)::int as count
+       FROM tasks t
+       JOIN cleaners c ON t.cleaner_id = c.id
+       JOIN supervisors s ON c.supervisor_id = s.id
+       WHERE s.user_id = $1
+         AND (
+           (t.status = 'completed' AND t.completed_at >= date_trunc('month', CURRENT_DATE))
+           OR t.status != 'completed'
+         )
+       GROUP BY status`, [supervisorUserId]);
+        return {
+            daily,
+            weekly,
+            monthly,
+            weeklyPerformance: weeklyPerformance.rows,
+            taskBreakdown: taskBreakdown.rows,
+        };
+    }
+    finally {
+        client.release();
+    }
+};
+exports.getSupervisorAnalyticsService = getSupervisorAnalyticsService;

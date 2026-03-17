@@ -6,8 +6,17 @@ const salary_service_1 = require("./salary_service");
 /* ================= GET ALL SALARIES ================= */
 const getAllSalariesController = async (req, res) => {
     try {
-        const rows = await (0, salary_service_1.getAllSalaries)();
-        return res.json({ success: true, data: rows });
+        const { limit, offset } = req.query;
+        const result = await (0, salary_service_1.getAllSalaries)(limit ? parseInt(limit) : undefined, offset ? parseInt(offset) : undefined);
+        return res.json({
+            success: true,
+            data: result.rows,
+            meta: {
+                total: result.totalCount,
+                limit: limit ? parseInt(limit) : undefined,
+                offset: offset ? parseInt(offset) : undefined,
+            },
+        });
     }
     catch (err) {
         console.error('GET ALL SALARIES ERROR:', err);
@@ -27,7 +36,9 @@ const getSalaryTimelineController = async (req, res) => {
     }
     catch (err) {
         console.error('SALARY TIMELINE ERROR:', err);
-        return res.status(500).json({ success: false, message: err instanceof Error ? err.message : 'Failed' });
+        return res
+            .status(500)
+            .json({ success: false, message: err instanceof Error ? err.message : 'Failed' });
     }
 };
 exports.getSalaryTimelineController = getSalaryTimelineController;
@@ -227,7 +238,9 @@ const getRoleBasedSalariesController = async (req, res) => {
     }
     catch (err) {
         console.error('GET ROLE SALARIES ERROR:', err);
-        return res.status(500).json({ success: false, message: err instanceof Error ? err.message : String(err) });
+        return res
+            .status(500)
+            .json({ success: false, message: err instanceof Error ? err.message : String(err) });
     }
 };
 exports.getRoleBasedSalariesController = getRoleBasedSalariesController;

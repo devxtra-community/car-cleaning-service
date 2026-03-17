@@ -29,9 +29,7 @@ const getPool = () => {
     return poolInstance;
 };
 exports.getPool = getPool;
-// For backward compatibility, keep the pool export but use a getter if possible
-// instead of a static instance, or just export it as a lazy proxy.
-// But mostly we use pool.query...
+// Backward-compatible `pool` export via lazy proxy
 exports.pool = {
     query: (text, params) => (0, exports.getPool)().query(text, params),
     connect: () => (0, exports.getPool)().connect(),

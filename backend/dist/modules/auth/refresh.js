@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.refresh = void 0;
 const jwt_1 = require("../../config/jwt");
 const uuid_1 = require("uuid");
-const connectDatabase_1 = require("src/database/connectDatabase");
+const connectDatabase_1 = require("../../database/connectDatabase");
 const refresh = async (req, res) => {
     const client = await connectDatabase_1.pool.connect();
     try {

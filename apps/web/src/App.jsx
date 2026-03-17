@@ -23,6 +23,9 @@ const CleanerUnderSupervisorDetails = lazy(() => import('./components/admin/Supe
 const AddVehicles = lazy(() => import('./components/admin/AddVehicles'));
 const RegisterUser = lazy(() => import('./components/admin/RegisterUser'));
 const CleanerDetails = lazy(() => import('./components/admin/CleanerDetails'));
+const Admins = lazy(() => import('./components/admin/Admins'));
+const Accountants = lazy(() => import('./components/admin/Accountant'));
+
 /* Accountant pages */
 const Accountant = lazy(() => import('./components/accountant/AccDashboard'));
 
@@ -103,8 +106,8 @@ function App() {
             <Route path="salary-summary" element={<SalarySummary />} />
             <Route path="incentives/add" element={<AddIncentiveTarget />} />
             <Route path="incentives/edit/:incentiveId" element={<EditIncentiveTarget />} />
-            <Route path="admins" element={<AdminListing />} />
-            <Route path="accountants" element={<AccountantListing />} />
+            <Route path="admins" element={<Admins />} />
+            <Route path="accountants" element={<Accountants />} />
           </Route>
 
           {/* Catch all */}

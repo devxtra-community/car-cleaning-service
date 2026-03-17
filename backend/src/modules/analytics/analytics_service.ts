@@ -1,10 +1,7 @@
 import { pool } from '../../database/connectDatabase';
-import { getCache, setCache } from '../../config/redis';
 
 export const getDailyProgress = async (date?: string) => {
-  const cacheKey = `analytics:daily:${date || 'all'}`;
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
+
 
   const res = await pool.query(
     `
@@ -16,14 +13,10 @@ export const getDailyProgress = async (date?: string) => {
     [date || null]
   );
 
-  await setCache(cacheKey, res.rows, 300); // 5 min cache
   return res.rows;
 };
 
 export const getWeeklyProgress = async (weekStart?: string) => {
-  const cacheKey = `analytics:weekly:${weekStart || 'all'}`;
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   const res = await pool.query(
     `
@@ -35,14 +28,10 @@ export const getWeeklyProgress = async (weekStart?: string) => {
     [weekStart || null]
   );
 
-  await setCache(cacheKey, res.rows, 1800); // 30 min cache
   return res.rows;
 };
 
 export const getMonthlyProgress = async (month?: string) => {
-  const cacheKey = `analytics:monthly:${month || 'all'}`;
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   const res = await pool.query(
     `
@@ -54,14 +43,10 @@ export const getMonthlyProgress = async (month?: string) => {
     [month || null]
   );
 
-  await setCache(cacheKey, res.rows, 3600); // 1 hour cache
   return res.rows;
 };
 
 export const getCleanerPerformance = async (period?: string) => {
-  const cacheKey = `analytics:cleaner_perf:${period || 'all'}`;
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   // period can be 'daily', 'weekly', 'monthly' or null for all time
   let dateFilter = '';
@@ -86,7 +71,6 @@ export const getCleanerPerformance = async (period?: string) => {
      ORDER BY completed_tasks DESC`
   );
 
-  await setCache(cacheKey, res.rows, 600); // 10 min cache
   return res.rows;
 };
 
@@ -169,9 +153,6 @@ export const getCustomerRatingSummaryService = async () => {
 };
 
 export const getFraudTrendsService = async () => {
-  const cacheKey = 'analytics:fraud_trends';
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   const query = `
     SELECT 
@@ -186,14 +167,10 @@ export const getFraudTrendsService = async () => {
     ORDER BY DATE(f.created_at) DESC, incident_count DESC;
   `;
   const { rows } = await pool.query(query);
-  await setCache(cacheKey, rows, 1800); // 30 min cache
   return rows;
 };
 
 export const getAdminSummaryService = async () => {
-  const cacheKey = 'analytics:admin_summary';
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   const res = await pool.query(`
     SELECT
@@ -211,14 +188,10 @@ export const getAdminSummaryService = async () => {
   `);
 
   const summary = res.rows[0];
-  await setCache(cacheKey, summary, 600); // 10 min cache
   return summary;
 };
 
 export const getCustomerReportService = async () => {
-  const cacheKey = 'analytics:customer_report';
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   const res = await pool.query(`
     SELECT
@@ -245,6 +218,5 @@ export const getCustomerReportService = async () => {
     LIMIT 100
   `);
 
-  await setCache(cacheKey, res.rows, 300); // 5 min cache
   return res.rows;
 };

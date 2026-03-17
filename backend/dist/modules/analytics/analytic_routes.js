@@ -16,4 +16,6 @@ router.get('/peak-activity', analytics_controller_1.peakActivityController);
 router.get('/building-comparison', analytics_controller_1.getBuildingComparison);
 router.get('/rating-summary', analytics_controller_1.getCustomerRatingSummary);
 router.get('/fraud-trends', analytics_controller_1.getFraudTrends);
+router.get('/summary', analytics_controller_1.adminSummaryController);
+router.get('/customer-report', analytics_controller_1.customerReportController);
 exports.default = router;

@@ -29,7 +29,6 @@ import fraudRoutes from './modules/fraud/fraud_routes';
 import notificationRoutes from './modules/notifications/notification_routes';
 import systemRoutes from './modules/system/system_routes';
 import { maintenanceMiddleware } from './middlewares/maintenance';
-import redis from './config/redis';
 
 const app = express();
 
@@ -69,15 +68,13 @@ app.get('/health', async (_req: Request, res: Response) => {
   logger.info('Health check requested');
 
   const dbConnected = isDatabaseConnected();
-  const redisStatus = redis.status;
 
   const healthData = {
-    status: dbConnected && redisStatus === 'ready' ? 'ok' : 'degraded',
+    status: dbConnected ? 'ok' : 'degraded',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     services: {
       database: { status: dbConnected ? 'connected' : 'disconnected' },
-      redis: { status: redisStatus },
     },
     resources: {
       memory: {

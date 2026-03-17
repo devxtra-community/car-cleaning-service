@@ -57,7 +57,6 @@ interface SystemHealth {
   uptime: number;
   services: {
     database: { status: string };
-    redis: { status: string };
   };
 }
 
@@ -606,44 +605,44 @@ const AdminDashboard: React.FC = () => {
   const chartData =
     data.monthlyProgress.length > 0
       ? data.monthlyProgress
-          .map((p: any) => ({
-            month: months[new Date(p.month).getMonth()],
-            actual: p.total_revenue,
-            expected: p.total_revenue * 1.1, // Mocked expected based on actual for now
-          }))
-          .reverse()
+        .map((p: any) => ({
+          month: months[new Date(p.month).getMonth()],
+          actual: p.total_revenue,
+          expected: p.total_revenue * 1.1, // Mocked expected based on actual for now
+        }))
+        .reverse()
       : revenueChartData;
 
   const buildingPerf =
     data.buildingComparison.length > 0
       ? data.buildingComparison.map((b: any) => ({
-          name: b.building_name,
-          score: Math.round(b.avg_rating * 20), // 0-100 scale
-          growth: 0, // Placeholder
-        }))
+        name: b.building_name,
+        score: Math.round(b.avg_rating * 20), // 0-100 scale
+        growth: 0, // Placeholder
+      }))
       : [
-          { name: 'Plaza Center', score: 94, growth: 2.3 },
-          { name: 'Elite Towers', score: 88, growth: -1.2 },
-          { name: 'Sky Residence', score: 76, growth: 4.5 },
-        ];
+        { name: 'Plaza Center', score: 94, growth: 2.3 },
+        { name: 'Elite Towers', score: 88, growth: -1.2 },
+        { name: 'Sky Residence', score: 76, growth: 4.5 },
+      ];
 
   const topCleanersReal =
     data.cleanerPerformance.length > 0
       ? data.cleanerPerformance.map((p: any) => ({
-          name: p.cleaner_name,
-          tasks: p.completed_tasks,
-          rating: 4.5 + Math.random() * 0.5, // Rating not in this endpoint, placeholder
-        }))
+        name: p.cleaner_name,
+        tasks: p.completed_tasks,
+        rating: 4.5 + Math.random() * 0.5, // Rating not in this endpoint, placeholder
+      }))
       : topCleanersMock;
 
   const ratingDataReal =
     data.ratingSummary.length > 0
       ? [5, 4, 3, 2, 1].map((stars) => ({
-          stars,
-          count: parseInt(
-            data.ratingSummary.find((r: any) => parseInt(r.stars) === stars)?.count || '0'
-          ),
-        }))
+        stars,
+        count: parseInt(
+          data.ratingSummary.find((r: any) => parseInt(r.stars) === stars)?.count || '0'
+        ),
+      }))
       : ratingDataMock;
 
   return (
@@ -881,11 +880,11 @@ const AdminDashboard: React.FC = () => {
                     <span className="text-sm font-semibold text-emerald-600">
                       {data.monthlyProgress.length > 1
                         ? (
-                            ((data.monthlyProgress[0].total_revenue -
-                              data.monthlyProgress[1].total_revenue) /
-                              Math.max(data.monthlyProgress[1].total_revenue, 1)) *
-                            100
-                          ).toFixed(1) + '%'
+                          ((data.monthlyProgress[0].total_revenue -
+                            data.monthlyProgress[1].total_revenue) /
+                            Math.max(data.monthlyProgress[1].total_revenue, 1)) *
+                          100
+                        ).toFixed(1) + '%'
                         : '+13.25%'}
                     </span>
                     <span className="text-sm text-slate-400">vs last month</span>
@@ -896,11 +895,10 @@ const AdminDashboard: React.FC = () => {
                     <button
                       key={v}
                       onClick={() => setChartView(v)}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                        chartView === v
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${chartView === v
                           ? 'bg-sky-500 text-white border-sky-500'
                           : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       {v}
                     </button>
@@ -991,15 +989,14 @@ const AdminDashboard: React.FC = () => {
                   className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0
                         ? 'bg-amber-400 text-white'
                         : i === 1
                           ? 'bg-slate-300 text-slate-700'
                           : i === 2
                             ? 'bg-orange-300 text-orange-800'
                             : 'bg-slate-100 text-slate-400'
-                    }`}
+                      }`}
                   >
                     {i + 1}
                   </div>
@@ -1125,15 +1122,6 @@ const AdminDashboard: React.FC = () => {
                         ? 'emerald'
                         : 'rose',
                   },
-                  {
-                    label: 'Cache (Redis)',
-                    status: data.systemStatus.health?.services.redis.status ?? 'unknown',
-                    icon: ArrowPathIcon,
-                    color:
-                      data.systemStatus.health?.services.redis.status === 'ready'
-                        ? 'violet'
-                        : 'rose',
-                  },
                 ].map((srv) => (
                   <div
                     key={srv.label}
@@ -1165,9 +1153,9 @@ const AdminDashboard: React.FC = () => {
                 <div className="text-lg font-mono font-bold text-slate-700">
                   {data.systemStatus.health
                     ? Math.floor(data.systemStatus.health.uptime / 3600) +
-                      'h ' +
-                      Math.floor((data.systemStatus.health.uptime % 3600) / 60) +
-                      'm'
+                    'h ' +
+                    Math.floor((data.systemStatus.health.uptime % 3600) / 60) +
+                    'm'
                     : '—'}
                 </div>
                 <div className="text-[10px] text-emerald-500 font-bold mt-1">

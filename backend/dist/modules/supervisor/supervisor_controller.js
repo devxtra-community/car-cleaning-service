@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAdminSupervisor = exports.toggleAdminSupervisorStatus = exports.updateAdminSupervisor = exports.getAdminSupervisorDetails = exports.updateSupervisorProfile = exports.updateTask = exports.assignTaskToWorker = exports.getLiveWorkers = exports.updateCleanerAssignment = exports.getCleanersAttendance = exports.getSupervisorTasks = exports.supervisorReport = exports.getSupervisorWorkers = exports.registerPushTokenController = void 0;
+exports.getSupervisorAnalytics = exports.deleteAdminSupervisor = exports.toggleAdminSupervisorStatus = exports.updateAdminSupervisor = exports.getAdminSupervisorDetails = exports.updateSupervisorProfile = exports.updateTask = exports.assignTaskToWorker = exports.getLiveWorkers = exports.updateCleanerAssignment = exports.getCleanersAttendance = exports.getSupervisorTasks = exports.getSupervisorDashboardSummary = exports.supervisorReport = exports.getSupervisorWorkers = exports.registerPushTokenController = void 0;
 const connectDatabase_1 = require("../../database/connectDatabase");
 const supervisor_services_1 = require("./supervisor_services");
 const tasks_service_1 = require("../tasks/tasks_service");
@@ -116,6 +116,25 @@ const supervisorReport = async (req, res) => {
     return res.json({ success: true, data: report });
 };
 exports.supervisorReport = supervisorReport;
+/* ================= DASHBOARD SUMMARY ================= */
+const getSupervisorDashboardSummary = async (req, res) => {
+    try {
+        const supervisorId = req.user?.userId;
+        if (!supervisorId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const summary = await (0, supervisor_services_1.getSupervisorDashboardSummaryService)(supervisorId);
+        return res.json({
+            success: true,
+            data: summary,
+        });
+    }
+    catch (err) {
+        console.error('getSupervisorDashboardSummary error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to fetch dashboard summary' });
+    }
+};
+exports.getSupervisorDashboardSummary = getSupervisorDashboardSummary;
 /* ================= TASKS ================= */
 const getSupervisorTasks = async (req, res) => {
     try {
@@ -194,7 +213,9 @@ const updateCleanerAssignment = async (req, res) => {
         // Verify cleaner belongs to this supervisor
         const check = await connectDatabase_1.pool.query('SELECT id FROM cleaners WHERE id = $1 AND supervisor_id = (SELECT id FROM supervisors WHERE user_id = $2)', [cleaner_id, supervisorId]);
         if (check.rows.length === 0) {
-            return res.status(403).json({ success: false, message: 'Not authorized to manage this cleaner' });
+            return res
+                .status(403)
+                .json({ success: false, message: 'Not authorized to manage this cleaner' });
         }
         const updated = await (0, supervisor_services_1.updateWorkerAssignmentService)(cleaner_id, floor_id || null);
         return res.json({
@@ -251,7 +272,7 @@ const assignTaskToWorker = async (req, res) => {
         if (!supervisorId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const { worker_id, owner_name, owner_phone, car_number, car_model, car_type, car_color, task_amount, car_image_url, } = req.body;
+        const { worker_id, owner_name, owner_phone, car_number, car_model, car_type, car_color, task_amount, car_image_url, car_location, } = req.body;
         console.log('Assign Task Request:', { worker_id, supervisorId, owner_name, car_number });
         // Validate required fields
         if (!worker_id || !owner_name || !owner_phone || !car_number || !car_model || !car_type) {
@@ -282,6 +303,7 @@ const assignTaskToWorker = async (req, res) => {
             car_type,
             car_color,
             car_image_url: car_image_url || null,
+            car_location: car_location || null,
             cleaner_id: realCleanerId,
             task_amount: task_amount ? parseFloat(task_amount) : 0,
         });
@@ -331,7 +353,7 @@ const updateTask = async (req, res) => {
         if (!supervisorId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const { owner_name, owner_phone, car_number, car_model, car_type, car_color, task_amount, car_image_url, } = req.body;
+        const { owner_name, owner_phone, car_number, car_model, car_type, car_color, task_amount, car_image_url, car_location, } = req.body;
         // Verify task belongs to a worker managed by this supervisor
         const taskCheck = await connectDatabase_1.pool.query(`
       SELECT t.id 
@@ -354,8 +376,9 @@ const updateTask = async (req, res) => {
         car_type = COALESCE($5, car_type),
         car_color = COALESCE($6, car_color),
         amount_charged = COALESCE($7, amount_charged),
-        car_image_url = COALESCE($8, car_image_url)
-      WHERE id = $9
+        car_image_url = COALESCE($8, car_image_url),
+        car_location = COALESCE($9, car_location)
+      WHERE id = $10
       RETURNING *
       `, [
             owner_name || null,
@@ -366,6 +389,7 @@ const updateTask = async (req, res) => {
             car_color || null,
             task_amount ? parseFloat(task_amount) : null,
             car_image_url || null,
+            car_location || null,
             taskId,
         ]);
         return res.json({
@@ -390,9 +414,9 @@ const updateSupervisorProfile = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        const { full_name, profile_image } = req.body;
-        // Only full_name and profile_image can be updated
-        if (!full_name && !profile_image) {
+        const { full_name, profile_image, phone } = req.body;
+        // Only full_name, profile_image and phone can be updated
+        if (!full_name && !profile_image && !phone) {
             return res.status(400).json({ success: false, message: 'No fields to update' });
         }
         const updates = [];
@@ -406,12 +430,16 @@ const updateSupervisorProfile = async (req, res) => {
             updates.push(`profile_image = $${paramIndex++}`);
             values.push(profile_image);
         }
+        if (phone) {
+            updates.push(`phone = $${paramIndex++}`);
+            values.push(phone);
+        }
         values.push(userId);
         const query = `
       UPDATE users 
       SET ${updates.join(', ')}, updated_at = NOW()
       WHERE id = $${paramIndex}
-      RETURNING id, email, full_name, profile_image, role
+      RETURNING id, email, full_name, profile_image, phone, role
     `;
         const result = await connectDatabase_1.pool.query(query, values);
         if (!result.rows.length) {
@@ -492,9 +520,7 @@ const getAdminSupervisorDetails = async (req, res) => {
                 is_active: sup.is_active,
                 joining_date: sup.joining_date,
                 age: sup.age,
-                building: sup.building_id
-                    ? { id: sup.building_id, name: sup.building_name }
-                    : null,
+                building: sup.building_id ? { id: sup.building_id, name: sup.building_name } : null,
                 cleaners: cleanersResult.rows.map((c) => ({
                     id: c.id,
                     full_name: c.full_name,
@@ -529,7 +555,7 @@ const updateAdminSupervisor = async (req, res) => {
         if (!supCheck.rows.length) {
             return res.status(404).json({ success: false, message: 'Supervisor not found' });
         }
-        const { user_id: userId, supervisor_id: existingSupId, building_id: currentBuildingId } = supCheck.rows[0];
+        const { user_id: userId, supervisor_id: existingSupId, building_id: currentBuildingId, } = supCheck.rows[0];
         const { full_name, email, phone, nationality, document_id, age, base_salary, building_id, profile_image, document, password, } = req.body;
         // Update users table
         const userUpdates = [];
@@ -657,3 +683,25 @@ const deleteAdminSupervisor = async (req, res) => {
     }
 };
 exports.deleteAdminSupervisor = deleteAdminSupervisor;
+/* ================= GET SUPERVISOR ANALYTICS ================= */
+const getSupervisorAnalytics = async (req, res) => {
+    try {
+        const supervisorUserId = req.user?.userId;
+        if (!supervisorUserId) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const data = await (0, supervisor_services_1.getSupervisorAnalyticsService)(supervisorUserId);
+        return res.json({
+            success: true,
+            data,
+        });
+    }
+    catch (err) {
+        console.error('getSupervisorAnalytics error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch analytics data',
+        });
+    }
+};
+exports.getSupervisorAnalytics = getSupervisorAnalytics;

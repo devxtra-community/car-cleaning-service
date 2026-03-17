@@ -5,7 +5,7 @@
 // ============================================
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAllFloors = exports.getFloorsByBuilding = void 0;
-const connectDatabase_1 = require("src/database/connectDatabase");
+const connectDatabase_1 = require("../../database/connectDatabase");
 /**
  * Get all floors for a specific building
  * Route: GET /api/buildings/:buildingId/floors

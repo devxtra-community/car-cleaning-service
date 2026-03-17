@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 import {
@@ -18,12 +18,15 @@ import {
   ChartBarIcon,
   TrophyIcon,
   UserGroupIcon,
+  ShieldCheckIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 
 const AdminPortal = () => {
-  const { i18n, t } = useTranslation();
+  const { i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, loading, logout } = useAuth();
 
   useEffect(() => {
@@ -38,7 +41,16 @@ const AdminPortal = () => {
     navigate('/login');
   };
 
-  // Show nothing while loading to prevent flicker
+  // Helper: compute active nav class based on path prefix(es)
+  const navClass = (prefixes: string | string[]) => {
+    const prefixArray = Array.isArray(prefixes) ? prefixes : [prefixes];
+    const isActive = prefixArray.some(
+      (prefix) => location.pathname === prefix || location.pathname.startsWith(prefix + '/')
+    );
+    return `flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'
+      }`;
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -47,7 +59,7 @@ const AdminPortal = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-sm flex flex-col">
-        {/* Logo - Fixed at top */}
+        {/* Logo */}
         <div className="px-6 py-5 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <img width={32} height={32} src="/appLogo.png" alt="appLogo" className="rounded" />
@@ -55,265 +67,160 @@ const AdminPortal = () => {
           </div>
         </div>
 
-        {/* Scrollable Navigation Menu */}
+        {/* Scrollable Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          <NavLink to="/admin/dashboard">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <HomeIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Dashboard</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/dashboard">
+            <div className={navClass('/admin/dashboard')}>
+              <HomeIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Dashboard</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/supervisors">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <UserIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Supervisors</span>
-              </div>
-            )}
-          </NavLink>
+          {/* Supervisors — also matches /admin/supervisor/:id */}
+          <Link to="/admin/supervisors">
+            <div className={navClass(['/admin/supervisors', '/admin/supervisor'])}>
+              <UserIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Supervisors</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/targets">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Target Management</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/targets">
+            <div className={navClass(['/admin/targets'])}>
+              <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Target Management</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/operational-reports">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <ChartBarIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Operational Reports</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/operational-reports">
+            <div className={navClass(['/admin/operational-reports'])}>
+              <ChartBarIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Operational Reports</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/cleaners">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <SparklesIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Cleaners</span>
-              </div>
-            )}
-          </NavLink>
+          {/* Cleaners — also matches /admin/cleaner/:id */}
+          <Link to="/admin/cleaners">
+            <div className={navClass(['/admin/cleaners', '/admin/cleaner'])}>
+              <SparklesIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Cleaners</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/buildings">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <BuildingOffice2Icon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Buildings</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/admins">
+            <div className={navClass(['/admin/admins', '/admin/admin'])}>
+              <ShieldCheckIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Admins</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/vechicles">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <TruckIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Vehicle Management</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/accountants">
+            <div className={navClass(['/admin/accountants', '/admin/accountant'])}>
+              <CurrencyDollarIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Accountants</span>
+            </div>
+          </Link>
 
-          {/* Salary Section Divider */}
+          {/* Buildings — also matches /admin/buildings/:id and /admin/buildings/add */}
+          <Link to="/admin/buildings">
+            <div className={navClass(['/admin/buildings'])}>
+              <BuildingOffice2Icon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Buildings</span>
+            </div>
+          </Link>
+
+          <Link to="/admin/vechicles">
+            <div className={navClass(['/admin/vechicles', '/admin/vehicles'])}>
+              <TruckIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Vehicle Management</span>
+            </div>
+          </Link>
+
+          {/* Salary Section */}
           <div className="pt-4 pb-2 px-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Salary Management
             </p>
           </div>
 
+          <Link to="/admin/incentives">
+            <div className={navClass('/admin/incentives')}>
+              <GiftIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Incentive Targets</span>
+            </div>
+          </Link>
 
+          <Link to="/admin/analyticsProgress">
+            <div className={navClass('/admin/analyticsProgress')}>
+              <ChartBarIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Salary Analysis</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/incentives">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <GiftIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Incentive Targets</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/salaryFinalization">
+            <div className={navClass('/admin/salaryFinalization')}>
+              <CheckBadgeIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Salary Finalization</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/analyticsProgress">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <ChartBarIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Salary Analysis</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/salary-cycles">
+            <div className={navClass('/admin/salary-cycles')}>
+              <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Salary Cycles</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/salaryFinalization">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <CheckBadgeIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Salary Finalization</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/salary-summary">
+            <div className={navClass('/admin/salary-summary')}>
+              <BanknotesIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Salary Summary</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/salary-cycles">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Salary Cycles</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/role-salaries">
+            <div className={navClass('/admin/role-salaries')}>
+              <UserGroupIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Role-Based Salary</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/salary-summary">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <BanknotesIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Salary Summary</span>
-              </div>
-            )}
-          </NavLink>
-
-          <NavLink to="/admin/role-salaries">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <UserGroupIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Role-Based Salary</span>
-              </div>
-            )}
-          </NavLink>
-
-          {/* Reports Section Divider */}
+          {/* Reports Section */}
           <div className="pt-4 pb-2 px-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Reports</p>
           </div>
 
-          <NavLink to="/admin/monthlyReport">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Monthly Report</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/monthlyReport">
+            <div className={navClass('/admin/monthlyReport')}>
+              <DocumentChartBarIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Monthly Report</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/reconciliation">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Reconciliation</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/reconciliation">
+            <div className={navClass('/admin/reconciliation')}>
+              <ClipboardDocumentCheckIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Reconciliation</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/revenueReport">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <BanknotesIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Revenue Report</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/revenueReport">
+            <div className={navClass('/admin/revenueReport')}>
+              <BanknotesIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Revenue Report</span>
+            </div>
+          </Link>
 
-          <NavLink to="/admin/insights">
-            {({ isActive }) => (
-              <div
-                className={`flex items-center gap-3 my-1 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                <TrophyIcon className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Performance Insights</span>
-              </div>
-            )}
-          </NavLink>
+          <Link to="/admin/insights">
+            <div className={navClass('/admin/insights')}>
+              <TrophyIcon className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Performance Insights</span>
+            </div>
+          </Link>
 
-          {/* Add some bottom padding for scroll */}
           <div className="h-4"></div>
         </nav>
 
-        {/* Profile - Fixed at bottom */}
+        {/* Profile — Fixed at bottom */}
         <div className="border-t border-gray-200 p-4 bg-white">
           <div className="flex items-center gap-3 my-1 mb-3">
             <div className="w-10 h-10 bg-[url('./assets/profileAdmin.png')] rounded-full bg-cover border-2 border-gray-200"></div>

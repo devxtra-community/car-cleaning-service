@@ -1,8 +1,5 @@
 import { pool } from '../../database/connectDatabase';
-import { sendNotificationToUser } from '../notifications/notification_service';
-import { getCache, setCache } from '../../config/redis';
-
-export const generateSalaryForUser = async (
+import { sendNotificationToUser } from '../notifications/notification_service'; export const generateSalaryForUser = async (
   userId: string,
   cycleId: string,
   bypassLock: boolean = false
@@ -43,7 +40,6 @@ export const generateSalaryForUser = async (
       return null;
     }
 
-    let totalTasks = 0;
     let totalIncentives = 0;
     let totalPenalties = 0;
 
@@ -55,13 +51,12 @@ export const generateSalaryForUser = async (
       const cleanerProfileId = cleanerRes.rows[0].id;
 
       // Tasks
-      const taskRes = await client.query(
+      await client.query(
         `SELECT COUNT(*) AS total_tasks FROM tasks
          WHERE cleaner_id = $1 AND status = 'completed'
          AND created_at BETWEEN $2 AND $3`,
         [cleanerProfileId, start_date, end_date]
       );
-      totalTasks = Number(taskRes.rows[0].total_tasks);
 
       // 1. Performance Incentives (from daily_incentive_breakdown)
       const perfRes = await client.query(
@@ -98,7 +93,6 @@ export const generateSalaryForUser = async (
       totalPenalties = Number(penaltyRes.rows[0].total);
     } else {
       // For supervisors and other roles, incentives/penalties are currently 0 unless logic is added later
-      totalTasks = 0;
       totalIncentives = 0;
       totalPenalties = 0;
     }
@@ -667,10 +661,8 @@ export const getSalaryTimeline = async (userId: string) => {
  */
 export const getRoleBasedSalaries = async (cycleId?: string) => {
   const params: any[] = [];
-  let cycleFilter = '';
 
   if (cycleId) {
-    cycleFilter = 'AND sc.id = $1';
     params.push(cycleId);
   } else {
     // If no cycleId, we'll join on the latest cycle for each user effectively
@@ -737,9 +729,6 @@ export const getRoleBasedSalaries = async (cycleId?: string) => {
  * Returns aggregated totals per month and per building for the latest cycle.
  */
 export const getMonthlyReport = async () => {
-  const cacheKey = 'salary:monthly_report';
-  const cached = await getCache(cacheKey);
-  if (cached) return cached;
 
   // 1. Monthly History (Last 12 cycles)
   const historyRes = await pool.query(`
@@ -810,7 +799,6 @@ export const getMonthlyReport = async () => {
     buildings: buildingRes.rows,
   };
 
-  await setCache(cacheKey, result, 600); // 10 min cache
   return result;
 };
 

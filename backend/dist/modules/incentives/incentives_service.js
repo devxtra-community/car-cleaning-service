@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMonthlyIncentiveSummary = exports.getDailyWorkRecordsWithIncentives = exports.recordDailyWork = exports.deleteIncentiveRule = exports.updateIncentiveRule = exports.getActiveIncentiveRules = exports.getIncentiveRulesByType = exports.getAllIncentiveRules = exports.createIncentiveRule = exports.deleteIncentiveType = exports.updateIncentiveType = exports.getActiveIncentiveTypes = exports.getAllIncentiveTypes = exports.createIncentiveType = void 0;
 // src/services/incentives_service.ts
-const connectDatabase_1 = require("src/database/connectDatabase");
+const connectDatabase_1 = require("../../database/connectDatabase");
 /* ===================== INCENTIVE TYPES ===================== */
 const createIncentiveType = async (data) => {
     const result = await connectDatabase_1.pool.query(`

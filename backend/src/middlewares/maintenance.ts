@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import redis from '../config/redis';
 import { logger } from '../config/logger';
 
 
@@ -22,16 +21,7 @@ export const maintenanceMiddleware = async (req: Request, res: Response, next: N
     }
 
     try {
-        let isMaintenance = false;
-
-        // 1. Check Redis for the maintenance flag (Primary)
-        if (redis && redis.status === 'ready') {
-            const redisFlag = await redis.get('system:maintenance_mode');
-            isMaintenance = redisFlag === 'true';
-        } else {
-            // 2. Fallback to environment variable if Redis is down
-            isMaintenance = process.env.MAINTENANCE_MODE === 'true';
-        }
+        const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
 
         if (isMaintenance) {
             logger.warn(`Access blocked due to Maintenance Mode: ${req.method} ${req.url}`);

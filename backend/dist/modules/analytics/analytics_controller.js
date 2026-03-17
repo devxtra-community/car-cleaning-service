@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFraudTrends = exports.getCustomerRatingSummary = exports.getBuildingComparison = exports.peakActivityController = exports.collectionsReconciliationController = exports.cleanerPerformanceController = exports.monthlyProgressController = exports.weeklyProgressController = exports.dailyProgressController = void 0;
+exports.customerReportController = exports.adminSummaryController = exports.getFraudTrends = exports.getCustomerRatingSummary = exports.getBuildingComparison = exports.peakActivityController = exports.collectionsReconciliationController = exports.cleanerPerformanceController = exports.monthlyProgressController = exports.weeklyProgressController = exports.dailyProgressController = void 0;
 const analytics_service_1 = require("./analytics_service");
 const dailyProgressController = async (req, res) => {
     try {
@@ -98,3 +98,23 @@ const getFraudTrends = async (req, res) => {
     }
 };
 exports.getFraudTrends = getFraudTrends;
+const adminSummaryController = async (req, res) => {
+    try {
+        const data = await (0, analytics_service_1.getAdminSummaryService)();
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch admin summary' });
+    }
+};
+exports.adminSummaryController = adminSummaryController;
+const customerReportController = async (req, res) => {
+    try {
+        const data = await (0, analytics_service_1.getCustomerReportService)();
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch customer report' });
+    }
+};
+exports.customerReportController = customerReportController;

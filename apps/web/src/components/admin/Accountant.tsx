@@ -277,7 +277,7 @@ const EditAccountantModal: React.FC<{
 };
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-const Accountants: React.FC = () => {
+const Accountant: React.FC = () => {
   const { loading: authLoading, isAuthenticated } = useAuth();
   const [accountants, setAccountants] = useState<AccountantListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -754,4 +754,4 @@ const Accountants: React.FC = () => {
   );
 };
 
-export default Accountants;
+export default Accountant;
