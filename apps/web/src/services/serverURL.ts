@@ -1,2 +1,2 @@
-const SERVER_URL = 'http://3.80.46.40:3030';
+const SERVER_URL = ''; // Relative path for Nginx proxy
 export default SERVER_URL;

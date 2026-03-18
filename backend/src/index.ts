@@ -42,16 +42,17 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:8081',
-      'http://10.10.2.230:8081',
-      'http://10.10.1.203:8081',
-      'http://10.10.3.21:8081',
-      'http://10.10.3.182.1:8081',
-      'http://10.10.2.19.1:8081',
-      'http://10.10.1.164:8081',
-    ],
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void
+    ) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      // In production, you might want to restrict this to your actual domain
+      // For now, allowing all while we transition to a reverse proxy setup
+      callback(null, true);
+    },
     credentials: true,
   })
 );
@@ -59,7 +60,7 @@ app.use(
 // Register maintenance middleware early
 app.use(maintenanceMiddleware);
 
-const PORT = 3033;
+const PORT = Number(process.env.PORT) || 3033;
 connectDatabase();
 
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './tokenStorage';
 
-const BASE_URL = 'http://3.80.46.40:3030';
+const BASE_URL = 'http://3.80.46.40';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -41,13 +41,18 @@ api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
+    const originalRequest = error.config;
+    const isAuthExcluded = AUTH_EXCLUDED_URLS.some((url) => originalRequest?.url?.includes(url));
+
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthExcluded) {
       // ... existing refresh logic ...
     }
 
     // --- Offline Queue Handling ---
     const isNetworkError = !error.response && error.code !== 'ECONNABORTED';
-    const isWriteMethod = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(originalRequest?.method?.toUpperCase());
+    const isWriteMethod = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(
+      originalRequest?.method?.toUpperCase()
+    );
 
     if (isNetworkError && isWriteMethod && !originalRequest?._noQueue) {
       try {
@@ -56,10 +61,12 @@ api.interceptors.response.use(
           url: originalRequest.url,
           method: originalRequest.method,
           data: originalRequest.data,
-          headers: originalRequest.headers
+          headers: originalRequest.headers,
         });
         // Return a resolved promise with a special "queued" flag
-        return Promise.resolve({ data: { success: true, queued: true, message: 'Request queued for offline sync' } });
+        return Promise.resolve({
+          data: { success: true, queued: true, message: 'Request queued for offline sync' },
+        });
       } catch (enqueueErr) {
         console.error('[API] Failed to enqueue request:', enqueueErr);
       }
