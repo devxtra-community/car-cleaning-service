@@ -39,182 +39,170 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
+
       {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
-      <div className="w-full max-w-6xl bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl flex flex-col lg:flex-row overflow-hidden">
+
+      <div className="w-full max-w-5xl bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] rounded-[2rem] flex flex-col lg:flex-row overflow-hidden relative z-10 transition-all duration-500 hover:border-white/20">
         {/* Left Panel - Login Form */}
-        <div className="w-full lg:w-1/2 p-8 sm:p-12 lg:p-16 flex items-center justify-center">
-          <div className="w-full max-w-md">
+        <div className="w-full lg:w-[45%] p-10 sm:p-14 flex flex-col items-center justify-center bg-white">
+          <div className="w-full max-w-sm">
             {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <img src={carlogo} alt="Logo" className="h-16 w-auto object-contain" />
+            <div className="flex justify-center mb-10 transform transition-transform hover:scale-105 duration-300">
+              <img src={carlogo} alt="Logo" className="h-14 w-auto drop-shadow-sm" />
             </div>
 
             {/* Header */}
             <div className="text-center mb-10">
-              <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-              <p className="text-slate-600 text-sm">Sign in to access your dashboard</p>
+              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                Welcome Back
+              </h1>
+              <p className="text-slate-500 font-medium">Please enter your details to sign in</p>
             </div>
 
             {/* Form */}
             <div className="space-y-6">
-              {/* Email Field */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-slate-700 ml-1 uppercase tracking-wider">
                   Email Address
                 </label>
                 <input
                   value={loginInput.email}
                   onChange={(e) => setLoginInput({ ...loginInput, email: e.target.value })}
-                  className="w-full px-4 py-3.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEFF] focus:border-transparent transition-all duration-200"
+                  className="w-full px-5 py-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm hover:border-slate-300"
                   type="email"
-                  placeholder="your.email@example.com"
+                  placeholder="name@company.com"
                 />
               </div>
 
-              {/* Password Field */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
-                <input
-                  value={loginInput.password}
-                  onChange={(e) => setLoginInput({ ...loginInput, password: e.target.value })}
-                  className="w-full px-4 py-3.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEFF] focus:border-transparent transition-all duration-200"
-                  type="password"
-                  placeholder="Enter your password"
-                />
-              </div>
-
-              {/* Remember & Forgot */}
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 text-[#00AEFF] focus:ring-[#00AEFF] focus:ring-offset-0"
-                  />
-                  <span className="ml-2 text-slate-600">Remember me</span>
-                </label>
-                <div className="flex justify-end mt-1">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-semibold text-slate-700 ml-1 uppercase tracking-wider">
+                    Password
+                  </label>
                   <button
                     type="button"
                     onClick={() => setShowForgot(true)}
-                    className="text-xs font-semibold text-[#00AEFF] hover:text-[#0090d9] transition-colors"
+                    className="text-[12px] font-bold text-blue-600 hover:text-blue-700 transition-colors tracking-tight"
                   >
-                    Forgot password?
+                    Forgot?
                   </button>
                 </div>
+                <input
+                  value={loginInput.password}
+                  onChange={(e) => setLoginInput({ ...loginInput, password: e.target.value })}
+                  className="w-full px-5 py-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm hover:border-slate-300"
+                  type="password"
+                  placeholder="••••••••"
+                />
               </div>
 
-              {/* Sign In Button */}
+              <div className="flex items-center px-1">
+                <label className="flex items-center cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-5 h-5 border-2 border-slate-300 rounded-md peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200"></div>
+                    <svg
+                      className="absolute w-3.5 h-3.5 text-white top-0.5 left-0.5 opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="ml-3 text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+                    Keep me signed in
+                  </span>
+                </label>
+              </div>
+
               <button
                 onClick={handleLogin}
-                className="w-full bg-linear-to-r from-[#00AEFF] to-[#0090d9] text-white py-3.5 rounded-lg font-semibold hover:shadow-lg hover:shadow-[#00AEFF]/30 transition-all duration-300 ease-in-out flex items-center justify-center group"
+                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-sm tracking-wide shadow-[0_10px_20px_-5px_rgba(15,23,42,0.3)] hover:bg-blue-600 hover:shadow-[0_10px_20px_-5px_rgba(37,99,235,0.4)] transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center"
               >
-                <svg
-                  className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
+                <span>Access Dashboard</span>
+                <svg className="w-4 h-4 ml-2 fill-current" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
                 </svg>
-                <span>Sign In</span>
               </button>
 
-              {/* Terms */}
-              <p className="text-xs text-slate-500 text-center leading-relaxed">
-                By continuing, you agree to our{' '}
-                <Link
-                  to="/privacyPolicy"
-                  className="text-[#00AEFF] hover:text-[#0090d9] font-medium transition-colors"
-                >
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link
-                  to="/privacyPolicy"
-                  className="text-[#00AEFF] hover:text-[#0090d9] font-medium transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-              </p>
+              <div className="pt-4 text-center">
+                <p className="text-[12px] text-slate-400 font-medium">
+                  By signing in, you agree to our{' '}
+                  <Link
+                    to="/privacyPolicy"
+                    className="text-slate-900 hover:underline decoration-blue-500 underline-offset-4 decoration-2 transition-all"
+                  >
+                    Terms
+                  </Link>
+                  {' & '}
+                  <Link
+                    to="/privacyPolicy"
+                    className="text-slate-900 hover:underline decoration-blue-500 underline-offset-4 decoration-2 transition-all"
+                  >
+                    Privacy
+                  </Link>
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Panel - Image/Branding */}
-        <div className="hidden lg:flex flex-1 relative overflow-hidden">
-          {/* Background Image */}
-          <div className="absolute inset-0 bg-[url('./assets/carlogin.png')] bg-cover bg-center"></div>
+        {/* Right Panel - Visual/Branding */}
+        <div className="hidden lg:flex flex-1 relative bg-slate-900 border-l border-white/5">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center mix-blend-overlay opacity-30"></div>
 
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-linear-to-br from-[#00AEFF]/90 via-[#0090d9]/80 to-[#0077b6]/90"></div>
-
-          {/* Content */}
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
+          <div className="relative z-10 w-full h-full flex flex-col justify-end p-16">
             <div className="max-w-md">
-              <h2 className="text-4xl font-bold mb-4">Streamline Your Fleet Management</h2>
-              <p className="text-lg text-white/90 leading-relaxed">
-                Access powerful tools to manage your fleet operations, track performance, and
-                optimize efficiency all in one place.
+              <div className="w-12 h-1 bg-blue-500 mb-8 rounded-full"></div>
+              <h2 className="text-4xl font-black text-white leading-[1.1] mb-6 tracking-tighter italic">
+                SMART FLEET
+                <br />
+                <span className="text-blue-500 not-italic">MANAGEMENT</span>
+              </h2>
+              <p className="text-slate-400 text-lg font-medium leading-relaxed mb-10">
+                Experience the next generation of fleet operations with real-time tracking,
+                automated workflows, and high-performance analytics.
               </p>
 
-              {/* Feature Pills */}
-              <div className="mt-8 space-y-3">
-                <div className="flex items-center justify-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                  <span className="font-medium">Real-time Analytics</span>
+              <div className="flex gap-4">
+                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md flex-1 text-center">
+                  <div className="text-white text-xl font-black mb-1">100%</div>
+                  <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                    Accuracy
+                  </div>
                 </div>
-                <div className="flex items-center justify-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                  <span className="font-medium">Automated Workflows</span>
+                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md flex-1 text-center">
+                  <div className="text-white text-xl font-black mb-1">24/7</div>
+                  <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                    Support
+                  </div>
                 </div>
-                <div className="flex items-center justify-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                  <span className="font-medium">Secure & Compliant</span>
+                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md flex-1 text-center">
+                  <div className="text-white text-xl font-black mb-1">PRO</div>
+                  <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                    Security
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Decorative Elements */}
-          <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-10 left-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         </div>
       </div>
     </div>
