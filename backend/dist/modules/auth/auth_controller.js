@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetUserPasswordController = exports.toggleUserStatusController = exports.getAllAdminsController = exports.getAllAccountantsController = exports.getSupervisorsByBuilding = exports.getAllSupervisors = exports.getCleanersBySupervisor = exports.getCleaners = exports.logout = exports.login = exports.registerUser = void 0;
+exports.resetPasswordController = exports.verifyOTPController = exports.forgotPasswordController = exports.resetUserPasswordController = exports.toggleUserStatusController = exports.getAllAdminsController = exports.getAllAccountantsController = exports.getSupervisorsByBuilding = exports.getAllSupervisors = exports.getCleanersBySupervisor = exports.getCleaners = exports.logout = exports.login = exports.registerUser = void 0;
 const auditLogger_1 = require("../../utils/auditLogger");
 const logger_1 = require("../../config/logger");
 const error_handler_1 = require("../../middlewares/error-handler");
@@ -14,14 +14,23 @@ const VALID_CLIENT_TYPES = ['web', 'mobile'];
 // ============================================================
 const registerUser = async (req, res, next) => {
     try {
+        // eslint-disable-next-line no-undef
         const files = req.files;
         const documentFile = files?.document?.[0];
         const profilePhotoFile = files?.profile_image?.[0];
         if (!documentFile) {
             throw new error_handler_1.AppError('Document file is required', 400, 'DOCUMENT_FILE_REQUIRED');
         }
-        const documentUrl = await (0, uploadMiddleware_1.uploadToS3)(documentFile);
-        const profilePhotoUrl = profilePhotoFile ? await (0, uploadMiddleware_1.uploadToS3)(profilePhotoFile) : undefined;
+        let documentUrl;
+        let profilePhotoUrl;
+        try {
+            documentUrl = await (0, uploadMiddleware_1.uploadToS3)(documentFile);
+            profilePhotoUrl = profilePhotoFile ? await (0, uploadMiddleware_1.uploadToS3)(profilePhotoFile) : undefined;
+        }
+        catch (s3Err) {
+            logger_1.logger.error('S3 Upload Failed during registration', { error: s3Err });
+            throw new error_handler_1.AppError('Failed to upload registration documents. Please check infrastructure configuration.', 500, 'S3_UPLOAD_FAILED');
+        }
         const role = req.body.role?.toLowerCase();
         if (!role)
             throw new error_handler_1.AppError('Role is required', 400, 'ROLE_REQUIRED');
@@ -283,3 +292,56 @@ const resetUserPasswordController = async (req, res, next) => {
     }
 };
 exports.resetUserPasswordController = resetUserPasswordController;
+// ============================================================
+// FORGOT PASSWORD
+// ============================================================
+const forgotPasswordController = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        if (!email)
+            throw new error_handler_1.AppError('Email is required', 400, 'EMAIL_REQUIRED');
+        await (0, auth_service_1.requestPasswordResetService)(email);
+        return res.status(200).json({
+            success: true,
+            message: 'If an account exists with this email, a reset code has been sent.',
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.forgotPasswordController = forgotPasswordController;
+const verifyOTPController = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp)
+            throw new error_handler_1.AppError('Email and OTP are required', 400, 'FIELDS_REQUIRED');
+        const { resetToken } = await (0, auth_service_1.verifyOTPService)(email, otp);
+        return res.status(200).json({
+            success: true,
+            message: 'OTP verified successfully',
+            resetToken,
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.verifyOTPController = verifyOTPController;
+const resetPasswordController = async (req, res, next) => {
+    try {
+        const { email, resetToken, newPassword } = req.body;
+        if (!email || !resetToken || !newPassword) {
+            throw new error_handler_1.AppError('Email, resetToken and newPassword are required', 400, 'FIELDS_REQUIRED');
+        }
+        await (0, auth_service_1.resetPasswordService)(email, resetToken, newPassword);
+        return res.status(200).json({
+            success: true,
+            message: 'Password reset successful. You can now log in.',
+        });
+    }
+    catch (err) {
+        next(err);
+    }
+};
+exports.resetPasswordController = resetPasswordController;

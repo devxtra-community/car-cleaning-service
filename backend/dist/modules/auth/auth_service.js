@@ -6,11 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.resetUserPasswordService = exports.toggleUserStatusService = exports.resetPasswordService = exports.verifyOTPService = exports.requestPasswordResetService = exports.checkSupervisorNotBlocked = exports.getAllAdminsService = exports.getAllAccountantsService = exports.getSupervisorsByBuildingService = exports.getAllSupervisorsService = exports.getCleanersBySupervisorService = exports.getAllCleanersService = exports.logoutService = exports.loginService = exports.createUser = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const connectDatabase_1 = require("../../database/connectDatabase");
-const error_handler_1 = require("src/middlewares/error-handler");
+const error_handler_1 = require("../../middlewares/error-handler");
 const jwt_1 = require("../../config/jwt");
 const uuid_1 = require("uuid");
 const crypto_1 = __importDefault(require("crypto"));
-const sendWelcomeMail_1 = require("src/config/sendWelcomeMail");
+const sendWelcomeMail_1 = require("../../config/sendWelcomeMail");
 const SALT_ROUNDS = 12;
 const OTP_EXPIRY_MINUTES = 15;
 const createUser = async (data) => {

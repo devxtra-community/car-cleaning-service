@@ -29,7 +29,6 @@ const generateSalaryForUser = async (userId, cycleId, bypassLock = false) => {
             await client.query('ROLLBACK');
             return null;
         }
-        let totalTasks = 0;
         let totalIncentives = 0;
         let totalPenalties = 0;
         // 3️⃣ Role-based calculations
@@ -40,10 +39,9 @@ const generateSalaryForUser = async (userId, cycleId, bypassLock = false) => {
                 throw new Error('CLEANER_PROFILE_NOT_FOUND');
             const cleanerProfileId = cleanerRes.rows[0].id;
             // Tasks
-            const taskRes = await client.query(`SELECT COUNT(*) AS total_tasks FROM tasks
+            await client.query(`SELECT COUNT(*) AS total_tasks FROM tasks
          WHERE cleaner_id = $1 AND status = 'completed'
          AND created_at BETWEEN $2 AND $3`, [cleanerProfileId, start_date, end_date]);
-            totalTasks = Number(taskRes.rows[0].total_tasks);
             // 1. Performance Incentives (from daily_incentive_breakdown)
             const perfRes = await client.query(`SELECT COALESCE(SUM(dib.amount), 0) AS total
          FROM daily_work_records dwr
@@ -64,7 +62,6 @@ const generateSalaryForUser = async (userId, cycleId, bypassLock = false) => {
         }
         else {
             // For supervisors and other roles, incentives/penalties are currently 0 unless logic is added later
-            totalTasks = 0;
             totalIncentives = 0;
             totalPenalties = 0;
         }
@@ -533,9 +530,7 @@ exports.getSalaryTimeline = getSalaryTimeline;
  */
 const getRoleBasedSalaries = async (cycleId) => {
     const params = [];
-    let cycleFilter = '';
     if (cycleId) {
-        cycleFilter = 'AND sc.id = $1';
         params.push(cycleId);
     }
     else {

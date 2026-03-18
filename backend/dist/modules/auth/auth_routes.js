@@ -9,9 +9,13 @@ const refresh_1 = require("./refresh");
 const floor_controller_1 = require("../floors/floor_controller");
 const supervisor_controller_1 = require("../supervisor/supervisor_controller");
 const authMiddleware_2 = require("../../middlewares/authMiddleware");
+const auth_controller_2 = require("./auth_controller");
 const router = (0, express_1.Router)();
 router.post('/register', uploadMiddleware_1.uploadDocumentToS3, uploadMiddleware_1.handleMulterError, authMiddleware_1.protect, auth_controller_1.registerUser);
 router.post('/login', auth_controller_1.login);
+router.post('/forgot-password', auth_controller_1.forgotPasswordController);
+router.post('/verify-otp', auth_controller_1.verifyOTPController);
+router.post('/reset-password', auth_controller_1.resetPasswordController);
 router.post('/logout', authMiddleware_1.protect, auth_controller_1.logout);
 router.get('/supervisors', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_1.getAllSupervisors);
 router.post('/register-push-token', authMiddleware_2.authMiddleware, supervisor_controller_1.registerPushTokenController);
@@ -21,7 +25,6 @@ router.get('/cleaners', authMiddleware_1.protect, (0, roleMiddleware_1.allowRole
 router.post('/refresh', refresh_1.refresh);
 router.get('/supervisor/:supervisorId', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_1.getCleanersBySupervisor);
 /* USER MANAGEMENT - ADMIN ONLY */
-const auth_controller_2 = require("./auth_controller");
 router.patch('/users/:id/status', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_2.toggleUserStatusController);
 router.patch('/users/:id/reset-password', authMiddleware_1.protect, (0, roleMiddleware_1.allowRoles)('admin'), auth_controller_2.resetUserPasswordController);
 exports.default = router;
