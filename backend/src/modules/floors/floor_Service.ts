@@ -1,5 +1,5 @@
 import { pool } from '../../database/connectDatabase';
-import { AppError } from 'src/middlewares/error-handler';
+import { AppError } from '../../middlewares/error-handler';
 
 // ============================================================
 // TYPES

@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { pool } from 'src/database/connectDatabase';
+import { pool } from '../../database/connectDatabase';
 
 const SALT_ROUNDS = 12;
 
