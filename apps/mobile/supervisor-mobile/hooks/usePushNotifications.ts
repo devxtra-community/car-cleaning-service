@@ -15,7 +15,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const BACKEND_URL = 'http://10.10.1.203:3033/api/auth/register-push-token';
+const BACKEND_URL = 'http://3.80.46.40:3030/api/auth/register-push-token';
 
 export const usePushNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>();

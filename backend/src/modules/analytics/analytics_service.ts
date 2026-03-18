@@ -61,14 +61,16 @@ export const getCleanerPerformance = async (period?: string) => {
       c.id AS cleaner_id,
       u.full_name as cleaner_name,
       b.building_name,
-      COUNT(t.id) as completed_tasks,
-      COALESCE(AVG(EXTRACT(EPOCH FROM (t.completed_at - t.started_at))/60), 0) as avg_wash_time_mins
+      COUNT(t.id)::int as completed_tasks,
+      COALESCE(AVG(r.rating), 0)::float as avg_rating
      FROM cleaners c
      JOIN users u ON c.user_id = u.id
      LEFT JOIN buildings b ON c.building_id = b.id
      LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${dateFilter}
+     LEFT JOIN reviews r ON t.id = r.task_id
      GROUP BY c.id, u.full_name, b.building_name
-     ORDER BY completed_tasks DESC`
+     ORDER BY completed_tasks DESC
+     LIMIT 10`
   );
 
   return res.rows;

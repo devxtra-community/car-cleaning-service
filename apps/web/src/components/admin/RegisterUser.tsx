@@ -249,9 +249,13 @@ const RegisterUser = () => {
     } catch (error: unknown) {
       console.error('Registration error:', error);
 
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as { response?: { data?: { error?: { message?: string }; message?: string } } };
+      const errorMessage =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Something went wrong';
 
-      alert(err.response?.data?.message || 'Something went wrong');
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -41,8 +41,20 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('Document file is required', 400, 'DOCUMENT_FILE_REQUIRED');
     }
 
-    const documentUrl = await uploadToS3(documentFile);
-    const profilePhotoUrl = profilePhotoFile ? await uploadToS3(profilePhotoFile) : undefined;
+    let documentUrl: string;
+    let profilePhotoUrl: string | undefined;
+
+    try {
+      documentUrl = await uploadToS3(documentFile);
+      profilePhotoUrl = profilePhotoFile ? await uploadToS3(profilePhotoFile) : undefined;
+    } catch (s3Err) {
+      logger.error('S3 Upload Failed during registration', { error: s3Err });
+      throw new AppError(
+        'Failed to upload registration documents. Please check infrastructure configuration.',
+        500,
+        'S3_UPLOAD_FAILED'
+      );
+    }
 
     const role = req.body.role?.toLowerCase();
     if (!role) throw new AppError('Role is required', 400, 'ROLE_REQUIRED');

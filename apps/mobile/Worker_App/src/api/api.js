@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './tokenStorage';
 
-const BASE_URL = 'http://10.10.1.203:3033';
+const BASE_URL = 'http://3.80.46.40:3030';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -50,19 +50,19 @@ api.interceptors.response.use(
     const isWriteMethod = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(originalRequest?.method?.toUpperCase());
 
     if (isNetworkError && isWriteMethod && !originalRequest?._noQueue) {
-        try {
-            const { enqueueRequest } = require('./offlineQueue');
-            await enqueueRequest({
-                url: originalRequest.url,
-                method: originalRequest.method,
-                data: originalRequest.data,
-                headers: originalRequest.headers
-            });
-            // Return a resolved promise with a special "queued" flag
-            return Promise.resolve({ data: { success: true, queued: true, message: 'Request queued for offline sync' } });
-        } catch (enqueueErr) {
-            console.error('[API] Failed to enqueue request:', enqueueErr);
-        }
+      try {
+        const { enqueueRequest } = require('./offlineQueue');
+        await enqueueRequest({
+          url: originalRequest.url,
+          method: originalRequest.method,
+          data: originalRequest.data,
+          headers: originalRequest.headers
+        });
+        // Return a resolved promise with a special "queued" flag
+        return Promise.resolve({ data: { success: true, queued: true, message: 'Request queued for offline sync' } });
+      } catch (enqueueErr) {
+        console.error('[API] Failed to enqueue request:', enqueueErr);
+      }
     }
 
     console.error('[API Response Error]', {

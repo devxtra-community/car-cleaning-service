@@ -14,7 +14,6 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   ComputerDesktopIcon,
-  ServerIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../services/commonAPI';
 
@@ -103,38 +102,9 @@ const fmt = (n: number) =>
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const revenueChartData = months.map((m, i) => ({
-  month: m,
-  actual: 8000 + Math.round(Math.sin(i * 0.7) * 2000 + Math.random() * 1500),
-  expected: 9000 + i * 300,
-}));
-
-const taskChartData = [
-  { day: 'Mon', completed: 28, pending: 4 },
-  { day: 'Tue', completed: 35, pending: 2 },
-  { day: 'Wed', completed: 22, pending: 8 },
-  { day: 'Thu', completed: 40, pending: 1 },
-  { day: 'Fri', completed: 30, pending: 5 },
-  { day: 'Sat', completed: 18, pending: 3 },
-  { day: 'Sun', completed: 12, pending: 2 },
-];
-
 const RATING_COLORS = ['#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd', '#e0f2fe'];
 
-const ratingDataMock = [
-  { stars: 5, count: 876 },
-  { stars: 4, count: 700 },
-  { stars: 3, count: 204 },
-  { stars: 2, count: 50 },
-  { stars: 1, count: 12 },
-];
-
-const topCleanersMock = [
-  { name: 'John Smith', tasks: 45, rating: 4.7 },
-  { name: 'Sarah Johnson', tasks: 42, rating: 4.6 },
-  { name: 'Mike Wilson', tasks: 40, rating: 4.5 },
-  { name: 'Emma Davis', tasks: 38, rating: 4.4 },
-];
+// Mocks removed - using real data only
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -216,8 +186,9 @@ const SectionCard: React.FC<{
   icon?: React.ElementType;
   children: React.ReactNode;
   iconClass?: string;
-}> = ({ title, icon: Icon, children, iconClass = 'text-sky-500' }) => (
-  <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+  className?: string;
+}> = ({ title, icon: Icon, children, iconClass = 'text-sky-500', className = '' }) => (
+  <div className={`bg-white rounded-2xl border border-slate-100 p-6 shadow-sm ${className}`}>
     <div className="flex items-center gap-2 mb-5">
       {Icon && <Icon className={`w-4 h-4 ${iconClass}`} />}
       <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
@@ -600,50 +571,31 @@ const AdminDashboard: React.FC = () => {
     fetchAll();
   }, [fetchAll]);
 
-  const activeVehicles = data.vehicles.filter((v) => v.status === 'active').length;
+  const activeVehicles = data.vehicles.filter((v: any) => v.status === 'active' || v.status === 'Available').length;
   const totalVehicles = data.vehicles.length;
-  const chartData =
-    data.monthlyProgress.length > 0
-      ? data.monthlyProgress
-        .map((p: any) => ({
-          month: months[new Date(p.month).getMonth()],
-          actual: p.total_revenue,
-          expected: p.total_revenue * 1.1, // Mocked expected based on actual for now
-        }))
-        .reverse()
-      : revenueChartData;
 
-  const buildingPerf =
-    data.buildingComparison.length > 0
-      ? data.buildingComparison.map((b: any) => ({
-        name: b.building_name,
-        score: Math.round(b.avg_rating * 20), // 0-100 scale
-        growth: 0, // Placeholder
+  const chartData = data.monthlyProgress.length > 0
+    ? data.monthlyProgress
+      .map((p: any) => ({
+        month: months[new Date(p.month).getMonth()],
+        actual: parseFloat(p.total_revenue || 0),
+        expected: 0, // No real expected data yet
       }))
-      : [
-        { name: 'Plaza Center', score: 94, growth: 2.3 },
-        { name: 'Elite Towers', score: 88, growth: -1.2 },
-        { name: 'Sky Residence', score: 76, growth: 4.5 },
-      ];
+      .reverse()
+    : [];
 
-  const topCleanersReal =
-    data.cleanerPerformance.length > 0
-      ? data.cleanerPerformance.map((p: any) => ({
-        name: p.cleaner_name,
-        tasks: p.completed_tasks,
-        rating: 4.5 + Math.random() * 0.5, // Rating not in this endpoint, placeholder
-      }))
-      : topCleanersMock;
+  const topCleanersReal = data.cleanerPerformance.map((p: any) => ({
+    name: p.cleaner_name,
+    tasks: p.completed_tasks,
+    rating: p.avg_rating,
+  }));
 
-  const ratingDataReal =
-    data.ratingSummary.length > 0
-      ? [5, 4, 3, 2, 1].map((stars) => ({
-        stars,
-        count: parseInt(
-          data.ratingSummary.find((r: any) => parseInt(r.stars) === stars)?.count || '0'
-        ),
-      }))
-      : ratingDataMock;
+  const ratingDataReal = [5, 4, 3, 2, 1].map((stars) => ({
+    stars,
+    count: parseInt(
+      data.ratingSummary.find((r: any) => parseInt(r.rating) === stars)?.count || '0'
+    ),
+  }));
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
@@ -736,7 +688,7 @@ const AdminDashboard: React.FC = () => {
         {/* ── Row 2 ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Attendance */}
-          <SectionCard title="Attendance Today" icon={ClockIcon} iconClass="text-sky-500">
+          <SectionCard title="Attendance Today" icon={ClockIcon} iconClass="text-sky-500" className="h-full">
             {[
               {
                 label: 'Supervisors',
@@ -773,7 +725,7 @@ const AdminDashboard: React.FC = () => {
           </SectionCard>
 
           {/* Task Status */}
-          <SectionCard title="Task Status" icon={CheckCircleIcon} iconClass="text-emerald-500">
+          <SectionCard title="Task Status" icon={CheckCircleIcon} iconClass="text-emerald-500" className="h-full">
             <div className="grid grid-cols-3 gap-2 mb-5">
               {[
                 {
@@ -811,9 +763,20 @@ const AdminDashboard: React.FC = () => {
               ))}
             </div>
             <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">
-              7-day task trend
+              Recent Performance
             </div>
-            <SvgBarChart data={taskChartData} height={70} />
+            {data.monthlyProgress.length > 0 ? (
+              <SvgBarChart
+                data={data.monthlyProgress.slice(0, 7).map((p: any) => ({
+                  day: months[new Date(p.month).getMonth()],
+                  completed: p.total_tasks,
+                  pending: 0
+                }))}
+                height={70}
+              />
+            ) : (
+              <div className="h-[70px] flex items-center justify-center text-xs text-slate-300 italic">No task trend data</div>
+            )}
           </SectionCard>
 
           {/* Building Performance */}
@@ -821,6 +784,7 @@ const AdminDashboard: React.FC = () => {
             title="Building Performance"
             icon={BuildingOfficeIcon}
             iconClass="text-amber-500"
+            className="h-full"
           >
             {loading ? (
               <div className="space-y-4 animate-pulse">
@@ -865,7 +829,7 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
           {/* Revenue Chart */}
           <div className="lg:col-span-3">
-            <SectionCard title="Revenue Trends" icon={ChartBarIcon} iconClass="text-sky-500">
+            <SectionCard title="Revenue Trends" icon={ChartBarIcon} iconClass="text-sky-500" className="h-full">
               <div className="flex items-start justify-between mb-5">
                 <div>
                   <div className="text-2xl font-bold text-slate-800">
@@ -885,7 +849,7 @@ const AdminDashboard: React.FC = () => {
                             Math.max(data.monthlyProgress[1].total_revenue, 1)) *
                           100
                         ).toFixed(1) + '%'
-                        : '+13.25%'}
+                        : '—'}
                     </span>
                     <span className="text-sm text-slate-400">vs last month</span>
                   </div>
@@ -896,8 +860,8 @@ const AdminDashboard: React.FC = () => {
                       key={v}
                       onClick={() => setChartView(v)}
                       className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${chartView === v
-                          ? 'bg-sky-500 text-white border-sky-500'
-                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-sky-500 text-white border-sky-500'
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
                       {v}
@@ -906,25 +870,25 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <SvgAreaChart data={chartData} width={600} height={220} />
-
-              <div className="flex gap-5 mt-3">
-                {[
-                  ['#0ea5e9', 'Actual'],
-                  ['#8b5cf6', 'Expected'],
-                ].map(([color, label]) => (
-                  <div key={label} className="flex items-center gap-1.5">
-                    <div className="w-5 h-0.5 rounded" style={{ background: color }} />
-                    <span className="text-xs text-slate-400">{label}</span>
+              {chartData.length > 0 ? (
+                <>
+                  <SvgAreaChart data={chartData} width={600} height={220} />
+                  <div className="flex gap-5 mt-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-0.5 rounded bg-sky-500" />
+                      <span className="text-xs text-slate-400">Actual Revenue</span>
+                    </div>
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="h-[220px] flex items-center justify-center text-slate-300 italic">No revenue data available</div>
+              )}
             </SectionCard>
           </div>
 
           {/* Salary Summary */}
           <div className="lg:col-span-2">
-            <SectionCard title="Salary Overview" icon={BanknotesIcon} iconClass="text-emerald-500">
+            <SectionCard title="Salary Overview" icon={BanknotesIcon} iconClass="text-emerald-500" className="h-full">
               {loading ? (
                 <div className="flex justify-center py-6">
                   <Spinner />
@@ -975,64 +939,70 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* ── Row 4: Performers + Incentives ────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-full">
           {/* Top Performers */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 h-full">
             <SectionCard
               title="Top Performers This Month"
               icon={StarIcon}
               iconClass="text-amber-500"
+              className="h-full"
             >
-              {topCleanersReal.map((c, i) => (
-                <div
-                  key={c.name}
-                  className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
-                >
+              {topCleanersReal.length > 0 ? (
+                topCleanersReal.map((c, i) => (
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0
+                    key={c.name}
+                    className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0
                         ? 'bg-amber-400 text-white'
                         : i === 1
                           ? 'bg-slate-300 text-slate-700'
                           : i === 2
                             ? 'bg-orange-300 text-orange-800'
                             : 'bg-slate-100 text-slate-400'
-                      }`}
-                  >
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-slate-700 truncate">{c.name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{c.tasks} tasks completed</div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                      ⭐{' '}
-                      {c.rating
-                        ? typeof c.rating === 'number'
-                          ? c.rating.toFixed(1)
-                          : c.rating
-                        : '—'}
-                    </span>
-                    <div className="w-14 h-1.5 bg-slate-100 rounded-full">
-                      <div
-                        className={`h-full rounded-full ${i === 0 ? 'bg-amber-400' : 'bg-slate-300'}`}
-                        style={{
-                          width: `${(c.tasks / Math.max(topCleanersReal[0]?.tasks || 1, 1)) * 100}%`,
-                        }}
-                      />
+                        }`}
+                    >
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-slate-700 truncate">{c.name}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{c.tasks} tasks completed</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                        ⭐{' '}
+                        {c.rating
+                          ? typeof c.rating === 'number'
+                            ? c.rating.toFixed(1)
+                            : c.rating
+                          : '—'}
+                      </span>
+                      <div className="w-14 h-1.5 bg-slate-100 rounded-full">
+                        <div
+                          className={`h-full rounded-full ${i === 0 ? 'bg-amber-400' : 'bg-slate-300'}`}
+                          style={{
+                            width: `${(c.tasks / Math.max(topCleanersReal[0]?.tasks || 1, 1)) * 100}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="py-10 h-[260px] flex items-center justify-center text-center text-sm text-slate-400 italic">No performer data available</div>
+              )}
             </SectionCard>
           </div>
 
           {/* Incentive Overview */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 h-full">
             <SectionCard
               title="Incentive System"
               icon={ArrowTrendingUpIcon}
               iconClass="text-violet-500"
+              className="h-full"
             >
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
@@ -1077,89 +1047,58 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* ── Row 5: System Management ──────────────────────────────── */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="mt-8">
           <SectionCard
-            title="System Control & Health"
+            title="System Maintenance"
             icon={ComputerDesktopIcon}
             iconClass="text-slate-500"
           >
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              {/* Maintenance Control */}
-              <div className="flex-1 w-full bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className={`p-2 rounded-lg ${data.systemStatus.isMaintenance ? 'bg-amber-100' : 'bg-slate-100'}`}>
+                    <ExclamationTriangleIcon
+                      className={`w-5 h-5 ${data.systemStatus.isMaintenance ? 'text-amber-600' : 'text-slate-500'}`}
+                    />
+                  </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <ExclamationTriangleIcon
-                        className={`w-5 h-5 ${data.systemStatus.isMaintenance ? 'text-amber-500' : 'text-slate-400'}`}
-                      />
-                      <h3 className="text-lg font-bold text-slate-800">Maintenance Mode</h3>
-                    </div>
-                    <p className="text-sm text-slate-500 max-w-md">
-                      When enabled, all mobile and web app users will be blocked. Use this for safe
-                      system updates.
+                    <h3 className="text-sm font-bold text-slate-800">System Visibility</h3>
+                    <p className="text-xs text-slate-400">
+                      {data.systemStatus.isMaintenance
+                        ? 'Public access is currently restricted'
+                        : 'System is live and accessible to all users'}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                {/* Subtle Health Indicators */}
+                <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-r border-slate-100 pr-6 mr-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${data.systemStatus.health?.services.database.status === 'connected' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    DB
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    {data.systemStatus.health
+                      ? Math.floor(data.systemStatus.health.uptime / 3600) + 'H'
+                      : 'ONLINE'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold ${data.systemStatus.isMaintenance ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {data.systemStatus.isMaintenance ? 'MAINTENANCE' : 'LIVE'}
+                  </span>
                   <button
                     onClick={() => toggleMaintenance(!data.systemStatus.isMaintenance)}
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${data.systemStatus.isMaintenance ? 'bg-amber-500' : 'bg-slate-300'}`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shadow-inner ${data.systemStatus.isMaintenance ? 'bg-amber-500' : 'bg-slate-200'}`}
                   >
                     <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${data.systemStatus.isMaintenance ? 'translate-x-6' : 'translate-x-1'}`}
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.systemStatus.isMaintenance ? 'translate-x-6' : 'translate-x-1'}`}
                     />
                   </button>
-                </div>
-              </div>
-
-              {/* Service Health */}
-              <div className="flex-1 w-full grid grid-cols-2 gap-4">
-                {[
-                  {
-                    label: 'Database (PG)',
-                    status: data.systemStatus.health?.services.database.status ?? 'unknown',
-                    icon: ServerIcon,
-                    color:
-                      data.systemStatus.health?.services.database.status === 'connected'
-                        ? 'emerald'
-                        : 'rose',
-                  },
-                ].map((srv) => (
-                  <div
-                    key={srv.label}
-                    className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3"
-                  >
-                    <div className={`p-2 rounded-lg bg-${srv.color}-50`}>
-                      <srv.icon className={`w-5 h-5 text-${srv.color}-500`} />
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">
-                        {srv.label}
-                      </div>
-                      <div
-                        className={`text-sm font-bold capitalize flex items-center gap-1.5 text-${srv.color}-600`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full bg-${srv.color}-500`} />
-                        {srv.status}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Server Uptime */}
-              <div className="flex-none bg-white border border-slate-100 rounded-xl p-4 shadow-sm min-w-[150px]">
-                <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tight mb-1">
-                  Server Uptime
-                </div>
-                <div className="text-lg font-mono font-bold text-slate-700">
-                  {data.systemStatus.health
-                    ? Math.floor(data.systemStatus.health.uptime / 3600) +
-                    'h ' +
-                    Math.floor((data.systemStatus.health.uptime % 3600) / 60) +
-                    'm'
-                    : '—'}
-                </div>
-                <div className="text-[10px] text-emerald-500 font-bold mt-1">
-                  Status: Operational
                 </div>
               </div>
             </div>

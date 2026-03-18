@@ -1,10 +1,10 @@
 import bcrypt from 'bcrypt';
 import { pool } from '../../database/connectDatabase';
-import { AppError } from 'src/middlewares/error-handler';
+import { AppError } from '../../middlewares/error-handler';
 import { generateAccessToken, generateRefreshToken, hashToken, ClientType } from '../../config/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { sendMail } from 'src/config/sendWelcomeMail';
+import { sendMail } from '../../config/sendWelcomeMail';
 const SALT_ROUNDS = 12;
 const OTP_EXPIRY_MINUTES = 15;
 
