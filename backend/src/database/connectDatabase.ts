@@ -1,5 +1,11 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import { logger } from '../config/logger';
+
+// Force timestamps to be parsed as UTC to avoid double-offset issues in IST environments
+const TIMESTAMP_OID = 1114;
+types.setTypeParser(TIMESTAMP_OID, (stringValue) => {
+  return new Date(stringValue + 'Z');
+});
 
 const MAX_STARTUP_RETRIES = 5;
 const STARTUP_RETRY_DELAY_MS = 3000;
@@ -8,12 +14,27 @@ const RECONNECT_INTERVAL_MS = 10000;
 let isDbConnected = false;
 let reconnectInterval: NodeJS.Timeout | null = null;
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
+let poolInstance: Pool | null = null;
+
+export const getPool = () => {
+  if (!poolInstance) {
+    poolInstance = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeoutMillis: 5000,
+    });
+  }
+  return poolInstance;
+};
+
+// Backward-compatible `pool` export via lazy proxy
+export const pool = {
+  query: (text: string, params?: unknown[]) => getPool().query(text, params),
+  connect: () => getPool().connect(),
+  end: () => poolInstance?.end(),
+} as unknown as Pool;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -88,6 +109,7 @@ function stopBackgroundReconnect() {
 export async function connectDatabase() {
   await startupConnect();
 }
+
 export function isDatabaseConnected() {
   return isDbConnected;
 }

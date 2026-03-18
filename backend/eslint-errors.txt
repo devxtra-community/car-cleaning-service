@@ -1,0 +1,444 @@
+
+/home/batman/project/car-cleaning-service/backend/src/config/redis.ts
+  10:3   error    Delete `··`                               prettier/prettier
+  11:1   error    Replace `····` with `··`                  prettier/prettier
+  12:1   error    Replace `····` with `··`                  prettier/prettier
+  13:1   error    Delete `··`                               prettier/prettier
+  14:1   error    Replace `········` with `····`            prettier/prettier
+  15:5   error    Delete `····`                             prettier/prettier
+  16:1   error    Delete `··`                               prettier/prettier
+  20:3   error    Delete `··`                               prettier/prettier
+  23:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:3   error    Delete `··`                               prettier/prettier
+  28:1   error    Replace `····` with `··`                  prettier/prettier
+  29:1   error    Replace `········` with `····`            prettier/prettier
+  30:1   error    Delete `····`                             prettier/prettier
+  31:3   error    Delete `··`                               prettier/prettier
+  32:1   error    Replace `········` with `····`            prettier/prettier
+  33:5   error    Delete `····`                             prettier/prettier
+  34:1   error    Delete `··`                               prettier/prettier
+  37:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:1   error    Replace `····` with `··`                  prettier/prettier
+  39:1   error    Delete `····`                             prettier/prettier
+  40:3   error    Delete `··`                               prettier/prettier
+  41:1   error    Replace `········` with `····`            prettier/prettier
+  42:1   error    Replace `····` with `··`                  prettier/prettier
+  46:1   error    Replace `····` with `··`                  prettier/prettier
+  47:1   error    Replace `········` with `····`            prettier/prettier
+  48:3   error    Delete `··`                               prettier/prettier
+  49:1   error    Delete `····`                             prettier/prettier
+  50:1   error    Delete `··`                               prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/database/connectDatabase.ts
+  15:24  error  'NodeJS' is not defined  no-undef
+
+/home/batman/project/car-cleaning-service/backend/src/middlewares/maintenance.ts
+   5:1  error  Delete `⏎`                                                                    prettier/prettier
+  11:3  error  Delete `··`                                                                   prettier/prettier
+  12:3  error  Delete `··`                                                                   prettier/prettier
+  13:1  error  Replace `····` with `··`                                                      prettier/prettier
+  14:1  error  Delete `····`                                                                 prettier/prettier
+  15:5  error  Delete `····`                                                                 prettier/prettier
+  16:1  error  Delete `····`                                                                 prettier/prettier
+  17:1  error  Replace `········` with `····`                                                prettier/prettier
+  18:1  error  Delete `··`                                                                   prettier/prettier
+  20:3  error  Replace `··if·(excludedPaths.some(path` with `if·(excludedPaths.some((path)`  prettier/prettier
+  21:1  error  Replace `········` with `····`                                                prettier/prettier
+  22:1  error  Delete `··`                                                                   prettier/prettier
+  24:3  error  Delete `··`                                                                   prettier/prettier
+  25:1  error  Replace `········` with `····`                                                prettier/prettier
+  27:1  error  Delete `····`                                                                 prettier/prettier
+  28:1  error  Delete `····`                                                                 prettier/prettier
+  29:7  error  Delete `······`                                                               prettier/prettier
+  30:1  error  Replace `············` with `······`                                          prettier/prettier
+  31:5  error  Delete `····`                                                                 prettier/prettier
+  32:1  error  Replace `············` with `······`                                          prettier/prettier
+  33:1  error  Replace `············` with `······`                                          prettier/prettier
+  34:1  error  Replace `········` with `····`                                                prettier/prettier
+  36:1  error  Delete `····`                                                                 prettier/prettier
+  37:1  error  Delete `······`                                                               prettier/prettier
+  38:7  error  Delete `······`                                                               prettier/prettier
+  39:1  error  Replace `················` with `········`                                    prettier/prettier
+  40:1  error  Delete `········`                                                             prettier/prettier
+  41:1  error  Replace `················retryAfter:·3600` with `········retryAfter:·3600,`   prettier/prettier
+  42:1  error  Replace `············` with `······`                                          prettier/prettier
+  43:1  error  Delete `····`                                                                 prettier/prettier
+  45:5  error  Delete `····`                                                                 prettier/prettier
+  46:1  error  Replace `····` with `··`                                                      prettier/prettier
+  47:1  error  Delete `····`                                                                 prettier/prettier
+  48:5  error  Delete `····`                                                                 prettier/prettier
+  49:1  error  Replace `········` with `····`                                                prettier/prettier
+  50:5  error  Delete `····`                                                                 prettier/prettier
+  51:1  error  Delete `··`                                                                   prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/middlewares/uploadMiddleware.ts
+  44:40  error  'Express' is not defined  no-undef
+
+/home/batman/project/car-cleaning-service/backend/src/modules/Worker/worker_service.ts
+  69:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  70:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/home/batman/project/car-cleaning-service/backend/src/modules/Worker/workers_controller.ts
+   19:20  error  Replace `⏎····`INSERT·INTO·cleaners·(user_id)·VALUES·($1)·ON·CONFLICT·(user_id)·DO·NOTHING`,` with ``INSERT·INTO·cleaners·(user_id)·VALUES·($1)·ON·CONFLICT·(user_id)·DO·NOTHING`,·[`                                                                               prettier/prettier
+   21:5   error  Replace `[userId]` with `userId,`                                                                                                                                                                                                                                   prettier/prettier
+   22:3   error  Insert `]`                                                                                                                                                                                                                                                          prettier/prettier
+  330:50  error  Insert `⏎··········`                                                                                                                                                                                                                                                prettier/prettier
+  331:1   error  Replace `········` with `············`                                                                                                                                                                                                                              prettier/prettier
+  332:1   error  Insert `····`                                                                                                                                                                                                                                                       prettier/prettier
+  333:1   error  Replace `··········?·'>=·date_trunc(\'week\',·$2::date)·AND·dwr.date·<·date_trunc(\'week\',·$2::date)·+·interval·\'1·week\''` with `··············?·">=·date_trunc('week',·$2::date)·AND·dwr.date·<·date_trunc('week',·$2::date)·+·interval·'1·week'"`              prettier/prettier
+  334:1   error  Replace `··········:·'>=·date_trunc(\'month\',·$2::date)·AND·dwr.date·<·date_trunc(\'month\',·$2::date)·+·interval·\'1·month\''` with `··············:·">=·date_trunc('month',·$2::date)·AND·dwr.date·<·date_trunc('month',·$2::date)·+·interval·'1·month'"`        prettier/prettier
+  335:1   error  Insert `··`                                                                                                                                                                                                                                                         prettier/prettier
+  337:91  error  Insert `⏎··········`                                                                                                                                                                                                                                                prettier/prettier
+  338:1   error  Replace `········` with `············`                                                                                                                                                                                                                              prettier/prettier
+  339:9   error  Insert `····`                                                                                                                                                                                                                                                       prettier/prettier
+  340:1   error  Replace `··········?·'>=·date_trunc(\'week\',·$2::date)·AND·achieved_at·<·date_trunc(\'week\',·$2::date)·+·interval·\'1·week\''` with `··············?·">=·date_trunc('week',·$2::date)·AND·achieved_at·<·date_trunc('week',·$2::date)·+·interval·'1·week'"`        prettier/prettier
+  341:1   error  Replace `··········:·'>=·date_trunc(\'month\',·$2::date)·AND·achieved_at·<·date_trunc(\'month\',·$2::date)·+·interval·\'1·month\''` with `··············:·">=·date_trunc('month',·$2::date)·AND·achieved_at·<·date_trunc('month',·$2::date)·+·interval·'1·month'"`  prettier/prettier
+  342:1   error  Insert `··`                                                                                                                                                                                                                                                         prettier/prettier
+  344:86  error  Insert `⏎··········`                                                                                                                                                                                                                                                prettier/prettier
+  345:1   error  Replace `········` with `············`                                                                                                                                                                                                                              prettier/prettier
+  346:9   error  Insert `····`                                                                                                                                                                                                                                                       prettier/prettier
+  347:1   error  Replace `··········?·'>=·date_trunc(\'week\',·$2::date)·AND·created_at·<·date_trunc(\'week\',·$2::date)·+·interval·\'1·week\''` with `··············?·">=·date_trunc('week',·$2::date)·AND·created_at·<·date_trunc('week',·$2::date)·+·interval·'1·week'"`          prettier/prettier
+  348:1   error  Replace `··········:·'>=·date_trunc(\'month\',·$2::date)·AND·created_at·<·date_trunc(\'month\',·$2::date)·+·interval·\'1·month\''` with `··············:·">=·date_trunc('month',·$2::date)·AND·created_at·<·date_trunc('month',·$2::date)·+·interval·'1·month'"`    prettier/prettier
+  349:1   error  Insert `··`                                                                                                                                                                                                                                                         prettier/prettier
+  354:47  error  Insert `⏎········`                                                                                                                                                                                                                                                  prettier/prettier
+  355:1   error  Replace `········` with `··········`                                                                                                                                                                                                                                prettier/prettier
+  356:9   error  Insert `··`                                                                                                                                                                                                                                                         prettier/prettier
+  357:1   error  Replace `··········?·'>=·date_trunc(\'week\',·$2::date)·AND·achieved_at·<·date_trunc(\'week\',·$2::date)·+·interval·\'1·week\''` with `············?·">=·date_trunc('week',·$2::date)·AND·achieved_at·<·date_trunc('week',·$2::date)·+·interval·'1·week'"`          prettier/prettier
+  358:1   error  Replace `··········:·'>=·date_trunc(\'month\',·$2::date)·AND·achieved_at·<·date_trunc(\'month\',·$2::date)·+·interval·\'1·month\''` with `············:·">=·date_trunc('month',·$2::date)·AND·achieved_at·<·date_trunc('month',·$2::date)·+·interval·'1·month'"`    prettier/prettier
+  363:46  error  Insert `⏎········`                                                                                                                                                                                                                                                  prettier/prettier
+  364:1   error  Replace `········` with `··········`                                                                                                                                                                                                                                prettier/prettier
+  365:1   error  Insert `··`                                                                                                                                                                                                                                                         prettier/prettier
+  366:11  error  Replace `?·'>=·date_trunc(\'week\',·$2::date)·AND·created_at·<·date_trunc(\'week\',·$2::date)·+·interval·\'1·week\''` with `··?·">=·date_trunc('week',·$2::date)·AND·created_at·<·date_trunc('week',·$2::date)·+·interval·'1·week'"`                                prettier/prettier
+  367:1   error  Replace `··········:·'>=·date_trunc(\'month\',·$2::date)·AND·created_at·<·date_trunc(\'month\',·$2::date)·+·interval·\'1·month\''` with `············:·">=·date_trunc('month',·$2::date)·AND·created_at·<·date_trunc('month',·$2::date)·+·interval·'1·month'"`      prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/Worker/workers_routes.ts
+   4:3   error  Delete `··`                                                                                                                                                                                                               prettier/prettier
+   5:1   error  Delete `··`                                                                                                                                                                                                               prettier/prettier
+   6:3   error  Delete `··`                                                                                                                                                                                                               prettier/prettier
+   7:1   error  Delete `··`                                                                                                                                                                                                               prettier/prettier
+  10:1   error  Replace `····` with `··`                                                                                                                                                                                                  prettier/prettier
+  11:1   error  Delete `··`                                                                                                                                                                                                               prettier/prettier
+  12:1   error  Replace `····` with `··`                                                                                                                                                                                                  prettier/prettier
+  13:1   error  Replace `····getMyAssignedVehiclesController` with `··getMyAssignedVehiclesController,`                                                                                                                                   prettier/prettier
+  29:12  error  Replace `'/assignments/vehicle/:cleanerId',·protect,·allowRoles('admin'),·getAssignedVehiclesController` with `⏎··'/assignments/vehicle/:cleanerId',⏎··protect,⏎··allowRoles('admin'),⏎··getAssignedVehiclesController⏎`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/analytics/analytics_controller.ts
+   11:34  error    Insert `,`                                prettier/prettier
+   20:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+   53:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+   64:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+   72:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   74:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+   83:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+   92:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+  101:12  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+
+/home/batman/project/car-cleaning-service/backend/src/modules/analytics/analytics_service.ts
+  69:32  error  Insert `⏎···`  prettier/prettier
+  70:33  error  Insert `⏎···`  prettier/prettier
+  93:13  error  Insert `⏎···`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/attendance/attendance_controller.ts
+   1:10  warning  'Request' is defined but never used  @typescript-eslint/no-unused-vars
+  63:16  warning  '_e' is defined but never used       @typescript-eslint/no-unused-vars
+  78:17  error    Insert `⏎·········`                  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/auth/auth_controller.ts
+   31:55  error    'Express' is not defined                                                                                                                                                                                                                                                                       no-undef
+  110:1   error    Delete `⏎`                                                                                                                                                                                                                                                                                     prettier/prettier
+  287:50  error    Replace `req:·AuthRequest,·res:·Response,·next:·NextFunction` with `⏎··req:·AuthRequest,⏎··res:·Response,⏎··next:·NextFunction⏎`                                                                                                                                                               prettier/prettier
+  303:15  error    Replace `.status(200).json({·success:·true,·message:·`User·status·updated·to·${is_active·?·'active'·:·'inactive'}`,·data` with `⏎······.status(200)⏎······.json({⏎········success:·true,⏎········message:·`User·status·updated·to·${is_active·?·'active'·:·'inactive'}`,⏎········data,⏎·····`  prettier/prettier
+  309:51  error    Replace `req:·AuthRequest,·res:·Response,·next:·NextFunction` with `⏎··req:·AuthRequest,⏎··res:·Response,⏎··next:·NextFunction⏎`                                                                                                                                                               prettier/prettier
+  319:11  warning  'data' is assigned a value but never used                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+
+/home/batman/project/car-cleaning-service/backend/src/modules/auth/auth_routes.ts
+  39:14  error  Replace `'/users/:id/reset-password',·protect,·allowRoles('admin'),·resetUserPasswordController` with `⏎··'/users/:id/reset-password',⏎··protect,⏎··allowRoles('admin'),⏎··resetUserPasswordController⏎`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/auth/auth_service.ts
+  177:39  warning  'supervisor_full_name' is assigned a value but never used                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  197:10  error    Replace `⏎··········data.cleaner.supervisor_id,⏎··········building_id,⏎··········data.cleaner.floor_id·||·null,⏎··········user.id,⏎········` with `data.cleaner.supervisor_id,·building_id,·data.cleaner.floor_id·||·null,·user.id`  prettier/prettier
+  489:19  warning  Unexpected any. Specify a different type                                                                                                                                                                                             @typescript-eslint/no-explicit-any
+
+/home/batman/project/car-cleaning-service/backend/src/modules/feedback/review_controller.ts
+  120:17  error  Replace `.status(401)` with `⏎········.status(401)⏎········`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/feedback/review_routes.ts
+  2:9  error  Replace `·createReview,·getReviewsByWorker,·getReviewByTask,·getMyReviews·` with `⏎··createReview,⏎··getReviewsByWorker,⏎··getReviewByTask,⏎··getMyReviews,⏎`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/fraud/fraud_controller.ts
+   7:3  error  Delete `··`                           prettier/prettier
+   8:1  error  Delete `··`                           prettier/prettier
+  13:3  error  Delete `··`                           prettier/prettier
+  14:1  error  Delete `····`                         prettier/prettier
+  16:1  error  Replace `········` with `····`        prettier/prettier
+  17:1  error  Delete `····`                         prettier/prettier
+  18:1  error  Replace `············` with `······`  prettier/prettier
+  19:7  error  Delete `······`                       prettier/prettier
+  20:1  error  Replace `········` with `····`        prettier/prettier
+  21:1  error  Delete `····`                         prettier/prettier
+  22:5  error  Delete `····`                         prettier/prettier
+  24:1  error  Replace `········` with `····`        prettier/prettier
+  25:1  error  Delete `······`                       prettier/prettier
+  36:7  error  Delete `······`                       prettier/prettier
+  37:5  error  Delete `····`                         prettier/prettier
+  39:1  error  Replace `········` with `····`        prettier/prettier
+  40:3  error  Delete `··`                           prettier/prettier
+  41:1  error  Replace `········` with `····`        prettier/prettier
+  42:1  error  Replace `········` with `····`        prettier/prettier
+  43:1  error  Delete `··`                           prettier/prettier
+  48:3  error  Delete `··`                           prettier/prettier
+  49:1  error  Delete `····`                         prettier/prettier
+  50:1  error  Replace `········` with `····`        prettier/prettier
+  51:5  error  Delete `····`                         prettier/prettier
+  53:1  error  Delete `····`                         prettier/prettier
+  54:7  error  Delete `······`                       prettier/prettier
+  55:5  error  Delete `····`                         prettier/prettier
+  57:1  error  Replace `········` with `····`        prettier/prettier
+  58:1  error  Delete `······`                       prettier/prettier
+  62:7  error  Delete `······`                       prettier/prettier
+  63:5  error  Delete `····`                         prettier/prettier
+  65:1  error  Replace `········` with `····`        prettier/prettier
+  66:1  error  Delete `······`                       prettier/prettier
+  67:5  error  Delete `····`                         prettier/prettier
+  69:1  error  Delete `····`                         prettier/prettier
+  70:1  error  Replace `············` with `······`  prettier/prettier
+  71:5  error  Delete `····`                         prettier/prettier
+  73:1  error  Delete `····`                         prettier/prettier
+  74:1  error  Delete `··`                           prettier/prettier
+  75:5  error  Delete `····`                         prettier/prettier
+  76:1  error  Replace `········` with `····`        prettier/prettier
+  77:1  error  Delete `··`                           prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/fraud/fraud_routes.ts
+   9:3  error  Delete `··`               prettier/prettier
+  10:1  error  Replace `····` with `··`  prettier/prettier
+  11:1  error  Delete `··`               prettier/prettier
+  12:1  error  Delete `··`               prettier/prettier
+  16:3  error  Delete `··`               prettier/prettier
+  17:3  error  Delete `··`               prettier/prettier
+  18:1  error  Delete `··`               prettier/prettier
+  19:1  error  Delete `··`               prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/fraud/fraud_service.ts
+   5:3   error    Delete `··`                                                                                                                                                                                                                                                                                   prettier/prettier
+   6:1   error    Delete `··`                                                                                                                                                                                                                                                                                   prettier/prettier
+   7:4   error    Delete `··`                                                                                                                                                                                                                                                                                   prettier/prettier
+   8:1   error    Delete `··`                                                                                                                                                                                                                                                                                   prettier/prettier
+   8:60  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+   9:5   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  11:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  12:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  13:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  14:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  16:5   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  17:5   error    Replace `····if·(task.before_wash_image_url·&&` with `if·(⏎······task.before_wash_image_url·&&⏎·····`                                                                                                                                                                                         prettier/prettier
+  18:1   error    Replace `············task.before_wash_image_url·===·task.after_wash_image_url)·{` with `······task.before_wash_image_url·===·task.after_wash_image_url`                                                                                                                                       prettier/prettier
+  19:5   error    Replace `··` with `)·{⏎`                                                                                                                                                                                                                                                                      prettier/prettier
+  20:5   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  22:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  23:5   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  24:1   error    Replace `············const·vehicleRes·=·await·client.query(⏎················'SELECT·wash_time·FROM·vehicles·WHERE·type·=·$1',⏎················[task.car_type]` with `······const·vehicleRes·=·await·client.query('SELECT·wash_time·FROM·vehicles·WHERE·type·=·$1',·[⏎········task.car_type,`  prettier/prettier
+  27:1   error    Replace `············` with `······]`                                                                                                                                                                                                                                                         prettier/prettier
+  29:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  30:1   error    Replace `················` with `········`                                                                                                                                                                                                                                                    prettier/prettier
+  31:1   error    Replace `················const·actualDuration·=` with `········const·actualDuration·=⏎·········`                                                                                                                                                                                              prettier/prettier
+  33:9   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  34:1   error    Replace `····················` with `··········`                                                                                                                                                                                                                                              prettier/prettier
+  35:9   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  36:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  37:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  39:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  40:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  41:7   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  42:1   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  47:1   error    Replace `················` with `········`                                                                                                                                                                                                                                                    prettier/prettier
+  48:7   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  50:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  51:1   error    Replace `················` with `········`                                                                                                                                                                                                                                                    prettier/prettier
+  52:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  53:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  55:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  56:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  57:7   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  58:1   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  61:1   error    Replace `················` with `········`                                                                                                                                                                                                                                                    prettier/prettier
+  62:7   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  64:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  65:1   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  66:1   error    Replace `················` with `········`                                                                                                                                                                                                                                                    prettier/prettier
+  67:1   error    Delete `··········`                                                                                                                                                                                                                                                                           prettier/prettier
+  68:11  error    Delete `··········`                                                                                                                                                                                                                                                                           prettier/prettier
+  69:1   error    Replace `····················` with `··········`                                                                                                                                                                                                                                              prettier/prettier
+  70:1   error    Replace `························` with `············`                                                                                                                                                                                                                                        prettier/prettier
+  71:11  error    Delete `··········`                                                                                                                                                                                                                                                                           prettier/prettier
+  72:1   error    Replace `················` with `········`                                                                                                                                                                                                                                                    prettier/prettier
+  73:1   error    Replace `············` with `······`                                                                                                                                                                                                                                                          prettier/prettier
+  74:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  76:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  77:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  78:1   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  79:9   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  82:9   error    Delete `········`                                                                                                                                                                                                                                                                             prettier/prettier
+  83:7   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  84:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  85:3   error    Delete `··`                                                                                                                                                                                                                                                                                   prettier/prettier
+  87:1   error    Replace `····` with `··`                                                                                                                                                                                                                                                                      prettier/prettier
+  88:5   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  89:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  90:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  91:1   error    Replace `········` with `····`                                                                                                                                                                                                                                                                prettier/prettier
+  92:1   error    Delete `······`                                                                                                                                                                                                                                                                               prettier/prettier
+  93:7   error    Replace `······Math.cos(lat1·*·(Math.PI·/·180))·*` with `Math.cos(lat1·*·(Math.PI·/·180))·*⏎·······`                                                                                                                                                                                          prettier/prettier
+  94:9   error    Replace `····Math.sin(dLon·/·2)·*` with `Math.sin(dLon·/·2)·*⏎·······`                                                                                                                                                                                                                        prettier/prettier
+  95:1   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  96:5   error    Delete `····`                                                                                                                                                                                                                                                                                 prettier/prettier
+  97:1   error    Delete `··`                                                                                                                                                                                                                                                                                   prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/fraud/fraud_types.ts
+   1:24  error  Replace `·'missing_photo'·|·'too_fast'·|·'duplicate_vehicle'·|·'duplicate_photo'` with `⏎··|·'missing_photo'⏎··|·'too_fast'⏎··|·'duplicate_vehicle'⏎··|·'duplicate_photo'⏎·`  prettier/prettier
+   4:1   error  Delete `··`                                                                                                                                                                   prettier/prettier
+   5:3   error  Delete `··`                                                                                                                                                                   prettier/prettier
+   6:1   error  Delete `··`                                                                                                                                                                   prettier/prettier
+   7:3   error  Delete `··`                                                                                                                                                                   prettier/prettier
+   8:1   error  Replace `····` with `··`                                                                                                                                                      prettier/prettier
+   9:3   error  Delete `··`                                                                                                                                                                   prettier/prettier
+  10:1   error  Replace `····` with `··`                                                                                                                                                      prettier/prettier
+  11:1   error  Delete `··`                                                                                                                                                                   prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/incentives/incentives_controller.ts
+  61:8   error  Replace `reason,·Number(target_tasks),·Number(incentive_amount),·cleaner_id·||·null,·building_id·||·null,·floor_id·||·null` with `⏎········reason,⏎········Number(target_tasks),⏎········Number(incentive_amount),⏎········cleaner_id·||·null,⏎········building_id·||·null,⏎········floor_id·||·null,⏎······`  prettier/prettier
+  73:98  error  Insert `⏎·····`                                                                                                                                                                                                                                                                                                prettier/prettier
+  93:11  error  Insert `,`                                                                                                                                                                                                                                                                                                     prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/penalties/penalties_controller.ts
+  173:1  error  Delete `⏎`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/penalties/penalties_service.ts
+  25:85  error  Replace `data.cleaner_id` with `⏎······data.cleaner_id,⏎····`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/salary/salary_controller.ts
+   46:15  error  Replace `.status(500)` with `⏎······.status(500)⏎······`  prettier/prettier
+  262:15  error  Replace `.status(500)` with `⏎······.status(500)⏎······`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/salary/salary_routes.ts
+  32:1  error  Delete `⏎`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/salary/salary_service.ts
+    5:45  error    Replace `userId:·string,·cycleId:·string,·bypassLock:·boolean·=·false` with `⏎··userId:·string,⏎··cycleId:·string,⏎··bypassLock:·boolean·=·false⏎`                                prettier/prettier
+   86:40  error    Replace `⏎········Number(milRes.rows[0].total)·+⏎·······` with `·Number(milRes.rows[0].total)·+`                                                                                  prettier/prettier
+   99:7   warning  'totalTasks' is assigned a value but never used                                                                                                                                   @typescript-eslint/no-unused-vars
+  271:49  error    Replace `'SELECT·month,·year·FROM·salary_cycles·WHERE·id·=·$1',·[cycleId]` with `⏎··········'SELECT·month,·year·FROM·salary_cycles·WHERE·id·=·$1',⏎··········[cycleId]⏎········`  prettier/prettier
+  549:37  warning  Unexpected any. Specify a different type                                                                                                                                          @typescript-eslint/no-explicit-any
+  556:19  warning  Unexpected any. Specify a different type                                                                                                                                          @typescript-eslint/no-explicit-any
+  557:7   error    'cursor' is never reassigned. Use 'const' instead                                                                                                                                 prefer-const
+  566:53  error    Delete `·········`                                                                                                                                                                prettier/prettier
+  567:54  error    Delete `··········`                                                                                                                                                               prettier/prettier
+  598:23  error    Insert `⏎·······`                                                                                                                                                                 prettier/prettier
+  624:11  error    Replace `(existing.is_locked·?·'locked'·:·existing.status)` with `existing.is_locked⏎··········?·'locked'⏎··········:·existing.status`                                            prettier/prettier
+  625:11  error    Replace `(isCurrentMonth·?·'in_progress'·:·'pending')` with `isCurrentMonth⏎··········?·'in_progress'⏎··········:·'pending'`                                                      prettier/prettier
+  642:17  warning  Unexpected any. Specify a different type                                                                                                                                          @typescript-eslint/no-explicit-any
+  646:5   warning  'cycleFilter' is assigned a value but never used                                                                                                                                  @typescript-eslint/no-unused-vars
+
+/home/batman/project/car-cleaning-service/backend/src/modules/supervisor/supervisor_controller.ts
+  207:17  error    Replace `.status(403)` with `⏎········.status(403)⏎········`                                                                                                                                            prettier/prettier
+  574:34  error    Replace `⏎··········?·{·id:·sup.building_id,·name:·sup.building_name·}⏎·········` with `·?·{·id:·sup.building_id,·name:·sup.building_name·}`                                                            prettier/prettier
+  615:12  error    Replace `·user_id:·userId,·supervisor_id:·existingSupId,·building_id:·currentBuildingId` with `⏎······user_id:·userId,⏎······supervisor_id:·existingSupId,⏎······building_id:·currentBuildingId,⏎···`   prettier/prettier
+  615:45  warning  'existingSupId' is assigned a value but never used                                                                                                                                                      @typescript-eslint/no-unused-vars
+  615:73  warning  'currentBuildingId' is assigned a value but never used                                                                                                                                                  @typescript-eslint/no-unused-vars
+  635:21  error    Replace `·userUpdates.push(`full_name·=·$${pi++}`);·userValues.push(full_name);` with `⏎······userUpdates.push(`full_name·=·$${pi++}`);⏎······userValues.push(full_name);⏎···`                          prettier/prettier
+  636:17  error    Replace `·userUpdates.push(`email·=·$${pi++}`);·userValues.push(email);` with `⏎······userUpdates.push(`email·=·$${pi++}`);⏎······userValues.push(email);⏎···`                                          prettier/prettier
+  637:17  error    Replace `·userUpdates.push(`phone·=·$${pi++}`);·userValues.push(phone);` with `⏎······userUpdates.push(`phone·=·$${pi++}`);⏎······userValues.push(phone);⏎···`                                          prettier/prettier
+  638:23  error    Replace `·userUpdates.push(`document_id·=·$${pi++}`);·userValues.push(document_id);` with `⏎······userUpdates.push(`document_id·=·$${pi++}`);⏎······userValues.push(document_id);⏎···`                  prettier/prettier
+  639:25  error    Replace `·userUpdates.push(`profile_image·=·$${pi++}`);·userValues.push(profile_image);` with `⏎······userUpdates.push(`profile_image·=·$${pi++}`);⏎······userValues.push(profile_image);⏎···`          prettier/prettier
+  640:20  error    Replace `·userUpdates.push(`document·=·$${pi++}`);·userValues.push(document);` with `⏎······userUpdates.push(`document·=·$${pi++}`);⏎······userValues.push(document);⏎···`                              prettier/prettier
+  641:37  error    Replace `·userUpdates.push(`nationality·=·$${pi++}`);·userValues.push(nationality);` with `⏎······userUpdates.push(`nationality·=·$${pi++}`);⏎······userValues.push(nationality);⏎···`                  prettier/prettier
+  642:29  error    Replace `·userUpdates.push(`age·=·$${pi++}`);·userValues.push(Number(age));` with `⏎······userUpdates.push(`age·=·$${pi++}`);⏎······userValues.push(Number(age));⏎···`                                  prettier/prettier
+  643:37  error    Replace `·userUpdates.push(`base_salary·=·$${pi++}`);·userValues.push(Number(base_salary));` with `⏎······userUpdates.push(`base_salary·=·$${pi++}`);⏎······userValues.push(Number(base_salary));⏎···`  prettier/prettier
+  754:1   error    Delete `⏎`                                                                                                                                                                                              prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/supervisor/supervisor_routes.ts
+  46:14  error  Replace `'/:id/status',·protect,·allowRoles('admin',·'super_admin'),·toggleAdminSupervisorStatus` with `⏎··'/:id/status',⏎··protect,⏎··allowRoles('admin',·'super_admin'),⏎··toggleAdminSupervisorStatus⏎`  prettier/prettier
+  50:1   error  Delete `⏎`                                                                                                                                                                                                  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/supervisor/supervisor_services.ts
+   76:53  error  Replace `⏎··cleanerId:·string,⏎··floorId:·string·|·null⏎` with `cleanerId:·string,·floorId:·string·|·null`  prettier/prettier
+  209:15  error  Insert `··`                                                                                                 prettier/prettier
+  210:1   error  Insert `··`                                                                                                 prettier/prettier
+  211:1   error  Insert `··`                                                                                                 prettier/prettier
+  234:11  error  Insert `··`                                                                                                 prettier/prettier
+  235:1   error  Insert `··`                                                                                                 prettier/prettier
+  236:1   error  Insert `··`                                                                                                 prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/system/system_routes.ts
+  14:3   error    Delete `··`                                                                                                                                                                                                                                  prettier/prettier
+  15:1   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  16:1   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  17:1   error    Replace `············` with `······`                                                                                                                                                                                                         prettier/prettier
+  18:7   error    Delete `······`                                                                                                                                                                                                                              prettier/prettier
+  19:1   error    Replace `········` with `····`                                                                                                                                                                                                               prettier/prettier
+  20:1   error    Delete `······`                                                                                                                                                                                                                              prettier/prettier
+  21:1   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  23:5   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  24:3   error    Delete `··`                                                                                                                                                                                                                                  prettier/prettier
+  25:1   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  26:1   error    Replace `········` with `····`                                                                                                                                                                                                               prettier/prettier
+  27:1   error    Delete `··`                                                                                                                                                                                                                                  prettier/prettier
+  36:1   error    Replace `····` with `··`                                                                                                                                                                                                                     prettier/prettier
+  37:1   error    Delete `··`                                                                                                                                                                                                                                  prettier/prettier
+  37:23  warning  Unexpected any. Specify a different type                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  38:3   error    Delete `··`                                                                                                                                                                                                                                  prettier/prettier
+  38:42  warning  Unexpected any. Specify a different type                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  39:1   error    Replace `····` with `··`                                                                                                                                                                                                                     prettier/prettier
+  40:5   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  42:1   error    Replace `········` with `····`                                                                                                                                                                                                               prettier/prettier
+  43:1   error    Replace `············` with `······`                                                                                                                                                                                                         prettier/prettier
+  44:5   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  46:1   error    Replace `········` with `····`                                                                                                                                                                                                               prettier/prettier
+  47:1   error    Delete `······`                                                                                                                                                                                                                              prettier/prettier
+  48:1   error    Replace `················` with `········`                                                                                                                                                                                                   prettier/prettier
+  49:9   error    Replace `········logger.warn(`Maintenance·mode·${active·?·'ENABLED'·:·'DISABLED'}·by·admin·ID:·${req.user?.userId}`);` with `logger.warn(⏎··········`Maintenance·mode·${active·?·'ENABLED'·:·'DISABLED'}·by·admin·ID:·${req.user?.userId}``  prettier/prettier
+  50:9   error    Insert `);⏎··`                                                                                                                                                                                                                               prettier/prettier
+  51:1   error    Replace `················return·res.status(503)` with `········return·res⏎··········.status(503)⏎··········`                                                                                                                                 prettier/prettier
+  52:7   error    Delete `······`                                                                                                                                                                                                                              prettier/prettier
+  54:1   error    Replace `············` with `······`                                                                                                                                                                                                         prettier/prettier
+  55:5   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  56:1   error    Replace `············` with `······`                                                                                                                                                                                                         prettier/prettier
+  57:1   error    Replace `············` with `······`                                                                                                                                                                                                         prettier/prettier
+  58:5   error    Delete `····`                                                                                                                                                                                                                                prettier/prettier
+  59:1   error    Delete `··`                                                                                                                                                                                                                                  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/tasks/tasks_routes.ts
+  50:1  error  Delete `⏎`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/vehicles/vehicles_controller.ts
+  20:17  error  Replace `·'Missing·required·fields:·type,·category,·size,·base_price,·premium_price,·wash_time'` with `⏎··········'Missing·required·fields:·type,·category,·size,·base_price,·premium_price,·wash_time',`  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/modules/vehicles/vehicles_service.ts
+  24:6  error  Replace `data.type,·data.category,·data.size,·data.base_price,·data.premium_price,·data.wash_time,·status,·data.created_by` with `⏎······data.type,⏎······data.category,⏎······data.size,⏎······data.base_price,⏎······data.premium_price,⏎······data.wash_time,⏎······status,⏎······data.created_by,⏎····`  prettier/prettier
+  69:6  error  Replace `data.type,·data.category,·data.size,·data.base_price,·data.premium_price,·data.wash_time,·data.status,·id` with `⏎······data.type,⏎······data.category,⏎······data.size,⏎······data.base_price,⏎······data.premium_price,⏎······data.wash_time,⏎······data.status,⏎······id,⏎····`                  prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/types/uuid.d.ts
+   2:3  error  Replace `··export·function·v4(options?:·{·random?:·number[];·rng?:·()·=>·number[]·},·buf?:·Buffer·|·Uint8Array,·offset?:·number` with `export·function·v4(⏎····options?:·{·random?:·number[];·rng?:·()·=>·number[]·},⏎····buf?:·Buffer·|·Uint8Array,⏎····offset?:·number⏎··`                                                                                                                                                                                       prettier/prettier
+   3:1  error  Replace `····export·function·v1(options?:·{·node?:·number[];·clockseq?:·number;·msecs?:·number;·nsecs?:·number;·random?:·number[];·rng?:·()·=>·number[]·},·buf?:·Buffer·|·Uint8Array,·offset?:·number` with `··export·function·v1(⏎····options?:·{⏎······node?:·number[];⏎······clockseq?:·number;⏎······msecs?:·number;⏎······nsecs?:·number;⏎······random?:·number[];⏎······rng?:·()·=>·number[];⏎····},⏎····buf?:·Buffer·|·Uint8Array,⏎····offset?:·number⏎··`  prettier/prettier
+   4:1  error  Replace `····export·function·v3(name:·string·|·Buffer,·namespace:·string·|·Buffer,·buf?:·Buffer·|·Uint8Array,·offset?:·number` with `··export·function·v3(⏎····name:·string·|·Buffer,⏎····namespace:·string·|·Buffer,⏎····buf?:·Buffer·|·Uint8Array,⏎····offset?:·number⏎··`                                                                                                                                                                                       prettier/prettier
+   5:3  error  Replace `··export·function·v5(name:·string·|·Buffer,·namespace:·string·|·Buffer,·buf?:·Buffer·|·Uint8Array,·offset?:·number` with `export·function·v5(⏎····name:·string·|·Buffer,⏎····namespace:·string·|·Buffer,⏎····buf?:·Buffer·|·Uint8Array,⏎····offset?:·number⏎··`                                                                                                                                                                                           prettier/prettier
+   6:1  error  Delete `··`                                                                                                                                                                                                                                                                                                                                                                                                                                                        prettier/prettier
+   7:3  error  Delete `··`                                                                                                                                                                                                                                                                                                                                                                                                                                                        prettier/prettier
+   8:1  error  Delete `··`                                                                                                                                                                                                                                                                                                                                                                                                                                                        prettier/prettier
+   9:3  error  Delete `··`                                                                                                                                                                                                                                                                                                                                                                                                                                                        prettier/prettier
+  10:1  error  Delete `··`                                                                                                                                                                                                                                                                                                                                                                                                                                                        prettier/prettier
+
+/home/batman/project/car-cleaning-service/backend/src/utils/auditLogger.ts
+   3:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   4:3   error    Delete `··`                               prettier/prettier
+   5:1   error    Delete `····`                             prettier/prettier
+  10:5   error    Delete `····`                             prettier/prettier
+  11:1   error    Replace `········` with `····`            prettier/prettier
+  12:1   error    Delete `····`                             prettier/prettier
+  13:1   error    Delete `··`                               prettier/prettier
+  14:5   error    Delete `····`                             prettier/prettier
+  15:1   error    Delete `··`                               prettier/prettier
+
+✖ 372 problems (344 errors, 28 warnings)
+  341 errors and 0 warnings potentially fixable with the `--fix` option.
+

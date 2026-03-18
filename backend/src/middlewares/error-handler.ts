@@ -21,6 +21,8 @@ export function globalErrorHandler(err: unknown, req: Request, res: Response, _n
     statusCode = err.statusCode;
     message = err.message;
     code = err.code;
+  } else if (err instanceof Error) {
+    message = err.message;
   }
 
   logger.error('Unhandled error', {
@@ -28,7 +30,8 @@ export function globalErrorHandler(err: unknown, req: Request, res: Response, _n
     method: req.method,
     statusCode,
     code,
-    error: err,
+    errorMessage: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
   });
 
   res.status(statusCode).json({

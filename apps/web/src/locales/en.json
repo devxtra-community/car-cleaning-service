@@ -1,0 +1,28 @@
+{
+    "common": {
+        "dashboard": "Dashboard",
+        "reports": "Reports",
+        "analytics": "Analytics",
+        "settings": "Settings",
+        "logout": "Logout",
+        "export": "Export",
+        "search": "Search",
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel"
+    },
+    "admin": {
+        "operationalReports": "Operational Reports",
+        "dailyRevenue": "Daily Revenue",
+        "revenueTrends": "Revenue Trends",
+        "peakActivity": "Peak Activity Analysis",
+        "buildingStats": "Building Statistics",
+        "cleanerPerformance": "Cleaner Performance"
+    },
+    "accountant": {
+        "salarySummary": "Salary Summary",
+        "netSalary": "Net Salary",
+        "processSalary": "Process Salary",
+        "exportExcel": "Export Excel"
+    }
+}

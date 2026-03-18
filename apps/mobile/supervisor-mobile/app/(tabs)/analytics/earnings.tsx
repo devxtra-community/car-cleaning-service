@@ -1,0 +1,129 @@
+import React, { useState, useCallback } from 'react';
+import { View, Text, Pressable, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { DollarSign, TrendingUp } from 'lucide-react-native';
+import { API } from '../../../src/api/api';
+import { useFocusEffect } from '@react-navigation/native';
+
+type TabType = 'daily' | 'weekly' | 'monthly';
+
+interface ServiceStat {
+  id: string;
+  type: string;
+  count: number;
+  amount: number;
+  icon: string;
+}
+
+const getIconForCarType = (type: string) => {
+  const t = type.toLowerCase();
+  if (t.includes('suv')) return '🚙';
+  if (t.includes('sedan')) return '🚗';
+  if (t.includes('premium')) return '✨';
+  if (t.includes('hatchback')) return '🚗';
+  return '🧼';
+};
+
+export default function EarningsScreen() {
+  const [tab, setTab] = useState<TabType>('daily');
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/api/supervisor/analytics');
+      if (res.data.success) {
+        setData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalytics();
+    }, [fetchAnalytics])
+  );
+
+  const currentData = data ? data[tab] : { total_earnings: 0, total_jobs: 0, carTypeBreakdown: [] };
+  const total = currentData.total_earnings;
+  const services = (currentData.carTypeBreakdown || []).map((item: any, index: number) => ({
+    id: index.toString(),
+    type: item.type,
+    count: item.count,
+    amount: item.amount,
+    icon: getIconForCarType(item.type),
+  }));
+
+  return (
+    <SafeAreaView className="flex-1 bg-[#F9FAFB] p-5">
+      {/* HEADER */}
+      <Text className="text-2xl font-antigravity-bold mb-4 text-[#1E3A8A]">Earnings</Text>
+
+      {/* SEGMENTED BAR */}
+      <View className="flex-row bg-[#E5E7EB] rounded-2xl p-1 mb-5">
+        {(['daily', 'weekly', 'monthly'] as TabType[]).map((item) => (
+          <Pressable
+            key={item}
+            onPress={() => setTab(item)}
+            className={`flex-1 py-2.5 rounded-xl items-center ${tab === item ? 'bg-white shadow-sm' : ''}`}
+          >
+            <Text
+              className={`text-sm font-antigravity-bold ${tab === item ? 'text-[#1D4ED8]' : 'text-[#6B7280]'}`}
+            >
+              {item.charAt(0).toUpperCase() + item.slice(1)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* TOTAL EARNINGS CARD */}
+      <View className="bg-white rounded-3xl p-6 items-center mb-7 shadow-sm border border-white">
+        <View className="w-11 h-11 rounded-full bg-[#E0F2FE] justify-center items-center mb-2">
+          <DollarSign size={22} color="#2563EB" />
+        </View>
+
+        <Text className="text-xs text-[#6B7280] mb-1.5 font-antigravity-medium">
+          Total Earnings
+        </Text>
+        <Text className="text-4xl font-antigravity-bold text-[#2563EB] mb-2">
+          ₹{total.toLocaleString()}
+        </Text>
+      </View>
+
+      {/* SERVICE BREAKDOWN */}
+      <Text className="text-lg font-antigravity-bold mb-3.5 text-[#111827]">Service Breakdown</Text>
+
+      <FlatList
+        data={services}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View className="flex-row items-center bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm border border-white">
+            <View className="w-11 h-11 rounded-full bg-[#E0F2FE] justify-center items-center mr-3.5">
+              <Text className="text-xl">{item.icon}</Text>
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-base font-antigravity-bold text-[#1F2937] mb-0.5">
+                {item.type} Cleaned
+              </Text>
+              <Text className="text-xs font-antigravity-medium text-[#6B7280]">
+                {item.count} cars
+              </Text>
+            </View>
+
+            <View className="bg-[#DBEAFE] px-3.5 py-2 rounded-full">
+              <Text className="text-base font-antigravity-bold text-[#2563EB]">
+                ₹{item.amount.toLocaleString()}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
+    </SafeAreaView>
+  );
+}
