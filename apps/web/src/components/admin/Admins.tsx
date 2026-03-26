@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { errMsg } from '../../utils/errorUtils';
 import {
   getAllAdmins,
   toggleAdminStatus,
@@ -9,8 +9,8 @@ import {
   type AdminListItem,
   type UserUpdatePayload,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
-import DeleteConfirmModal from '../shared/DeleteConfirmModal';
+import { useAuth } from '../../context/AuthContext';
+import { useAlert } from '../../context/AlertContext';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const initials = (n: string) =>
@@ -32,12 +32,6 @@ const COLORS = [
 const ac = (n: string) => COLORS[n.charCodeAt(0) % COLORS.length];
 const fmtD = (s: string) =>
   new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-const errMsg = (e: unknown) => {
-  if (e instanceof Error) return e.message;
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? 'Something went wrong';
-};
-
 type SortKey = 'full_name' | 'email' | 'joining_date' | 'base_salary';
 type SortDir = 'asc' | 'desc';
 interface TS {
@@ -275,6 +269,8 @@ const EditAdminModal: React.FC<{
 // ── Page ──────────────────────────────────────────────────────────────────────
 const Admins: React.FC = () => {
   const { loading: authLoading, isAuthenticated } = useAuth();
+  const { showConfirm, showToast } = useAlert();
+
   const [admins, setAdmins] = useState<AdminListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -282,13 +278,9 @@ const Admins: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>('full_name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [page, setPage] = useState(1);
-  const [delTarget, setDelTarget] = useState<AdminListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AdminListItem | null>(null);
-  const [toast, setToast] = useState<TS | null>(null);
-
-  const showToast = (m: string, t: TS['type']) => setToast({ message: m, type: t });
 
   const fetchData = useCallback(async () => {
     try {
@@ -356,14 +348,19 @@ const Admins: React.FC = () => {
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!delTarget) return;
+  const handleDelete = async (a: AdminListItem) => {
+    const confirmed = await showConfirm(
+      `Are you sure you want to permanently delete "${a.full_name}"? This action cannot be undone.`,
+      'Delete Admin',
+      'Delete'
+    );
+    if (!confirmed) return;
+
     setDeleting(true);
     try {
-      await deleteAdmin(delTarget.id);
-      setAdmins((p) => p.filter((a) => a.id !== delTarget.id));
-      showToast(`"${delTarget.full_name}" deleted`, 'success');
-      setDelTarget(null);
+      await deleteAdmin(a.id);
+      setAdmins((p) => p.filter((x) => x.id !== a.id));
+      showToast(`"${a.full_name}" deleted`, 'success');
     } catch (err) {
       showToast(errMsg(err), 'error');
     } finally {
@@ -380,26 +377,7 @@ const Admins: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {delTarget && (
-        <DeleteConfirmModal
-          isOpen={!!delTarget}
-          title="Delete Admin?"
-          message={
-            <>
-              Permanently delete{' '}
-              <span className="font-semibold">&ldquo;{delTarget?.full_name}&rdquo;</span>? This
-              action cannot be undone.
-            </>
-          }
-          confirmText="Delete"
-          cancelText="Cancel"
-          loading={deleting}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => setDelTarget(null)}
-        />
-      )}
+    <div className="min-h-screen">
       {editTarget && (
         <EditAdminModal
           admin={editTarget}
@@ -676,7 +654,8 @@ const Admins: React.FC = () => {
                               </button>
                               <button
                                 title="Delete"
-                                onClick={() => setDelTarget(a)}
+                                onClick={() => handleDelete(a)}
+                                disabled={busy}
                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
                               >
                                 <svg

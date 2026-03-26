@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { errMsg } from '../../utils/errorUtils';
+import { useAuth } from '../../hooks/useAuth';
+import { useAlert } from '../../context/AlertContext';
 import {
   getMonthlyReport,
   getCleanerSalaryHistory,
@@ -9,7 +11,6 @@ import {
   type MonthlyReportRow,
   type CleanerSalaryHistoryRow,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
 
 const fmt = (n: number | string) =>
   new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
@@ -17,11 +18,6 @@ const fmt = (n: number | string) =>
   );
 const fmtD = (s: string) =>
   new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-const errMsg = (e: unknown) => {
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? (e instanceof Error ? e.message : 'Error');
-};
-
 const STATUS_STYLE: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-500',
   active: 'bg-blue-50 text-blue-700',
@@ -46,7 +42,6 @@ const MONTHS = [
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - i);
 
-type TS = { message: string; type: 'success' | 'error' };
 type View = 'monthly' | 'cleaner';
 
 const SalaryReports: React.FC = () => {
@@ -60,13 +55,12 @@ const SalaryReports: React.FC = () => {
   const [cleanerId, setCleanerId] = useState('');
   const [historyData, setHistoryData] = useState<CleanerSalaryHistoryRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<TS | null>(null);
-  const showToast = (m: string, t: TS['type']) => setToast({ message: m, type: t });
+  const { showToast } = useAlert();
 
   const loadMonthly = useCallback(async () => {
     setLoading(true);
     try {
-      setMonthlyData(await getMonthlyReport(year, month ?? undefined));
+      setMonthlyData(await getMonthlyReport({ year, month: month ?? undefined }));
     } catch (e) {
       showToast(errMsg(e), 'error');
     } finally {
@@ -105,8 +99,7 @@ const SalaryReports: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen">
 
       {/* top bar */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-20">

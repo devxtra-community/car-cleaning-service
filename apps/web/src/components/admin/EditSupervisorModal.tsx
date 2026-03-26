@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { updateSupervisor } from '../../services/allAPI';
-import Toast from '../shared/Toast';
+import { errMsg } from '../../utils/errorUtils';
+import { useAlert } from '../../context/AlertContext';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -44,10 +45,6 @@ interface SupervisorUpdatePayload {
   document?: string;
 }
 
-interface ToastState {
-  message: string;
-  type: 'success' | 'error';
-}
 
 // ─── field wrapper ────────────────────────────────────────────────────────────
 
@@ -81,9 +78,7 @@ const EditSupervisorModal: React.FC<EditSupervisorModalProps> = ({
   buildings,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<ToastState | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
+  const { showToast } = useAlert();
 
   const makeForm = useCallback(
     () => ({
@@ -159,12 +154,7 @@ const EditSupervisorModal: React.FC<EditSupervisorModalProps> = ({
         showToast(res.message ?? 'Failed to update supervisor', 'error');
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : ((err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-            'Failed to update supervisor');
-      showToast(errorMsg, 'error');
+      showToast(errMsg(err), 'error');
     } finally {
       setLoading(false);
     }
@@ -174,7 +164,6 @@ const EditSupervisorModal: React.FC<EditSupervisorModalProps> = ({
 
   return (
     <>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div
         className="fixed inset-0 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center z-200 p-5"

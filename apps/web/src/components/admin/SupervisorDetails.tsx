@@ -1,22 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { useAlert } from '../../context/AlertContext';
 import {
   getAllBuildings,
   getSupervisorDetails,
   toggleSupervisorStatus,
   updateSupervisor,
+  toggleUserStatus,
+  resetUserPassword,
   type Supervisor,
   type UpdateSupervisorPayload,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
+import {
+  EditCleanerModal,
+  DeleteCleanerModal,
+} from '../shared/ManageCleanerModals';
+import { errMsg } from '../../utils/errorUtils';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-interface ToastState {
-  message: string;
-  type: 'success' | 'error';
-}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,9 +92,9 @@ const SupervisorDetails: React.FC = () => {
   const [buildings, setBuildings] = useState<{ id: string; building_name: string }[]>([]);
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [cleanerSearch, setCleanerSearch] = useState('');
-  const [toast, setToast] = useState<ToastState | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
+  const [editCleanerTarget, setEditCleanerTarget] = useState<any | null>(null);
+  const [deleteCleanerTarget, setDeleteCleanerTarget] = useState<any | null>(null);
+  const { showConfirm, showToast, showPrompt } = useAlert();
 
   // ── fetch ──────────────────────────────────────────────────────────────────
   const fetchSupervisor = useCallback(async () => {
@@ -102,13 +105,13 @@ const SupervisorDetails: React.FC = () => {
       const data = await getSupervisorDetails(supervisorId);
       setSupervisor(data.data);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to load supervisor';
+      const errorMsg = errMsg(error);
       setPageError(errorMsg);
       showToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
-  }, [supervisorId]);
+  }, [supervisorId, showToast]);
 
   useEffect(() => {
     if (isAuthenticated && supervisorId) {
@@ -125,6 +128,43 @@ const SupervisorDetails: React.FC = () => {
   }, [supervisorId, isAuthenticated, fetchSupervisor]);
 
   // ── toggle status ──────────────────────────────────────────────────────────
+  const handleToggleCleanerStatus = async (cleaner: any) => {
+    try {
+      const newStatus = !cleaner.is_active;
+      const confirmed = await showConfirm(
+        `Are you sure you want to ${newStatus ? 'enable' : 'disable'} this user?`,
+        'User Status'
+      );
+      if (!confirmed) return;
+
+      await toggleUserStatus(cleaner.user_id, newStatus);
+      showToast(`User ${newStatus ? 'enabled' : 'disabled'}`, 'success');
+      fetchSupervisor();
+    } catch (err) {
+      showToast(errMsg(err), 'error');
+    }
+  };
+
+  const handleResetCleanerPassword = async (cleaner: any) => {
+    const newPass = await showPrompt(
+      `Enter new password for ${cleaner.full_name}:`,
+      'Reset Password',
+      '',
+      'password'
+    );
+    if (!newPass) return;
+    if (newPass.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+    try {
+      await resetUserPassword(cleaner.user_id, newPass);
+      showToast('Password reset successfully', 'success');
+    } catch (err) {
+      showToast(errMsg(err), 'error');
+    }
+  };
+
   const handleToggleStatus = async () => {
     if (!supervisor) return;
     try {
@@ -203,9 +243,7 @@ const SupervisorDetails: React.FC = () => {
     : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-['Plus_Jakarta_Sans',sans-serif]">
-
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen font-['Plus_Jakarta_Sans',sans-serif]">
 
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
@@ -520,10 +558,12 @@ const SupervisorDetails: React.FC = () => {
                         'Base Salary',
                         'Earnings',
                         'Incentive',
+                        'Status',
+                        'Actions',
                       ].map((h) => (
                         <th
                           key={h}
-                          className={`py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 border-b border-slate-100 whitespace-nowrap ${['Tasks', 'Base Salary', 'Earnings', 'Incentive'].includes(h)
+                          className={`py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 border-b border-slate-100 whitespace-nowrap ${['Tasks', 'Base Salary', 'Earnings', 'Incentive', 'Status', 'Actions'].includes(h)
                             ? 'text-right'
                             : 'text-left'
                             }`}
@@ -571,6 +611,93 @@ const SupervisorDetails: React.FC = () => {
                               {c.incentive_target || 0}
                             </span>
                           </td>
+                          <td className="py-3 px-4 align-middle whitespace-nowrap text-center">
+                            <button
+                              onClick={() => handleToggleCleanerStatus(c)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
+                              ${c.is_active !== false
+                                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                  : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                            >
+                              {c.is_active !== false ? 'Active' : 'Disabled'}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 align-middle whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* View */}
+                              <Link
+                                to={`/admin/cleaner/${c.id}`}
+                                title="View details"
+                                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400
+                                hover:bg-slate-50 hover:border-slate-300 hover:text-slate-600 transition-all"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M2 12s3.6-8 10-8 10 8 10 8-3.6 8-10 8-10-8-10-8z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                              </Link>
+
+                              {/* Edit */}
+                              <button
+                                onClick={() => setEditCleanerTarget(c)}
+                                title="Edit cleaner"
+                                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400
+                                hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500 transition-all"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+
+                              {/* Reset Password */}
+                              <button
+                                onClick={() => handleResetCleanerPassword(c)}
+                                title="Reset Password"
+                                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400
+                                hover:bg-amber-50 hover:border-amber-200 hover:text-amber-500 transition-all"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => setDeleteCleanerTarget(c)}
+                                title="Delete cleaner"
+                                className="w-7 h-7 rounded-lg border border-red-100 flex items-center justify-center text-red-400
+                                hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     )}
@@ -594,6 +721,31 @@ const SupervisorDetails: React.FC = () => {
             }}
           />
         )}
+
+        {/* Edit Cleaner modal */}
+        {editCleanerTarget && (
+          <EditCleanerModal
+            cleaner={editCleanerTarget}
+            onClose={() => setEditCleanerTarget(null)}
+            onSaved={() => {
+              setEditCleanerTarget(null);
+              fetchSupervisor();
+              showToast('Cleaner updated successfully', 'success');
+            }}
+          />
+        )}
+
+        {/* Delete Cleaner modal */}
+        {deleteCleanerTarget && (
+          <DeleteCleanerModal
+            cleaner={deleteCleanerTarget}
+            onClose={() => setDeleteCleanerTarget(null)}
+            onDeleted={() => {
+              setDeleteCleanerTarget(null);
+              fetchSupervisor();
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -608,10 +760,8 @@ const EditModal: React.FC<{
   onSuccess: () => void;
 }> = ({ supervisor, buildings, onClose, onSuccess }) => {
   // ← loading state declared HERE inside EditModal
+  const { showToast } = useAlert();
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<ToastState | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
 
   const [form, setForm] = useState({
     full_name: supervisor.full_name,
@@ -665,12 +815,7 @@ const EditModal: React.FC<{
       if (res.success) onSuccess();
       else showToast(res.message ?? 'Update failed', 'error');
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : ((err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-            'Update failed');
-      showToast(errorMsg, 'error');
+      showToast(errMsg(err), 'error');
     } finally {
       setLoading(false);
     }
@@ -692,9 +837,6 @@ const EditModal: React.FC<{
   );
 
   return (
-    <>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-5" onClick={onClose}>
         <div className="bg-white rounded-[18px] w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl font-['Plus_Jakarta_Sans',sans-serif] animate-[sdPop_0.2s_ease]" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start justify-between px-7 pt-6 pb-5">
@@ -931,10 +1073,9 @@ const EditModal: React.FC<{
               </button>
             </div>
           </form>
-        </div >
-      </div >
-    </>
-  );
+        </div>
+      </div>
+    );
 };
 
 export default SupervisorDetails;

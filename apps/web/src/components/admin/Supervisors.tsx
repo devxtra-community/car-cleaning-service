@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import {
   getAllSupervisors,
   toggleSupervisorStatus,
   deleteSupervisor,
+  getAllBuildings,
   type SupervisorListItem,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
-import DeleteConfirmModal from '../shared/DeleteConfirmModal';
+import { useAuth } from '../../context/AuthContext';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
+import EditSupervisorModal from './EditSupervisorModal';
 
 const initials = (name: string) =>
   name
@@ -32,38 +34,36 @@ const AVATAR_COLORS = [
 
 const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 
-interface ToastState {
-  message: string;
-  type: 'success' | 'error';
-}
-
 const Supervisors: React.FC = () => {
   const { loading: authLoading, isAuthenticated } = useAuth();
+  const { showConfirm, showToast } = useAlert();
 
   const [supervisors, setSupervisors] = useState<SupervisorListItem[]>([]);
+  const [buildings, setBuildings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
   const [page, setPage] = useState(1);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastState | null>(null);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
 
   const PER_PAGE = 8;
-
-  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getAllSupervisors();
-      setSupervisors(data);
-    } catch {
-      showToast('Failed to load supervisors', 'error');
+      const [supData, bldData] = await Promise.all([
+        getAllSupervisors(),
+        getAllBuildings()
+      ]);
+      setSupervisors(supData);
+      setBuildings(bldData.data || []);
+    } catch (err) {
+      showToast(errMsg(err), 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) fetchData();
@@ -96,36 +96,40 @@ const Supervisors: React.FC = () => {
         prev.map((s) => (s.supervisor_id === id ? { ...s, is_active: !current } : s))
       );
       showToast(`Supervisor ${!current ? 'activated' : 'deactivated'}`, 'success');
-    } catch {
-      showToast('Failed to update status', 'error');
+    } catch (err) {
+      showToast(errMsg(err), 'error');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirmDelete) return;
+  const handleDelete = async (id: string) => {
+    const confirmed = await showConfirm(
+      'Are you sure you want to delete this supervisor? This action cannot be undone and will fail if the supervisor has assigned cleaners.',
+      'Delete Supervisor',
+      'Delete'
+    );
+    if (!confirmed) return;
+
     try {
-      setActionLoading(confirmDelete);
-      await deleteSupervisor(confirmDelete);
-      setSupervisors((prev) => prev.filter((s) => s.supervisor_id !== confirmDelete));
+      setActionLoading(id);
+      await deleteSupervisor(id);
+      setSupervisors((prev) => prev.filter((s) => s.supervisor_id !== id));
       showToast('Supervisor deleted', 'success');
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : ((err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-            'Cannot delete: supervisor has assigned cleaners');
-      showToast(errorMsg, 'error');
+      showToast(errMsg(err), 'error');
     } finally {
       setActionLoading(null);
-      setConfirmDelete(null);
     }
+  };
+
+  const handleEditSuccess = () => {
+    setEditTarget(null);
+    fetchData();
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen">
 
       {/* Header */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
@@ -371,21 +375,47 @@ const Supervisors: React.FC = () => {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex justify-center gap-2">
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center gap-1.5">
                           <Link
                             to={`/admin/supervisor/${sup.supervisor_id}`}
-                            className="px-3 py-1.5 text-sm shadow rounded-md text-slate-600 hover:bg-slate-50"
+                            title="View Details"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
                           >
-                            View
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path d="M2.036 12.322a1.012 1.012 0 010-.644C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
                           </Link>
 
                           <button
-                            onClick={() => setConfirmDelete(sup.supervisor_id)}
-                            disabled={busy}
-                            className="px-3 py-1.5 text-sm shadow bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition"
+                            onClick={() => setEditTarget({
+                              id: sup.supervisor_id,
+                              full_name: sup.full_name,
+                              email: sup.email || '',
+                              phone: sup.phone || '',
+                              base_salary: 0, // Will be fetched by modal or updated if available
+                              nationality: '',
+                              document_id: '',
+                              building: sup.building_id ? { id: sup.building_id, name: sup.building_name || '' } : undefined
+                            })}
+                            title="Edit Supervisor"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
                           >
-                            Delete
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(sup.supervisor_id)}
+                            disabled={busy}
+                            title="Delete Supervisor"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -396,15 +426,17 @@ const Supervisors: React.FC = () => {
             </table>
           )}
         </div>
-        <DeleteConfirmModal
-          isOpen={!!confirmDelete}
-          title="Delete Supervisor"
-          message="Are you sure you want to delete this supervisor? This action cannot be undone and will fail if the supervisor has assigned cleaners."
-          loading={!!actionLoading}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(null)}
-        />
       </div>
+
+      {editTarget && (
+        <EditSupervisorModal
+          isOpen={!!editTarget}
+          supervisor={editTarget}
+          buildings={buildings}
+          onClose={() => setEditTarget(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </div>
   );
 };

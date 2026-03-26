@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../services/commonAPI';
 import { PencilIcon, TrashIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAlert } from '../../context/AlertContext';
 
 interface Vehicle {
   id: string;
@@ -18,6 +19,7 @@ const AddVehicles = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit');
+  const { showAlert, showConfirm, showToast } = useAlert();
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -93,7 +95,7 @@ const AddVehicles = () => {
       !form.premium_price ||
       !form.wash_time
     ) {
-      alert('Please fill in all required fields');
+      await showAlert('Please fill in all required fields');
       return;
     }
 
@@ -110,10 +112,10 @@ const AddVehicles = () => {
 
       if (editingId) {
         await updateVehicle(editingId, vehicleData);
-        alert('Vehicle updated successfully!');
+        await showAlert('Vehicle updated successfully!');
       } else {
         await createVehicle(vehicleData);
-        alert('Vehicle added successfully!');
+        await showAlert('Vehicle added successfully!');
       }
 
       setForm({
@@ -128,13 +130,16 @@ const AddVehicles = () => {
       setEditingId(null);
       loadVehicles();
 
-      navigate('/admin/vechicles');
     } catch (error: unknown) {
       console.error('Failed to save vehicle:', error);
-      alert(
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-          'Failed to save vehicle. Please check the console for details.'
-      );
+      const err = error as { response?: { data?: { message?: string } } };
+      let errorMessage = err.response?.data?.message || 'Failed to save vehicle. Please try again.';
+      
+      if (errorMessage.toLowerCase().includes('status code') || errorMessage.toLowerCase().includes('failed to fetch')) {
+        errorMessage = 'Failed to save vehicle. Please try again later.';
+      }
+
+      await showAlert(errorMessage, 'Error');
     }
   };
 
@@ -167,13 +172,13 @@ const AddVehicles = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this vehicle?')) return;
+    if (!(await showConfirm('Delete this vehicle?'))) return;
     try {
       await deleteVehicle(id);
-      loadVehicles();
-    } catch (error) {
-      console.error('Failed to delete vehicle:', error);
-      alert('Failed to delete vehicle');
+      await loadVehicles();
+    } catch (err) {
+      console.error('Failed to delete vehicle:', err);
+      showToast('Failed to delete vehicle', 'error');
     }
   };
 

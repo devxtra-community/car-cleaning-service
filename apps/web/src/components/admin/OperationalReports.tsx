@@ -94,7 +94,7 @@ export default function OperationalReports() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
+        <div className="min-h-screen p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-4 border-b border-slate-200">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">

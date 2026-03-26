@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger';
+import { isMaintenanceMode } from '../modules/system/maintenance_state';
 
 /**
  * Global middleware to handle system-wide maintenance mode.
@@ -20,9 +21,7 @@ export const maintenanceMiddleware = async (req: Request, res: Response, next: N
   }
 
   try {
-    const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
-
-    if (isMaintenance) {
+    if (isMaintenanceMode) {
       logger.warn(`Access blocked due to Maintenance Mode: ${req.method} ${req.url}`);
       return res.status(503).json({
         success: false,

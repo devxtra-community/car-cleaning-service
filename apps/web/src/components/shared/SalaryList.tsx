@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/commonAPI';
-import Toast from './Toast';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
 import SalaryBreakdownModal from './SalaryBreakdownModal';
 
 interface SalaryRow {
@@ -22,10 +23,7 @@ const SalaryList: React.FC = () => {
   const [rows, setRows] = useState<SalaryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSalary, setSelectedSalary] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
+  const { showToast } = useAlert();
 
   /* =========================
        Fetch Salaries
@@ -38,8 +36,7 @@ const SalaryList: React.FC = () => {
       const res = await api.get(`/salary/cycle/${cycleId}`);
       setRows(res.data.data || []);
     } catch (err: unknown) {
-      console.error('Failed to fetch salaries', err);
-      setToast({ message: 'Failed to load salaries', type: 'error' });
+      showToast(errMsg(err), 'error');
     } finally {
       setLoading(false);
     }
@@ -55,10 +52,10 @@ const SalaryList: React.FC = () => {
   const handleMarkPaid = async (salaryId: string) => {
     try {
       await api.post(`/salary/pay/${salaryId}`, {});
-      setToast({ message: 'Salary marked as paid', type: 'success' });
+      showToast('Salary marked as paid', 'success');
       fetchSalaries();
-    } catch {
-      setToast({ message: 'Failed to mark as paid', type: 'error' });
+    } catch (err: unknown) {
+      showToast(errMsg(err), 'error');
     }
   };
 
@@ -177,8 +174,7 @@ const SalaryList: React.FC = () => {
         </table>
       </div>
 
-      {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {/* Toast removed in favor of global provider */}
       {selectedSalary && (
         <SalaryBreakdownModal salaryId={selectedSalary} onClose={() => setSelectedSalary(null)} />
       )}

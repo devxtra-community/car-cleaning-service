@@ -3,6 +3,8 @@ import { logger } from '../../config/logger';
 import { authMiddleware, AuthRequest } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
 
+import { isMaintenanceMode, setMaintenanceMode } from './maintenance_state';
+
 const router = express.Router();
 
 /**
@@ -11,9 +13,7 @@ const router = express.Router();
  */
 router.get('/maintenance/status', async (req, res) => {
     try {
-        const active = process.env.MAINTENANCE_MODE === 'true';
-
-        res.json({ success: true, active });
+        res.json({ success: true, active: isMaintenanceMode });
     } catch (error) {
         logger.error('Failed to get maintenance status', { error: String(error) });
         res.status(500).json({ success: false, message: 'Internal server error' });
@@ -28,7 +28,7 @@ router.get('/maintenance/status', async (req, res) => {
 router.post(
     '/maintenance/toggle',
     authMiddleware as any,
-    allowRoles('Admin', 'Accountant') as any,
+    allowRoles('admin', 'accountant') as any,
     async (req: AuthRequest, res) => {
         const { active } = req.body;
 
@@ -37,7 +37,8 @@ router.post(
         }
 
         try {
-            return res.status(503).json({ success: false, message: 'Maintenance mode toggle is currently disabled (Redis removed)' });
+            setMaintenanceMode(active);
+            return res.status(200).json({ success: true, message: 'Maintenance mode toggled', active: isMaintenanceMode });
         } catch (error) {
             logger.error('Failed to toggle maintenance mode', { error: String(error) });
             res.status(500).json({ success: false, message: 'Internal server error' });

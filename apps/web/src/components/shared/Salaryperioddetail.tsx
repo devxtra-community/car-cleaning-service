@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
 import {
   getSalaryPeriod,
   calculateSalaries,
@@ -13,17 +15,11 @@ import {
   type SalaryPeriod,
   type SalaryRecord,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const fmtD = (s: string) =>
   new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-const errMsg = (e: unknown) => {
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? (e instanceof Error ? e.message : 'Error');
-};
-
 const initials = (n: string) =>
   n
     .split(' ')
@@ -39,10 +35,6 @@ const STATUS_STYLE: Record<string, string> = {
   locked: 'bg-amber-50 text-amber-700',
   paid: 'bg-emerald-50 text-emerald-700',
 };
-interface TS {
-  message: string;
-  type: 'success' | 'error';
-}
 
 const PeriodBadge: React.FC<{ status: string }> = ({ status }) => {
   const colors: Record<string, string> = {
@@ -71,6 +63,7 @@ const SalaryPeriodDetail: React.FC = () => {
   const { periodId } = useParams<{ periodId: string }>();
   const navigate = useNavigate();
   const { loading: authLoading, isAuthenticated } = useAuth();
+  const { showConfirm, showAlert, showToast } = useAlert();
 
   const [period, setPeriod] = useState<SalaryPeriod | null>(null);
   const [records, setRecords] = useState<SalaryRecord[]>([]);
@@ -78,8 +71,6 @@ const SalaryPeriodDetail: React.FC = () => {
   const [busy, setBusy] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterSt, setFilterSt] = useState('all');
-  const [toast, setToast] = useState<TS | null>(null);
-  const showToast = (m: string, t: TS['type']) => setToast({ message: m, type: t });
 
   const load = useCallback(async () => {
     if (!periodId) return;
@@ -88,8 +79,8 @@ const SalaryPeriodDetail: React.FC = () => {
       const d = await getSalaryPeriod(periodId);
       setPeriod(d.period);
       setRecords(d.records);
-    } catch {
-      showToast('Failed to load period', 'error');
+    } catch (e) {
+      showToast(errMsg(e), 'error');
     } finally {
       setLoading(false);
     }
@@ -114,7 +105,7 @@ const SalaryPeriodDetail: React.FC = () => {
   };
 
   const handleLock = async () => {
-    if (!periodId || !confirm('Lock this period? This cannot be undone.')) return;
+    if (!periodId || !(await showConfirm('Lock this period? This cannot be undone.', 'Lock Period'))) return;
     setBusy('lock');
     try {
       await lockSalaryPeriod(periodId);
@@ -128,7 +119,7 @@ const SalaryPeriodDetail: React.FC = () => {
   };
 
   const handlePaid = async () => {
-    if (!periodId || !confirm('Mark as PAID? This is the final step.')) return;
+    if (!periodId || !(await showConfirm('Mark as PAID? This is the final step.', 'Finalize Payment'))) return;
     setBusy('paid');
     try {
       await markSalaryPeriodPaid(periodId);
@@ -172,7 +163,7 @@ const SalaryPeriodDetail: React.FC = () => {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-12 h-12 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-sm text-slate-400">Loading…</p>
@@ -187,8 +178,7 @@ const SalaryPeriodDetail: React.FC = () => {
     );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen">
 
       {/* sticky header */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-20">

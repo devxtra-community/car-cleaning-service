@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../services/commonAPI';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
 
 interface BreakdownItem {
   type: 'Incentive' | 'Penalty';
@@ -15,6 +17,7 @@ interface Props {
 const SalaryBreakdownModal: React.FC<Props> = ({ salaryId, onClose }) => {
   const [data, setData] = useState<BreakdownItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const { showToast } = useAlert();
 
   useEffect(() => {
     const fetchBreakdown = async () => {
@@ -23,7 +26,7 @@ const SalaryBreakdownModal: React.FC<Props> = ({ salaryId, onClose }) => {
         const res = await api.get(`/salary/breakdown/${salaryId}`);
         setData(res.data.data || []);
       } catch (err) {
-        console.error('Failed to fetch breakdown', err);
+        showToast(errMsg(err), 'error');
       } finally {
         setLoading(false);
       }

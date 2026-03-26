@@ -1,7 +1,16 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/commonAPI';
-import axios from 'axios';
+import {
+  toggleUserStatus,
+  resetUserPassword,
+} from '../../services/allAPI';
+import {
+  DeleteCleanerModal,
+  EditCleanerModal,
+} from '../shared/ManageCleanerModals';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,16 +36,6 @@ interface Cleaner {
   profile_image?: string;
   base_salary?: number;
   is_active: boolean;
-}
-
-interface EditForm {
-  full_name: string;
-  email: string;
-  phone: string;
-  age: string;
-  nationality: string;
-  document_id: string;
-  base_salary: string;
 }
 
 interface Toast {
@@ -69,163 +68,20 @@ const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
-const deleteCleaner = (id: string) => api.delete(`/workers/cleaners/${id}`);
-
-const updateCleaner = (id: string, payload: Partial<EditForm>) =>
-  api.patch(`/workers/cleaners/${id}`, payload);
-
-const toggleUserStatus = (id: string, isActive: boolean) =>
-  api.patch(`/api/auth/users/${id}/status`, { is_active: isActive });
-
-const resetUserPassword = (id: string, newPassword: string) =>
-  api.patch(`/api/auth/users/${id}/reset-password`, { new_password: newPassword });
-
-// ─── Toast Component ──────────────────────────────────────────────────────────
-
-const ToastAlert = ({ toast, onClose }: { toast: Toast; onClose: () => void }) => {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3500);
-    return () => clearTimeout(t);
-  }, [onClose]);
-
-  return (
-    <div
-      className={`fixed top-5 right-5 z-[200] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border text-sm font-medium animate-slide-in
-        ${toast.type === 'success'
-          ? 'bg-white border-green-200 text-green-800'
-          : 'bg-white border-red-200 text-red-800'
-        }`}
-    >
-      <span className={`text-lg ${toast.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
-        {toast.type === 'success' ? '✓' : '✕'}
-      </span>
-      {toast.message}
-      <button
-        onClick={onClose}
-        className="ml-2 text-gray-400 hover:text-gray-600 text-base leading-none"
-      >
-        ×
-      </button>
-    </div>
-  );
-};
-
-// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
-
-// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
-
-const DeleteModal = ({
-  cleaner,
-  onClose,
-  onDeleted,
-}: {
-  cleaner: Cleaner;
-  onClose: () => void;
-  onDeleted: () => void;
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleDelete = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      await deleteCleaner(cleaner.cleaner_id);
-      onDeleted();
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(
-          err.response?.data?.error?.message ??
-          err.response?.data?.message ??
-          err.message ??
-          'Cannot delete cleaner. Please try again.'
-        );
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Cannot delete cleaner. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8"
-        onClick={(e) => e.stopPropagation()}
-        style={{ animation: 'modalPop 0.2s ease' }}
-      >
-        {/* Icon */}
-        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-5">
-          <svg
-            className="w-7 h-7 text-red-500"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-            />
-          </svg>
-        </div>
-
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Cleaner?</h3>
-        <p className="text-slate-500 text-sm leading-relaxed mb-1">
-          You're about to permanently delete{' '}
-          <span className="font-semibold text-slate-700">{cleaner.full_name}</span>. This action
-          cannot be undone.
-        </p>
-        <p className="text-slate-400 text-xs mb-6">
-          Cleaners with active or pending tasks cannot be deleted.
-        </p>
-
-        {error && (
-          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-            {error}
-          </div>
-        )}
-
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={loading}
-            className="px-5 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
-          >
-            {loading ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Handlers are imported from allAPI
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const PER_PAGE = 8;
 
 const Cleaners: React.FC = () => {
+  const { showAlert, showConfirm, showPrompt, showToast } = useAlert();
   const [cleaners, setCleaners] = useState<Cleaner[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [toast, setToast] = useState<Toast | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Cleaner | null>(null);
-
-  const showToast = (message: string, type: Toast['type']) => setToast({ message, type });
+  const [editTarget, setEditTarget] = useState<Cleaner | null>(null);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchCleaners = useCallback(async () => {
@@ -238,7 +94,7 @@ const Cleaners: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     fetchCleaners();
@@ -263,26 +119,37 @@ const Cleaners: React.FC = () => {
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleDeleted = () => {
-    setCleaners((prev) => prev.filter((c) => c.cleaner_id !== deleteTarget?.cleaner_id));
-    showToast('Cleaner deleted', 'success');
+    if (!deleteTarget) return;
+    setCleaners((prev) => prev.filter((c) => c.cleaner_id !== deleteTarget.cleaner_id));
     setDeleteTarget(null);
   };
 
   const handleToggleStatus = async (cleaner: Cleaner) => {
     try {
       const newStatus = !cleaner.is_active;
+      const confirmed = await showConfirm(
+        `Are you sure you want to ${newStatus ? 'enable' : 'disable'} this user?`,
+        'User Status'
+      );
+      if (!confirmed) return;
+
       await toggleUserStatus(cleaner.user_id, newStatus);
       setCleaners((prev) =>
         prev.map((c) => (c.user_id === cleaner.user_id ? { ...c, is_active: newStatus } : c))
       );
       showToast(`User ${newStatus ? 'enabled' : 'disabled'}`, 'success');
-    } catch {
-      showToast('Failed to update status', 'error');
+    } catch (err) {
+      showToast(errMsg(err), 'error');
     }
   };
 
   const handleResetPassword = async (cleaner: Cleaner) => {
-    const newPass = prompt(`Enter new password for ${cleaner.full_name}:`);
+    const newPass = await showPrompt(
+      `Enter new password for ${cleaner.full_name}:`,
+      'Reset Password',
+      '',
+      'password'
+    );
     if (!newPass) return;
     if (newPass.length < 6) {
       showToast('Password must be at least 6 characters', 'error');
@@ -291,14 +158,14 @@ const Cleaners: React.FC = () => {
     try {
       await resetUserPassword(cleaner.user_id, newPass);
       showToast('Password reset successfully', 'success');
-    } catch {
-      showToast('Failed to reset password', 'error');
+    } catch (err) {
+      showToast(errMsg(err), 'error');
     }
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50 font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="min-h-screen font-['Plus_Jakarta_Sans',sans-serif]">
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
@@ -331,15 +198,27 @@ const Cleaners: React.FC = () => {
         .row-in { animation: rowIn 0.22s ease both; }
       `}</style>
 
-      {/* Toast */}
-      {toast && <ToastAlert toast={toast} onClose={() => setToast(null)} />}
-
       {/* Delete Modal */}
       {deleteTarget && (
-        <DeleteModal
+        <DeleteCleanerModal
           cleaner={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editTarget && (
+        <EditCleanerModal
+          cleaner={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(updated) => {
+            setCleaners((prev) =>
+              prev.map((c) => (c.cleaner_id === editTarget.cleaner_id ? { ...c, ...updated } : c))
+            );
+            setEditTarget(null);
+            showToast('Cleaner updated successfully', 'success');
+          }}
         />
       )}
 
@@ -652,8 +531,8 @@ const Cleaners: React.FC = () => {
                           </Link>
 
                           {/* Edit */}
-                          <Link
-                            to={`/admin/cleaner/${c.cleaner_id}/edit`}
+                          <button
+                            onClick={() => setEditTarget(c)}
                             title="Edit cleaner"
                             className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500
                             hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all"
@@ -667,8 +546,7 @@ const Cleaners: React.FC = () => {
                             >
                               <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                          </Link>
-
+                          </button>
 
                           {/* Reset Password */}
                           <button
@@ -716,214 +594,43 @@ const Cleaners: React.FC = () => {
         </div>
 
         {/* ── Pagination ───────────────────────────────────────────────────────── */}
-        {
-          !loading && totalPages > 1 && (
-            <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
               hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                ← Previous
-              </button>
+            >
+              ← Previous
+            </button>
 
-              <div className="flex gap-1.5">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setPage(n)}
-                    className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all
+            <div className="flex gap-1.5">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all
                   ${page === n
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'border border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
-                      }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'border border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
+                    }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
 
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600
               hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                Next →
-              </button>
-            </div>
-          )
-        }
-      </div>
-    </div>
-  );
-};
-
-
-// ─── EditModal ────────────────────────────────────────────────────────────────
-
-const EditModal: React.FC<{
-  cleaner: Cleaner;
-  onClose: () => void;
-  onSaved: (updated: Partial<Cleaner>) => void;
-}> = ({ cleaner, onClose, onSaved }) => {
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<EditForm>({
-    full_name: cleaner.full_name || '',
-    email: cleaner.email || '',
-    phone: cleaner.phone || '',
-    age: String(cleaner.age || ''),
-    nationality: cleaner.nationality || '',
-    document_id: cleaner.document_id || '',
-    base_salary: String(cleaner.base_salary || ''),
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const res = await updateCleaner(cleaner.cleaner_id, form);
-      if (res.data.success) {
-        onSaved({
-          ...form,
-          age: Number(form.age),
-          base_salary: Number(form.base_salary),
-        });
-      }
-    } catch (err) {
-      console.error('Failed to update cleaner:', err);
-      alert('Failed to update cleaner');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-5">
-      <div className="bg-white rounded-[24px] w-full max-w-xl shadow-2xl animate-modal-pop overflow-hidden">
-        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div>
-            <h3 className="text-xl font-bold text-slate-900">Edit Cleaner</h3>
-            <p className="text-sm text-slate-400 mt-1">Update personal and professional details</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Full Name</label>
-              <input
-                name="full_name"
-                value={form.full_name}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Full Name"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Email</label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Email"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Phone</label>
-              <input
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Phone"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Age</label>
-              <input
-                name="age"
-                type="number"
-                value={form.age}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Age"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nationality</label>
-              <input
-                name="nationality"
-                value={form.nationality}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Nationality"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Document ID</label>
-              <input
-                name="document_id"
-                value={form.document_id}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Document ID"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Base Salary</label>
-              <input
-                name="base_salary"
-                type="number"
-                value={form.base_salary}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                placeholder="Base Salary"
-              />
-            </div>
-          </div>
-
-          <div className="mt-8 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-6 py-3.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/25 disabled:opacity-50 transition-all"
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
+              Next →
             </button>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );

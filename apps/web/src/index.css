@@ -39,17 +39,23 @@ textarea {
 .animate-progress {
   animation: progress linear forwards;
 }
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(-5%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
   }
-  to {
+  50% {
     transform: translateY(0);
-    opacity: 1;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
   }
 }
 
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s infinite;
+}
+
+/* Global page background gradient for authenticated pages */
+.app-page-bg {
+  background: linear-gradient(135deg, #eef2f7 0%, #e8edf5 25%, #f0f4fa 50%, #e6ecf4 75%, #edf1f8 100%);
+  background-attachment: fixed;
 }

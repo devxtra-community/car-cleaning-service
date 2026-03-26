@@ -91,7 +91,7 @@ const Vehicle_Management = () => {
   const currentVehicles = vehicles.slice(startIndex, endIndex);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <style>{`
         @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }

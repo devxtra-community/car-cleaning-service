@@ -66,7 +66,7 @@ export default function PerformanceInsights() {
     const lowPerformers = [...data].sort((a, b) => Number(a.completed_tasks) - Number(b.completed_tasks)).slice(0, 5);
 
     return (
-        <div className="p-6 bg-slate-50 min-h-screen">
+        <div className="p-6 min-h-screen">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-4 border-b border-slate-200">
                 <div>

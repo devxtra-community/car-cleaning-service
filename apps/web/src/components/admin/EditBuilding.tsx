@@ -7,10 +7,12 @@ import {
   ArrowLeftIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
+import { useAlert } from '../../context/AlertContext';
 
 const EditBuilding = () => {
   const navigate = useNavigate();
   const { buildingId } = useParams<{ buildingId: string }>();
+  const { showAlert } = useAlert();
 
   const [formData, setFormData] = useState({
     building_name: '',
@@ -76,7 +78,7 @@ const EditBuilding = () => {
       };
 
       await updateBuilding(buildingId!, payload);
-      alert('Building updated successfully!');
+      await showAlert('Building updated successfully!', 'Success');
       navigate(`/admin/buildings/${buildingId}`);
     } catch (err: unknown) {
       let msg = 'Failed to update building';

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../../services/commonAPI';
+import { errMsg } from '../../utils/errorUtils';
 
 // ── API calls ─────────────────────────────────────────────────────────────────
 const requestOTP = (email: string) => api.post('/api/auth/forgot-password', { email });
@@ -148,10 +149,6 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ onClose }) =>
   const [error, setError] = useState<string | null>(null);
 
   const pw = strength(newPassword);
-  const errMsg = (e: unknown) => {
-    const x = e as { response?: { data?: { message?: string } } };
-    return x?.response?.data?.message ?? (e instanceof Error ? e.message : 'Something went wrong');
-  };
 
   // ── Step 1: request OTP ────────────────────────────────────────────────────
   const handleRequestOTP = async (e: React.FormEvent) => {

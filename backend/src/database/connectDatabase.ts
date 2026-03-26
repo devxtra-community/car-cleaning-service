@@ -25,9 +25,15 @@ export const getPool = () => {
       },
       connectionTimeoutMillis: 5000,
     });
+    
+    // Add error listener to prevent process crashes on idle db connections
+    poolInstance.on('error', (err) => {
+      logger.error('Unexpected error on idle client', { err });
+    });
   }
   return poolInstance;
 };
+
 
 // Backward-compatible `pool` export via lazy proxy
 export const pool = {

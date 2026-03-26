@@ -98,6 +98,7 @@ app.get('/test', (_req, res) => {
 
 // Routes
 app.use('/api/auth', authRouter);
+app.use('/api/analytics', analyticRoutes);
 app.use('/api', attendanceRoutes);
 app.use('/s3', s3Routes);
 app.use('/workers', workersRoutes);
@@ -110,7 +111,6 @@ app.use('/tasks', taskRoutes);
 app.use('/api/salary', salaryRoute);
 app.use('/api/incentives', incentiveRoutes);
 app.use('/penalties', penaltiesRoutes);
-app.use('/analytics', analyticRoutes);
 app.use('/feedback', reviewRoutes);
 app.use('/supervisors', supervisorRoute);
 app.use('/api/floors', floorRoute);

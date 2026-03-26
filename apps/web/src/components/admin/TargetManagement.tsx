@@ -9,8 +9,10 @@ import {
     getAllFloors,
     getUsersByRole,
 } from '../../services/allAPI';
+import { useAlert } from '../../context/AlertContext';
 
 export default function TargetManagement() {
+    const { showAlert, showConfirm } = useAlert();
     const [targets, setTargets] = useState<IncentiveTarget[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -86,12 +88,12 @@ export default function TargetManagement() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this target?')) return;
+        if (!(await showConfirm('Are you sure you want to delete this target?'))) return;
         try {
             await deleteIncentiveTarget(id);
             setTargets((prev) => prev.filter((t) => t.id !== id));
         } catch (err) {
-            alert('Failed to delete target');
+            showAlert('Failed to delete target', 'Error');
         }
     };
 
@@ -121,14 +123,14 @@ export default function TargetManagement() {
             setShowModal(false);
             fetchTargets();
         } catch (err) {
-            alert('Failed to save target. Only one active target might be allowed.');
+            showAlert('Failed to save target. Only one active target might be allowed.', 'Error');
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <div className="p-6 bg-slate-50 min-h-screen">
+        <div className="p-6 min-h-screen">
             <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Target Management</h1>

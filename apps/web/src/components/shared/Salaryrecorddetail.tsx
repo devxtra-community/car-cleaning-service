@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
 import {
   getSalaryRecordDetail,
   finalizeSalaryRecord,
@@ -10,7 +12,6 @@ import {
   type SalaryRecordDetail,
   type SalaryAdjustment,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
 
 const fmt = (n: number | string) =>
   new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
@@ -25,10 +26,6 @@ const fmtDT = (s: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
-const errMsg = (e: unknown) => {
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? (e instanceof Error ? e.message : 'Error');
-};
 const initials = (n: string) =>
   n
     .split(' ')
@@ -38,10 +35,6 @@ const initials = (n: string) =>
 const COLORS = ['#3B5BDB', '#1971C2', '#0C8599', '#2F9E44', '#E67700', '#C2255C', '#9C36B5'];
 const ac = (n: string) => COLORS[n.charCodeAt(0) % COLORS.length];
 
-interface TS {
-  message: string;
-  type: 'success' | 'error';
-}
 type Tab = 'breakdown' | 'tasks' | 'incentives' | 'penalties' | 'daily';
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
@@ -238,15 +231,14 @@ const SalaryRecordDetail: React.FC = () => {
   const { recordId } = useParams<{ recordId: string }>();
   const navigate = useNavigate();
   const { loading: authLoading, isAuthenticated } = useAuth();
+  const { showConfirm, showAlert, showToast } = useAlert();
 
   const [data, setData] = useState<SalaryRecordDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('breakdown');
-  const [toast, setToast] = useState<TS | null>(null);
   const [showAdj, setShowAdj] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [saving, setSaving] = useState(false);
-  const showToast = (m: string, t: TS['type']) => setToast({ message: m, type: t });
 
   const load = useCallback(async () => {
     if (!recordId) return;
@@ -254,8 +246,8 @@ const SalaryRecordDetail: React.FC = () => {
       setLoading(true);
       const r = await getSalaryRecordDetail(recordId);
       setData(r.data);
-    } catch {
-      showToast('Failed to load salary record', 'error');
+    } catch (e) {
+      showToast(errMsg(e), 'error');
     } finally {
       setLoading(false);
     }
@@ -274,14 +266,14 @@ const SalaryRecordDetail: React.FC = () => {
       setShowNotes(false);
       void load();
     } catch (e) {
-      showToast(errMsg(e), 'error');
+      showToast('Action failed. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleUnfinalize = async () => {
-    if (!recordId || !confirm('Move this record back to draft?')) return;
+    if (!recordId || !(await showConfirm('Move this record back to draft?', 'Status Change'))) return;
     setSaving(true);
     try {
       await unfinalizeSalaryRecord(recordId);
@@ -295,7 +287,7 @@ const SalaryRecordDetail: React.FC = () => {
   };
 
   const handleDeleteAdj = async (adjId: string) => {
-    if (!confirm('Remove this adjustment?')) return;
+    if (!(await showConfirm('Remove this adjustment?', 'Delete Adjustment'))) return;
     try {
       await deleteSalaryAdjustment(adjId);
       showToast('Adjustment removed', 'success');
@@ -307,7 +299,7 @@ const SalaryRecordDetail: React.FC = () => {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-12 h-12 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-sm text-slate-400">Loading…</p>
@@ -335,8 +327,7 @@ const SalaryRecordDetail: React.FC = () => {
   const adjNet = r.total_adjustments;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen">
       {showAdj && (
         <AdjModal recordId={r.id} onClose={() => setShowAdj(false)} onAdded={() => void load()} />
       )}

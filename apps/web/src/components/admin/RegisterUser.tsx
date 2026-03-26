@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/commonAPI';
 import { getAllSupervisors, registerUser } from '../../services/allAPI';
+import { errMsg } from '../../utils/errorUtils';
+import { useAlert } from '../../context/AlertContext';
 
 interface Building {
   id: string;
@@ -39,6 +41,7 @@ const RegisterUser = () => {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
 
+  const { showAlert, showToast } = useAlert();
   const [loading, setLoading] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState('');
@@ -70,7 +73,7 @@ const RegisterUser = () => {
       setBuildings(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch buildings', error);
-      alert('Failed to load buildings');
+      showToast(errMsg(error), 'error');
     }
   };
 
@@ -80,7 +83,7 @@ const RegisterUser = () => {
       setSupervisors(data || []);
     } catch (error) {
       console.error('Failed to fetch supervisors', error);
-      alert('Failed to load supervisors');
+      showToast(errMsg(error), 'error');
     }
   };
 
@@ -90,7 +93,7 @@ const RegisterUser = () => {
       setFloors(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch floors', error);
-      alert('Failed to load floors');
+      showToast(errMsg(error), 'error');
     }
   };
 
@@ -143,12 +146,12 @@ const RegisterUser = () => {
 
         await fetchFloorsByBuilding(buildingId);
       } else {
-        alert('This supervisor is not assigned to any building yet');
+        await showAlert('This supervisor is not assigned to any building yet', 'Information');
       }
     } catch (error) {
       console.error('Failed to fetch building and floors', error);
       setFloors([]);
-      alert('Failed to load building details');
+      showToast(errMsg(error), 'error');
     }
   };
 
@@ -175,7 +178,7 @@ const RegisterUser = () => {
     e.preventDefault();
 
     if (!document) {
-      alert('Document is required');
+      await showAlert('Document is required', 'Form Incomplete');
       return;
     }
 
@@ -188,22 +191,22 @@ const RegisterUser = () => {
       !form.document_id ||
       !form.base_salary
     ) {
-      alert('Please fill in all required fields');
+      await showAlert('Please fill in all required fields', 'Form Incomplete');
       return;
     }
 
     if (form.role === 'supervisor' && !form.building_id) {
-      alert('Please select a building for supervisor');
+      await showAlert('Please select a building for supervisor', 'Form Incomplete');
       return;
     }
 
     if (form.role === 'cleaner' && !form.supervisor_id) {
-      alert('Please select a supervisor for cleaner');
+      await showAlert('Please select a supervisor for cleaner', 'Form Incomplete');
       return;
     }
 
     if (form.role === 'cleaner' && !form.floor_id) {
-      alert('Please select a floor for cleaner');
+      await showAlert('Please select a floor for cleaner', 'Form Incomplete');
       return;
     }
 
@@ -241,21 +244,14 @@ const RegisterUser = () => {
       const response = await registerUser(formData);
 
       if (response.success) {
-        alert(`${form.role} created successfully`);
+        await showAlert(`${form.role} created successfully`, 'Success');
         navigate(-1);
       } else {
-        alert(response.message || 'Failed to create user');
+        await showAlert(response.message || 'Failed to create user', 'Error');
       }
     } catch (error: unknown) {
       console.error('Registration error:', error);
-
-      const err = error as { response?: { data?: { error?: { message?: string }; message?: string } } };
-      const errorMessage =
-        err.response?.data?.error?.message ||
-        err.response?.data?.message ||
-        'Something went wrong';
-
-      alert(errorMessage);
+      await showAlert(errMsg(error), 'Error');
     } finally {
       setLoading(false);
     }

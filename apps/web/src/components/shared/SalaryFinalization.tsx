@@ -6,6 +6,8 @@ import {
   lockSalaryPeriod,
 } from '../../services/allAPI';
 import { useNavigate } from 'react-router-dom';
+import { useAlert } from '../../context/AlertContext';
+import { errMsg } from '../../utils/errorUtils';
 
 /* =========================
    Types
@@ -40,6 +42,7 @@ const SalaryFinalization: React.FC = () => {
   const [totalRecords, setTotalRecords] = useState(0);
   const limit = 10;
   const navigate = useNavigate();
+  const { showAlert, showToast } = useAlert();
 
   /* =========================
      Fetch data
@@ -60,7 +63,7 @@ const SalaryFinalization: React.FC = () => {
         setActiveCycle(active);
       }
     } catch (err) {
-      console.error('Failed to fetch data', err);
+      showToast(errMsg(err), 'error');
     } finally {
       setLoading(false);
     }
@@ -84,7 +87,7 @@ const SalaryFinalization: React.FC = () => {
         prev.map((s) => (s.id === salaryId ? { ...s, status: 'finalized' } : s))
       );
     } catch (err) {
-      console.error('Failed to finalize salary', err);
+      showToast(errMsg(err), 'error');
     }
   };
 
@@ -125,7 +128,7 @@ const SalaryFinalization: React.FC = () => {
   const handleLockPeriod = async () => {
     if (!activeCycle || activeCycle.is_locked) return;
     if (pendingCount > 0) {
-      alert('Must finalize all pending salaries before locking the period.');
+      await showAlert('Must finalize all pending salaries before locking the period.', 'Pending Actions');
       return;
     }
     setLocking(true);
@@ -134,8 +137,7 @@ const SalaryFinalization: React.FC = () => {
       setActiveCycle({ ...activeCycle, is_locked: true });
       setSalaries((prev) => prev.map((s) => ({ ...s, status: 'locked' })));
     } catch (err) {
-      console.error(err);
-      alert('Failed to lock salary period.');
+      await showAlert(errMsg(err), 'Error');
     } finally {
       setLocking(false);
     }

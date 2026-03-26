@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { errMsg } from '../../utils/errorUtils';
 import { useAuth } from '../../context/AuthContext';
+import { useAlert } from '../../context/AlertContext';
 import {
   getCleanerDetail,
   updateCleaner,
@@ -13,7 +15,6 @@ import {
   type SupervisorOption,
   type BuildingDropdownItem,
 } from '../../services/allAPI';
-import Toast from '../shared/Toast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const initials = (n: string) =>
@@ -33,12 +34,6 @@ const COLORS = [
   '#5C7CFA',
 ];
 const ac = (n: string) => COLORS[n.charCodeAt(0) % COLORS.length];
-const errMsg = (e: unknown) => {
-  if (e instanceof Error) return e.message;
-  const x = e as { response?: { data?: { message?: string } } };
-  return x?.response?.data?.message ?? 'Something went wrong';
-};
-
 // ─── Field components ─────────────────────────────────────────────────────────
 const Field: React.FC<{
   label: string;
@@ -159,7 +154,7 @@ const EditCleaner: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { showToast } = useAlert();
 
   // dropdown options
   const [buildings, setBuildings] = useState<BuildingDropdownItem[]>([]);
@@ -167,8 +162,6 @@ const EditCleaner: React.FC = () => {
   const [supervisors, setSupervisors] = useState<SupervisorOption[]>([]);
   const [loadingFloors, setLoadingFloors] = useState(false);
   const [loadingSups, setLoadingSups] = useState(false);
-
-  const showToast = (message: string, type: 'success' | 'error') => setToast({ message, type });
 
   // ── Load cleaner + buildings ──────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -298,7 +291,7 @@ const EditCleaner: React.FC = () => {
   // ─── Loading / error states ───────────────────────────────────────────────
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-12 h-12 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           <p className="mt-4 text-sm text-slate-400">Loading cleaner…</p>
@@ -307,7 +300,7 @@ const EditCleaner: React.FC = () => {
     );
   if (!cleaner || !form)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-slate-500">Cleaner not found.</p>
           <button
@@ -321,8 +314,7 @@ const EditCleaner: React.FC = () => {
     );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen">
 
       {/* ── Sticky top bar ──────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-20">

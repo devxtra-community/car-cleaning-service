@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import Loader from './WebPages/Loader';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthProvider';
 
 /* Public */
 const MainSignIn = lazy(() => import('./WebPages/SignInContainer'));

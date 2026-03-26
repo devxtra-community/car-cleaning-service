@@ -5,9 +5,14 @@ export const getDailyProgress = async (date?: string) => {
 
   const res = await pool.query(
     `
-    SELECT *
-    FROM daily_progress_view
-    WHERE ($1::date IS NULL OR date = $1)
+    SELECT
+      DATE(completed_at) as date,
+      COUNT(id)::int as total_tasks,
+      COALESCE(SUM(final_price), 0)::float as total_revenue
+    FROM tasks
+    WHERE status = 'completed'
+      AND ($1::date IS NULL OR DATE(completed_at) = $1::date)
+    GROUP BY DATE(completed_at)
     ORDER BY date DESC
     `,
     [date || null]
@@ -20,9 +25,14 @@ export const getWeeklyProgress = async (weekStart?: string) => {
 
   const res = await pool.query(
     `
-    SELECT *
-    FROM weekly_progress_view
-    WHERE ($1::date IS NULL OR week_start = $1)
+    SELECT
+      DATE_TRUNC('week', completed_at) as week_start,
+      COUNT(id)::int as total_tasks,
+      COALESCE(SUM(final_price), 0)::float as total_revenue
+    FROM tasks
+    WHERE status = 'completed'
+      AND ($1::date IS NULL OR DATE_TRUNC('week', completed_at) = DATE_TRUNC('week', $1::date))
+    GROUP BY DATE_TRUNC('week', completed_at)
     ORDER BY week_start DESC
     `,
     [weekStart || null]
@@ -35,9 +45,14 @@ export const getMonthlyProgress = async (month?: string) => {
 
   const res = await pool.query(
     `
-    SELECT *
-    FROM monthly_progress_view
-    WHERE ($1::date IS NULL OR month = DATE_TRUNC('month', $1::date))
+    SELECT
+      DATE_TRUNC('month', completed_at) as month,
+      COUNT(id)::int as total_tasks,
+      COALESCE(SUM(final_price), 0)::float as total_revenue
+    FROM tasks
+    WHERE status = 'completed'
+      AND ($1::date IS NULL OR DATE_TRUNC('month', completed_at) = DATE_TRUNC('month', $1::date))
+    GROUP BY DATE_TRUNC('month', completed_at)
     ORDER BY month DESC
     `,
     [month || null]
@@ -176,11 +191,11 @@ export const getAdminSummaryService = async () => {
 
   const res = await pool.query(`
     SELECT
-      (SELECT COALESCE(SUM(paid_amount), 0)::float FROM salaries WHERE date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)) as total_salary_paid,
+      (SELECT COALESCE(SUM(final_salary), 0)::float FROM salaries WHERE status = 'paid' AND date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)) as total_salary_paid,
       (SELECT COUNT(*)::int FROM cleaners WHERE is_active = true) as total_cleaners,
       (SELECT COUNT(*)::int FROM cleaner_assigned_vehicles WHERE is_active = true) as total_vehicles,
       (SELECT COUNT(*)::int FROM buildings) as total_buildings,
-      (SELECT COUNT(*)::int FROM incentive_rules WHERE is_active = true) as active_incentive_rules,
+      (SELECT COUNT(*)::int FROM incentive_rules WHERE active = true) as active_incentive_rules,
       (SELECT COUNT(*)::int FROM users WHERE role = 'supervisor' AND is_active = true) as total_supervisors,
       (SELECT COUNT(*)::int FROM attendance WHERE date = CURRENT_DATE AND cleaner_id IS NOT NULL) as cleaners_present,
       (SELECT COUNT(*)::int FROM attendance WHERE date = CURRENT_DATE AND cleaner_id IS NULL) as supervisors_present,

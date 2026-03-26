@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
   BanknotesIcon,
   UserGroupIcon,
@@ -16,6 +17,7 @@ import {
   ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../services/commonAPI';
+import { useAlert } from '../../context/AlertContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -164,20 +166,26 @@ const StatCard: React.FC<StatCardProps & { colorKey: keyof typeof accentMap }> =
 }) => {
   const c = accentMap[colorKey];
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center`}>
+    <motion.div
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      className="bg-gradient-to-br from-white via-white to-blue-50/60 rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-lg cursor-default flex flex-col gap-3 relative overflow-hidden group"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-50/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <div className="flex items-center justify-between relative z-10">
+        <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center transition-transform duration-300 group-hover:scale-110`}>
           <Icon className={`w-5 h-5 ${c.icon}`} />
         </div>
         {sub && (
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.badge}`}>{sub}</span>
         )}
       </div>
-      <div>
+      <div className="relative z-10">
         <div className="text-2xl font-bold text-slate-800">{loading ? <Spinner /> : value}</div>
         <div className="text-xs text-slate-400 uppercase tracking-widest mt-1">{label}</div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -188,7 +196,11 @@ const SectionCard: React.FC<{
   iconClass?: string;
   className?: string;
 }> = ({ title, icon: Icon, children, iconClass = 'text-sky-500', className = '' }) => (
-  <div className={`bg-white rounded-2xl border border-slate-100 p-6 shadow-sm ${className}`}>
+  <motion.div
+    whileHover={{ y: -2 }}
+    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+    className={`bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-shadow ${className}`}
+  >
     <div className="flex items-center gap-2 mb-5">
       {Icon && <Icon className={`w-4 h-4 ${iconClass}`} />}
       <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
@@ -196,7 +208,7 @@ const SectionCard: React.FC<{
       </span>
     </div>
     {children}
-  </div>
+  </motion.div>
 );
 
 // ─── Pure SVG Charts ──────────────────────────────────────────────────────────
@@ -213,11 +225,14 @@ const SvgAreaChart: React.FC<{
     padB = 28;
   const W = width - padL - padR;
   const H = height - padT - padB;
-  const allVals = data.flatMap((d) => [d.actual, d.expected]);
+  const allVals = data.length > 0 ? data.flatMap((d) => [d.actual, d.expected]) : [0];
   const minV = Math.min(...allVals) * 0.92;
   const maxV = Math.max(...allVals) * 1.05;
-  const xScale = (i: number) => padL + (i / (data.length - 1)) * W;
-  const yScale = (v: number) => padT + H - ((v - minV) / (maxV - minV)) * H;
+  const xScale = (i: number) => padL + (data.length > 1 ? (i / (data.length - 1)) * W : 0);
+  const yScale = (v: number) => {
+    const range = maxV - minV;
+    return range === 0 ? padT + H / 2 : padT + H - ((v - minV) / range) * H;
+  };
   const makePath = (key: 'actual' | 'expected') => {
     let d = '';
     data.forEach((pt, i) => {
@@ -354,7 +369,7 @@ const SvgBarChart: React.FC<{
 }> = ({ data, height = 70 }) => {
   const padT = 4,
     padB = 18;
-  const maxV = Math.max(...data.flatMap((d) => [d.completed, d.pending]));
+  const maxV = Math.max(...data.flatMap((d) => [d.completed, d.pending]), 1);
   const H = height - padT - padB;
   return (
     <svg viewBox={`0 0 ${data.length * 40} ${height}`} className="w-full" style={{ height }}>
@@ -411,11 +426,11 @@ const SvgDonut: React.FC<{
   // Fix: Calculate slices without mutating variables
   const slices = data.map((d, i) => {
     // Calculate the cumulative angle for THIS slice
-    const prevAngles = data
+    const prevAngles = total === 0 ? 0 : data
       .slice(0, i)
       .reduce((sum, item) => sum + (item.count / total) * 2 * Math.PI, 0);
     const startAngle = -Math.PI / 2 + prevAngles;
-    const angle = (d.count / total) * 2 * Math.PI;
+    const angle = total === 0 ? 0 : (d.count / total) * 2 * Math.PI;
     const endAngle = startAngle + angle;
 
     const x1 = cx + r * Math.cos(startAngle);
@@ -455,6 +470,7 @@ const SvgDonut: React.FC<{
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const AdminDashboard: React.FC = () => {
+  const { showConfirm } = useAlert();
   const [data, setData] = useState<DashboardData>({
     buildings: [],
     vehicles: [],
@@ -483,7 +499,7 @@ const AdminDashboard: React.FC = () => {
         api.get('/api/buildings'),
         api.get('/api/vehicle'),
         api.get('/api/auth/cleaners'),
-        api.get('/salary/summary/monthly'),
+        api.get('/api/salary/summary/monthly'),
         api.get('/api/incentives/types'),
         api.get('/api/incentives/rules'),
         api.get('/api/admin/system/maintenance/status'),
@@ -548,12 +564,11 @@ const AdminDashboard: React.FC = () => {
 
   const toggleMaintenance = async (active: boolean) => {
     try {
-      if (
-        !window.confirm(
-          `Are you sure you want to ${active ? 'ENABLE' : 'DISABLE'} Maintenance Mode? This will block all users.`
-        )
-      )
-        return;
+      const confirmed = await showConfirm(
+        `Are you sure you want to ${active ? 'ENABLE' : 'DISABLE'} Maintenance Mode? This will block all users.`,
+        'System Maintenance'
+      );
+      if (!confirmed) return;
 
       const res = await api.post('/api/admin/system/maintenance/toggle', { active });
       if (res.data?.success) {
@@ -598,7 +613,7 @@ const AdminDashboard: React.FC = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
+    <div className="min-h-screen font-sans text-slate-800">
       <div className=" mx-auto px-6 py-8">
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between mb-8">

@@ -76,7 +76,7 @@ const Reconciliation: React.FC = () => {
   const totalNet = totals.cash + totals.online - totals.salary;
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-4 border-b border-slate-200">
         <div>

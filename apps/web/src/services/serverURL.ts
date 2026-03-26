@@ -1,2 +1,2 @@
-const SERVER_URL = ''; // Relative path for Nginx proxy
+const SERVER_URL = 'http://localhost:3033'
 export default SERVER_URL;

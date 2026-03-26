@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react';
 import Loader from './pages/Loader';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthProvider';
+import { AlertProvider } from './context/AlertContext';
 
 /* Public */
 const Login = lazy(() => import('./pages/Login'));
@@ -49,7 +50,8 @@ const AccountantListing = lazy(() => import('./components/admin/Accountant'));
 function App() {
   return (
     <AuthProvider>
-      <Suspense fallback={<Loader />}>
+      <AlertProvider>
+        <Suspense fallback={<Loader />}>
         <Routes>
           {/* Default route */}
           <Route path="/" element={<Navigate to="/login" replace />} />
@@ -114,6 +116,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
+      </AlertProvider>
     </AuthProvider>
   );
 }

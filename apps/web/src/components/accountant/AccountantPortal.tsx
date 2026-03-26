@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 import {
   HomeIcon,
@@ -41,7 +41,7 @@ const AccountantPortal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen app-page-bg">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white shadow-sm flex flex-col">
         {/* Logo - Fixed at top */}
@@ -276,7 +276,7 @@ const AccountantPortal = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 ml-64 bg-gray-50">
+      <main className="flex-1 p-6 ml-64 app-page-bg min-h-screen">
         <Outlet />
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getCleanerFullDetails } from '../../services/allAPI';
+import { useAlert } from '../../context/AlertContext';
 import {
   CalendarIcon,
   ArrowTrendingUpIcon,
@@ -691,20 +692,21 @@ const PenaltiesTab = ({ penalties }: { penalties: CleanerPenalty[] }) => {
 };
 
 const ImageVerificationModal = ({ task, onClose }: { task: CleanerTask; onClose: () => void }) => {
+  const { showAlert, showToast } = useAlert();
   const beforeImage = task.before_photo_url || task.car_image_url;
   const afterImage = task.after_photo_url || task.after_wash_image_url;
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     // Add your approval logic here
     console.log('Task approved:', task.id);
-    alert('Task verified and approved!');
+    showToast('Task verified and approved!', 'success');
     onClose();
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     // Add your rejection logic here
     console.log('Task rejected:', task.id);
-    alert('Task rejected. Please provide feedback to the cleaner.');
+    showToast('Task rejected', 'error');
     onClose();
   };
 
@@ -834,6 +836,7 @@ const ImageVerificationModal = ({ task, onClose }: { task: CleanerTask; onClose:
 };
 
 const VehiclesTab = ({ cleanerId, vehicles, onRefresh }: { cleanerId: string, vehicles: AssignedVehicle[], onRefresh: () => void }) => {
+  const { showAlert, showConfirm, showToast } = useAlert();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -855,20 +858,20 @@ const VehiclesTab = ({ cleanerId, vehicles, onRefresh }: { cleanerId: string, ve
       setForm({ car_number: '', car_model: '', car_type: 'Sedan', car_color: '', owner_name: '', owner_phone: '' });
       onRefresh();
     } catch (err) {
-      alert('Failed to assign vehicle');
+      showToast('Failed to assign vehicle', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleUnassign = async (id: string) => {
-    if (!confirm('Are you sure you want to unassign this vehicle?')) return;
+    if (!(await showConfirm('Are you sure you want to unassign this vehicle?'))) return;
     try {
       const { unassignVehicle } = await import('../../services/allAPI');
       await unassignVehicle(id);
       onRefresh();
     } catch (err) {
-      alert('Failed to unassign vehicle');
+      showToast('Failed to unassign vehicle', 'error');
     }
   };
 

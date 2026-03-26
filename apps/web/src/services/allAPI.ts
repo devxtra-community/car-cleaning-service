@@ -86,12 +86,14 @@ export interface SupervisorFloor {
 
 export interface SupervisorCleaner {
   id: string;
+  user_id: string;
   full_name: string;
   email: string;
   total_tasks: number;
   total_earning: number;
   base_salary: number;
   incentive_target: number;
+  is_active: boolean;
   floor: SupervisorFloor | null;
 }
 
@@ -211,6 +213,48 @@ export const deleteSupervisor = async (
  */
 export const getSupervisorWorkers = async (): Promise<SupervisorWorker[]> => {
   const response = await api.get('/supervisors/workers');
+  return response.data.data;
+};
+
+export const getCleanerDetail = async (id: string) => {
+  const response = await api.get(`/workers/cleaners/${id}`);
+  return response.data;
+};
+
+export const updateCleaner = async (id: string, payload: any) => {
+  const response = await api.patch(`/workers/cleaners/${id}`, payload);
+  return response.data;
+};
+
+export const deleteCleaner = async (id: string) => {
+  const response = await api.delete(`/workers/cleaners/${id}`);
+  return response.data;
+};
+
+export const toggleUserStatus = async (id: string, isActive: boolean) => {
+  const response = await api.patch(`/api/auth/users/${id}/status`, { is_active: isActive });
+  return response.data;
+};
+
+export const resetUserPassword = async (id: string, newPassword: string) => {
+  const response = await api.patch(`/api/auth/users/${id}/reset-password`, {
+    new_password: newPassword,
+  });
+  return response.data;
+};
+
+export const getCleanerBuildings = async () => {
+  const response = await api.get('/api/buildings');
+  return response.data.data;
+};
+
+export const getFloorsForBuilding = async (buildingId: string) => {
+  const response = await api.get(`/api/auth/buildings/${buildingId}/floors`);
+  return response.data.data;
+};
+
+export const getSupervisorsForBuilding = async (buildingId: string) => {
+  const response = await api.get(`/api/auth/buildings/${buildingId}/supervisors`);
   return response.data.data;
 };
 
@@ -465,6 +509,204 @@ export const getSalaryCycles = async () => {
 
 export const lockSalaryPeriod = async (cycleId: string) => {
   const response = await api.post(`/salary/lock/${cycleId}`);
+  return response.data;
+};
+
+export const getSalaryPeriod = async (periodId: string) => {
+  const response = await api.get(`/salary/period/${periodId}`);
+  return response.data;
+};
+
+export const calculateSalaries = async (periodId: string) => {
+  const response = await api.post(`/salary/calculate/${periodId}`);
+  return response.data;
+};
+
+export const markSalaryPeriodPaid = async (periodId: string) => {
+  const response = await api.patch(`/salary/period/${periodId}/pay`);
+  return response.data;
+};
+
+export const finalizeSalaryRecord = async (id: string, notes?: string) => {
+  const response = await api.patch(`/salary/record/${id}/finalize`, { notes });
+  return response.data;
+};
+
+export const unfinalizeSalaryRecord = async (id: string) => {
+  const response = await api.patch(`/salary/record/${id}/unfinalize`);
+  return response.data;
+};
+
+export const exportSalaryCSV = async (id: string) => {
+  const response = await api.get(`/salary/export/csv/${id}`);
+  return response.data;
+};
+
+export const exportSalaryExcel = async (id: string) => {
+  const response = await api.get(`/salary/export/excel/${id}`);
+  return response.data;
+};
+
+export const getMonthlyReport = async (params: any) => {
+  const response = await api.get('/salary/reports/monthly', { params });
+  return response.data;
+};
+
+export const getCleanerSalaryHistory = async (id: string) => {
+  const response = await api.get(`/salary/history/cleaner/${id}`);
+  return response.data;
+};
+
+export interface UpdateCleanerPayload {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  age?: number;
+  password?: string;
+  nationality?: string;
+  document_id?: string;
+  base_salary?: number;
+  profile_image?: string;
+  building_id?: string;
+  floor_id?: string;
+  supervisor_id?: string;
+}
+
+export interface CleanerDetail {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  age?: number;
+  nationality?: string;
+  documentId?: string;
+  baseSalary?: number;
+  profileImage?: string;
+  building?: { id: string; name: string; building_name?: string; location?: string };
+  floor?: { id: string; name: string; number?: string | number; floor_number?: number; floor_name?: string };
+  supervisor?: { id: string; name: string; full_name?: string };
+}
+
+export interface FloorOption {
+  id: string;
+  name: string;
+  floor_number?: number;
+  floor_name?: string;
+}
+
+export interface SupervisorOption {
+  id: string;
+  name: string;
+  full_name?: string;
+}
+
+export interface BuildingDropdownItem {
+  id: string;
+  name: string;
+  building_name?: string;
+  location?: string;
+}
+
+export interface MonthlyReportRow {
+  period_id: string;
+  period_name: string;
+  start_date: string;
+  end_date: string;
+  total_cleaners: number;
+  total_base: string | number;
+  total_task_amount: string | number;
+  total_incentives: string | number;
+  total_penalties: string | number;
+  total_adjustments: string | number;
+  total_net: string | number;
+  period_status: string;
+}
+
+export interface CleanerSalaryHistoryRow {
+  id: string;
+  period_name: string;
+  start_date: string;
+  end_date: string;
+  base_salary: string | number;
+  total_tasks: number;
+  total_task_amount: string | number;
+  total_incentives: string | number;
+  total_penalties: string | number;
+  total_adjustments: string | number;
+  net_salary: string | number;
+  status: string;
+}
+
+
+export interface SalaryPeriod {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  total_net: number;
+}
+
+export interface SalaryRecord {
+  id: string;
+  worker_id: string;
+  full_name: string;
+  profile_image?: string;
+  building_id?: string;
+  building_name?: string;
+  floor_id?: string;
+  floor_number?: number;
+  base_salary: number;
+  total_tasks: number;
+  total_task_amount: number;
+  total_incentives: number;
+  total_penalties: number;
+  total_adjustments: number;
+  net_salary: number;
+  status: string;
+  finalized_by_name?: string;
+  salary_period_id: string;
+  period_name: string;
+  start_date: string;
+  end_date: string;
+  supervisor_name?: string;
+  finalized_at?: string;
+  notes?: string;
+}
+
+export interface SalaryAdjustment {
+  id: string;
+  salary_record_id: string;
+  type: 'bonus' | 'deduction';
+  amount: number;
+  reason: string;
+  created_by_name?: string;
+  created_at: string;
+}
+
+export interface SalaryRecordDetail {
+  record: SalaryRecord;
+  tasks: any[];
+  incentives: any[];
+  penalties: any[];
+  dailyBreakdown: any[];
+  adjustments: SalaryAdjustment[];
+}
+
+// ─── Salary API Extensions ────────────────────────────────────────────────
+
+export const getSalaryRecordDetail = async (id: string) => {
+  const response = await api.get(`/salary/records/${id}`);
+  return response.data;
+};
+
+export const addSalaryAdjustment = async (recordId: string, data: any) => {
+  const response = await api.post(`/salary/records/${recordId}/adjustments`, data);
+  return response.data;
+};
+
+export const deleteSalaryAdjustment = async (id: string) => {
+  const response = await api.delete(`/salary/adjustments/${id}`);
   return response.data;
 };
 

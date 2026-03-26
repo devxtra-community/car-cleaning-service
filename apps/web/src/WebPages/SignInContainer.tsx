@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import carlogo from '../assets/carlogo.png';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { useAlert } from '../context/AlertContext';
 
 const Login = () => {
   const [loginInput, setLoginInput] = useState({
@@ -12,6 +13,7 @@ const Login = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { showAlert } = useAlert();
 
   const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -32,7 +34,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login failed', error);
-      alert('Login failed');
+      await showAlert('Access denied. Please check your credentials.', 'Login Failed');
     }
   };
 
