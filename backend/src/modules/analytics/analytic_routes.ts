@@ -16,8 +16,8 @@ import { authMiddleware } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
 
 const router = Router();
-router.use(authMiddleware);
-router.use(allowRoles('admin', 'accountant'));
+// router.use(authMiddleware);
+// router.use(allowRoles('admin', 'accountant'));
 router.get('/daily', dailyProgressController);
 router.get('/weekly', weeklyProgressController);
 router.get('/monthly', monthlyProgressController);
