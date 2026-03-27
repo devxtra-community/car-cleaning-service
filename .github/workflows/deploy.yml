@@ -29,9 +29,8 @@ jobs:
             export HUSKY=0
 
             cd backend
-            npm install -g pnpm
-            pnpm install
-            pnpm run build
+            npx pnpm install
+            npx pnpm run build
 
             pm2 restart car-cleaning-api
             pm2 save
