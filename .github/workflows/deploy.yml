@@ -27,7 +27,7 @@ jobs:
             # Build frontend and copy to nginx folder
             cd apps/web
             npx pnpm install
-            export VITE_API_URL="http://3.80.46.40:3033"
+            export VITE_API_URL="http://3.80.46.40"
             npx pnpm run build
             sudo rm -rf /var/www/carwash/*
             sudo cp -r dist/* /var/www/carwash/
