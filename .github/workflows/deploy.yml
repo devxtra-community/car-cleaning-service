@@ -18,7 +18,7 @@ jobs:
 
           script: |
             set -e
-            cd /var/www/car-cleaning/car-cleaning-service
+            cd /home/batman/project/car-cleaning-service
             git pull origin main
 
             export HUSKY=0
