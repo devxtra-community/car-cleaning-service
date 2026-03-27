@@ -109,7 +109,7 @@ export const refresh = async (req: Request, res: Response) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        path: '/api/auth/refresh',
+        path: '/',
         maxAge: 7 * 86400000,
       });
     }
