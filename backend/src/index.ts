@@ -100,9 +100,19 @@ app.get('/api/debug-test', (_req, res) => {
   res.json({ message: 'API Proxy working perfectly' });
 });
 
-// Routes
-app.use('/api/auth', authRouter);
+// Logging middleware to debug 404s
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api')) {
+    console.log(`[API REQUEST] ${req.method} ${req.url}`);
+  }
+  next();
+});
+
+// Routes - Priority
 app.use('/api/analytics', analyticRoutes);
+app.use('/api/admin/system', systemRoutes);
+app.use('/api/auth', authRouter);
+
 app.use('/api', attendanceRoutes);
 app.use('/s3', s3Routes);
 app.use('/workers', workersRoutes);
