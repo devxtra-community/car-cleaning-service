@@ -30,6 +30,9 @@ jobs:
 
             cd backend
             npx pnpm install
+            
+            # Increase Node heap memory to prevent Out-Of-Memory crashes on small EC2 instances
+            export NODE_OPTIONS="--max-old-space-size=2048"
             npx pnpm run build
 
             pm2 restart car-cleaning-api
