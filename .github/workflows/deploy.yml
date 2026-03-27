@@ -35,5 +35,5 @@ jobs:
             export NODE_OPTIONS="--max-old-space-size=2048"
             npx pnpm run build
 
-            pm2 restart car-cleaning-api
+            pm2 restart car-cleaning-api || pm2 start dist/index.js --name car-cleaning-api
             pm2 save
