@@ -16,9 +16,9 @@ const os_1 = __importDefault(require("os"));
 const auth_routes_1 = __importDefault(require("./modules/auth/auth_routes"));
 const vechicleRoutes_1 = __importDefault(require("./modules/vehicles/vechicleRoutes"));
 const attendance_routes_1 = __importDefault(require("./modules/attendance/attendance_routes"));
-const salary_routes_1 = __importDefault(require("../src/modules/salary/salary_routes"));
-const tasks_routes_1 = __importDefault(require("../src/modules/tasks/tasks_routes"));
-const workers_routes_1 = __importDefault(require("../src/modules/Worker/workers_routes"));
+const salary_routes_1 = __importDefault(require("./modules/salary/salary_routes"));
+const tasks_routes_1 = __importDefault(require("./modules/tasks/tasks_routes"));
+const workers_routes_1 = __importDefault(require("./modules/Worker/workers_routes"));
 const buildings_routes_1 = __importDefault(require("./modules/buildings/buildings_routes"));
 const incentives_routes_1 = __importDefault(require("./modules/incentives/incentives_routes"));
 const analytic_routes_1 = __importDefault(require("./modules/analytics/analytic_routes"));
@@ -42,21 +42,19 @@ app.use((req, _res, next) => {
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());
 app.use((0, cors_1.default)({
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:8081',
-        'http://10.10.2.230:8081',
-        'http://10.10.1.203:8081',
-        'http://10.10.3.21:8081',
-        'http://10.10.3.182.1:8081',
-        'http://10.10.2.19.1:8081',
-        'http://10.10.1.164:8081',
-    ],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin)
+            return callback(null, true);
+        // In production, you might want to restrict this to your actual domain
+        // For now, allowing all while we transition to a reverse proxy setup
+        callback(null, true);
+    },
     credentials: true,
 }));
 // Register maintenance middleware early
 app.use(maintenance_1.maintenanceMiddleware);
-const PORT = 3033;
+const PORT = Number(process.env.PORT) || 3033;
 (0, connectDatabase_1.connectDatabase)();
 app.use('/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
 app.get('/health', async (_req, res) => {
@@ -87,6 +85,7 @@ app.get('/test', (_req, res) => {
 });
 // Routes
 app.use('/api/auth', auth_routes_1.default);
+app.use('/api/analytics', analytic_routes_1.default);
 app.use('/api', attendance_routes_1.default);
 app.use('/s3', s3_1.default);
 app.use('/workers', workers_routes_1.default);
@@ -98,7 +97,6 @@ app.use('/tasks', tasks_routes_1.default);
 app.use('/api/salary', salary_routes_1.default);
 app.use('/api/incentives', incentives_routes_1.default);
 app.use('/penalties', penalties_routes_1.default);
-app.use('/analytics', analytic_routes_1.default);
 app.use('/feedback', review_routes_1.default);
 app.use('/supervisors', supervisor_routes_1.default);
 app.use('/api/floors', floorRoutes_1.default);

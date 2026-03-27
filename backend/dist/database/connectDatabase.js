@@ -25,6 +25,10 @@ const getPool = () => {
             },
             connectionTimeoutMillis: 5000,
         });
+        // Add error listener to prevent process crashes on idle db connections
+        poolInstance.on('error', (err) => {
+            logger_1.logger.error('Unexpected error on idle client', { err });
+        });
     }
     return poolInstance;
 };

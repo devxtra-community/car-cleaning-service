@@ -63,7 +63,7 @@ const peakActivityController = async (req, res) => {
         const data = await (0, analytics_service_1.getPeakActivity)(period || 'monthly');
         res.json({ success: true, data });
     }
-    catch (err) {
+    catch {
         res.status(500).json({ success: false, message: 'Failed to fetch peak activity data' });
     }
 };

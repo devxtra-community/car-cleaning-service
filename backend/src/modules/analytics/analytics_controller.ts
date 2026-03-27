@@ -71,9 +71,11 @@ export const collectionsReconciliationController = async (req: Request, res: Res
 export const peakActivityController = async (req: Request, res: Response) => {
   try {
     const { period } = req.query;
-    const data = await getPeakActivity((period as any) || 'monthly');
+    const data = await getPeakActivity(
+      (period as 'daily' | 'weekly' | 'monthly' | undefined) || 'monthly'
+    );
     res.json({ success: true, data });
-  } catch (err) {
+  } catch {
     res.status(500).json({ success: false, message: 'Failed to fetch peak activity data' });
   }
 };

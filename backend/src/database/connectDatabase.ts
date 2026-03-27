@@ -12,7 +12,7 @@ const STARTUP_RETRY_DELAY_MS = 3000;
 const RECONNECT_INTERVAL_MS = 10000;
 
 let isDbConnected = false;
-let reconnectInterval: NodeJS.Timeout | null = null;
+let reconnectInterval: ReturnType<typeof setInterval> | null = null;
 
 let poolInstance: Pool | null = null;
 
@@ -25,7 +25,7 @@ export const getPool = () => {
       },
       connectionTimeoutMillis: 5000,
     });
-    
+
     // Add error listener to prevent process crashes on idle db connections
     poolInstance.on('error', (err) => {
       logger.error('Unexpected error on idle client', { err });
@@ -33,7 +33,6 @@ export const getPool = () => {
   }
   return poolInstance;
 };
-
 
 // Backward-compatible `pool` export via lazy proxy
 export const pool = {

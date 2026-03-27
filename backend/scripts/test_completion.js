@@ -10,7 +10,7 @@ const runTest = async () => {
   try {
     // 1. Login
     console.log('Logging in...');
-    const loginRes = await axios.post(`${BASE_URL}/api/auth/login`, {
+    await axios.post(`${BASE_URL}/api/auth/login`, {
       email: 'johndoe@example.com', // Need valid credentials
       password: 'password123',
     });
@@ -23,3 +23,5 @@ const runTest = async () => {
     console.error(err);
   }
 };
+
+runTest();

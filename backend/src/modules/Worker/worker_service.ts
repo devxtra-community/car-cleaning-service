@@ -66,8 +66,8 @@ export interface CleanerFullDetailsResponse {
   tasks: CleanerTaskDetails[];
   incentives: CleanerIncentiveDetails[];
   penalties: CleanerPenaltyDetails[];
-  assignedVehicles: any[];
-  assignmentHistory: any[];
+  assignedVehicles: unknown[];
+  assignmentHistory: unknown[];
 }
 
 export const getCleanerFullDetailsService = async (
