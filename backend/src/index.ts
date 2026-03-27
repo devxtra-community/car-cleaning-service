@@ -96,6 +96,10 @@ app.get('/test', (_req, res) => {
   res.json({ message: 'Backend reachable' });
 });
 
+app.get('/api/debug-test', (_req, res) => {
+  res.json({ message: 'API Proxy working perfectly' });
+});
+
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/analytics', analyticRoutes);
