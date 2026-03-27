@@ -23,7 +23,8 @@ jobs:
               git clone https://github.com/devxtra-community/car-cleaning-service.git
             fi
             cd /home/ec2-user/car-cleaning-service
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             export HUSKY=0
 
