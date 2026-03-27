@@ -4,6 +4,7 @@ import SERVER_URL from './serverURL';
 export const api = axios.create({
   baseURL: SERVER_URL,
   withCredentials: true, // IMPORTANT for cookies
+  timeout: 10000, // 10 seconds timeout
 });
 
 let accessToken: string | null = null;
