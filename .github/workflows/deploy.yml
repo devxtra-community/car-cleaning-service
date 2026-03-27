@@ -1,13 +1,10 @@
 name: CD - Deploy to EC2
-
 on:
   push:
     branches: ["main"]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -15,7 +12,6 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-
           script: |
             set -e
             if [ ! -d "/home/ec2-user/car-cleaning-service" ]; then
@@ -25,15 +21,19 @@ jobs:
             cd /home/ec2-user/car-cleaning-service
             git fetch origin main
             git reset --hard origin/main
-
             export HUSKY=0
-
-            cd backend
-            npx pnpm install
-            
-            # Increase Node heap memory to prevent Out-Of-Memory crashes on small EC2 instances
             export NODE_OPTIONS="--max-old-space-size=2048"
-            npx pnpm run build
 
+            # Build frontend and copy to nginx folder
+            cd apps/web
+            npx pnpm install
+            npx pnpm run build
+            sudo rm -rf /var/www/carwash/*
+            sudo cp -r dist/* /var/www/carwash/
+
+            # Build backend
+            cd /home/ec2-user/car-cleaning-service/backend
+            npx pnpm install
+            npx pnpm run build
             pm2 restart car-cleaning-api || pm2 start dist/index.js --name car-cleaning-api
             pm2 save
