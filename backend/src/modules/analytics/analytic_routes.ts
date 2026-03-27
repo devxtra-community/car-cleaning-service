@@ -16,6 +16,10 @@ import { authMiddleware } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
 
 const router = Router();
+router.use((req, _res, next) => {
+  console.log(`[ANALYTICS ROUTER HIT] ${req.method} ${req.path}`);
+  next();
+});
 router.use(authMiddleware);
 router.use(allowRoles('admin', 'accountant'));
 router.get('/daily', dailyProgressController);
