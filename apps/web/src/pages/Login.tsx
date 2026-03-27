@@ -23,7 +23,7 @@ const Login = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { showAlert } = useAlert();
+  const { showAlert, showToast } = useAlert();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +31,8 @@ const Login = () => {
 
     try {
       const user = await login(loginInput.email, loginInput.password);
+
+      showToast('Login successful! Welcome back.', 'success');
 
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', loginInput.email);
@@ -45,7 +47,7 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login failed', error);
-      await showAlert('Access denied. Please check your credentials.', 'Login Failed');
+      showToast('Access denied. Please check your credentials.', 'error');
     } finally {
       setLoading(false);
     }

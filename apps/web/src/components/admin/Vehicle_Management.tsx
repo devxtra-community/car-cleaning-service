@@ -21,6 +21,7 @@ const Vehicle_Management = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const itemsPerPage = 5;
@@ -77,18 +78,26 @@ const Vehicle_Management = () => {
   // Calculate stats
   const avgBasePrice =
     vehicles.length > 0
-      ? Math.round(vehicles.reduce((sum, v) => sum + v.base_price, 0) / vehicles.length)
+      ? Math.round(vehicles.reduce((sum, v) => sum + (Number(v.base_price) || 0), 0) / vehicles.length)
       : 0;
   const avgPremiumPrice =
     vehicles.length > 0
-      ? Math.round(vehicles.reduce((sum, v) => sum + v.premium_price, 0) / vehicles.length)
+      ? Math.round(vehicles.reduce((sum, v) => sum + (Number(v.premium_price) || 0), 0) / vehicles.length)
       : 0;
 
-  // Pagination
-  const totalPages = Math.ceil(vehicles.length / itemsPerPage);
+  const formattedBase = new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(avgBasePrice) + ' AED';
+  const formattedPremium = new Intl.NumberFormat('en-AE', { minimumFractionDigits: 0 }).format(avgPremiumPrice) + ' AED';
+
+  // Search and Pagination
+  const filteredVehicles = vehicles.filter((v) =>
+    (v.type || '').toLowerCase().includes(search.toLowerCase()) ||
+    (v.category || '').toLowerCase().includes(search.toLowerCase()) ||
+    (v.size || '').toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentVehicles = vehicles.slice(startIndex, endIndex);
+  const currentVehicles = filteredVehicles.slice(startIndex, endIndex);
 
   return (
     <div className="min-h-screen">
@@ -155,7 +164,7 @@ const Vehicle_Management = () => {
             },
             {
               label: 'Avg Base Rate',
-              value: `${avgBasePrice} AED`,
+              value: formattedBase,
               sub: 'standard price',
               icon: (
                 <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -167,7 +176,7 @@ const Vehicle_Management = () => {
             },
             {
               label: 'Avg Premium Rate',
-              value: `${avgPremiumPrice} AED`,
+              value: formattedPremium,
               sub: 'specialist services',
               icon: (
                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -233,6 +242,47 @@ const Vehicle_Management = () => {
             className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
             style={{ animation: 'fadeUp 0.3s ease both', animationDelay: '120ms' }}
           >
+            {/* Table Header & Toolbar */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap bg-white">
+              <h2 className="text-lg font-semibold text-slate-900 hidden sm:block">Vehicle Directory</h2>
+              <div className="flex items-center gap-3 flex-1 sm:justify-end">
+                <div className="relative w-full sm:max-w-xs">
+                  <svg
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    viewBox="0 0 20 20"
+                  >
+                    <circle cx="9" cy="9" r="6" />
+                    <path strokeLinecap="round" d="M15 15l-3.5-3.5" />
+                  </svg>
+                  <input
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Search vehicles..."
+                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800
+                    focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all"
+                  />
+                </div>
+
+                {search && (
+                  <button
+                    onClick={() => {
+                      setSearch('');
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -274,10 +324,10 @@ const Vehicle_Management = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center font-bold text-slate-900">
-                        {vehicle.base_price} AED
+                        {Number(vehicle.base_price || 0).toLocaleString()} AED
                       </td>
                       <td className="px-6 py-4 text-center font-bold text-slate-900">
-                        {vehicle.premium_price} AED
+                        {Number(vehicle.premium_price || 0).toLocaleString()} AED
                       </td>
                       <td className="px-6 py-4 text-center text-slate-600 font-medium">
                         {vehicle.wash_time} min

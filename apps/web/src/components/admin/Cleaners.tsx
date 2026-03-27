@@ -273,7 +273,12 @@ const Cleaners: React.FC = () => {
             },
             {
               label: 'Total Earning',
-              value: `₹${cleaners.reduce((acc, curr) => acc + (curr.total_earning || 0), 0).toLocaleString()}`,
+              value: (
+                <div className="flex items-baseline gap-1">
+                  <span>{cleaners.reduce((acc, curr) => acc + Number(curr.total_earning || 0), 0).toLocaleString()}</span>
+                  <span className="text-[13px] font-bold text-amber-500">AED</span>
+                </div>
+              ),
               sub: 'all cleaners',
               color: 'text-amber-600',
               bg: 'bg-amber-50',
@@ -295,7 +300,7 @@ const Cleaners: React.FC = () => {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
+                  <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1">
                     {s.label}
                   </p>
@@ -311,46 +316,50 @@ const Cleaners: React.FC = () => {
           ))}
         </div>
 
-        {/* ── Toolbar ──────────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 mb-5 flex-wrap animate-fade-up" style={{ animationDelay: '400ms' }}>
-          <div className="relative flex-1 min-w-[240px] max-w-sm">
-            <svg
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              viewBox="0 0 20 20"
-            >
-              <circle cx="9" cy="9" r="6" />
-              <path strokeLinecap="round" d="M15 15l-3.5-3.5" />
-            </svg>
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search by name, email, building…"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-800
-              focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all"
-            />
+        {/* ── Table Card ───────────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '400ms' }}>
+          
+          {/* Table Header & Toolbar */}
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap bg-white">
+            <h2 className="text-lg font-semibold text-slate-900 hidden sm:block">Cleaner Directory</h2>
+            <div className="flex items-center gap-3 flex-1 sm:justify-end">
+              <div className="relative w-full sm:max-w-xs">
+                <svg
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  viewBox="0 0 20 20"
+                >
+                  <circle cx="9" cy="9" r="6" />
+                  <path strokeLinecap="round" d="M15 15l-3.5-3.5" />
+                </svg>
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search cleaners..."
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800
+                  focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all"
+                />
+              </div>
+
+              {search && (
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setPage(1);
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
-          {search && (
-            <button
-              onClick={() => {
-                setSearch('');
-                setPage(1);
-              }}
-              className="text-xs text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        {/* ── Table Card ───────────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '500ms' }}>
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div className="w-9 h-9 border-[3px] border-slate-200 border-t-blue-600 rounded-full animate-spin" />
@@ -491,7 +500,7 @@ const Cleaners: React.FC = () => {
                       {/* Earning */}
                       <td className="px-5 py-4 text-center">
                         <span className="font-bold text-slate-700">
-                          ₹{Number(c.total_earning || 0).toLocaleString()}
+                          {Number(c.total_earning || 0).toLocaleString()} AED
                         </span>
                       </td>
 

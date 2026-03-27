@@ -426,6 +426,45 @@ const Supervisors: React.FC = () => {
             </table>
           )}
         </div>
+
+        {/* ── Pagination ─────────────────────────────────────────────────── */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-8 flex-wrap gap-3">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium
+              text-slate-600 hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              ← Previous
+            </button>
+
+            <div className="flex gap-1.5">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`w-9 h-9 rounded-xl text-sm font-semibold transition-all
+                  ${page === n
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'border border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
+                    }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium
+              text-slate-600 hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
 
       {editTarget && (

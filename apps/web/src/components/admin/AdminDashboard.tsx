@@ -614,7 +614,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen font-sans text-slate-800">
-      <div className=" mx-auto px-6 py-8">
+      <div className="mx-auto px-6 pt-2 pb-8">
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between mb-8">
           <div>

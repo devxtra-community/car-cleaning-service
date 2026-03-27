@@ -1,5 +1,5 @@
 // src/pages/Incentives/IncentivesManagement.tsx
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, Fragment } from 'react';
 import { api } from '../../services/commonAPI';
 import AddEditTypeModal from './AddEditTypeModal';
 import AddEditRuleModal from './AddEditRuleModal';
@@ -480,388 +480,213 @@ const IncentivesManagement = () => {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-              {filteredTypes.map((type) => {
-                const colors = getCategoryColor(type.category);
-                const isSelected = selectedType?.id === type.id;
-                const ruleCount = getTypeRules(type.id).length;
-                const activeRuleCount = getTypeRules(type.id).filter((r) => r.active).length;
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 border-y border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold text-slate-600">Type Name</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600">Description</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600 text-center">Category</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600 text-center">Rules</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600 text-center">Status</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTypes.map((type) => {
+                    const colors = getCategoryColor(type.category);
+                    const isSelected = selectedType?.id === type.id;
+                    const ruleCount = getTypeRules(type.id).length;
+                    const activeRuleCount = getTypeRules(type.id).filter((r) => r.active).length;
 
-                return (
-                  <div
-                    key={type.id}
-                    onClick={() => setSelectedType(type)}
-                    className={`p-5 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
-                      isSelected
-                        ? `${colors.border} ${colors.bg} shadow-md`
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div
-                        className={`w-12 h-12 ${colors.bg} rounded-xl flex items-center justify-center text-2xl`}
+                    return (
+                      <Fragment key={type.id}>
+                      <tr 
+                        onClick={() => setSelectedType(isSelected ? null : type)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected ? 'bg-blue-50/50 hover:bg-blue-50' : 'hover:bg-slate-50'
+                        }`}
                       >
-                        {getCategoryIcon(type.category)}
-                      </div>
-                      {type.active ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                          Inactive
-                        </span>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 ${colors.bg} rounded-xl flex items-center justify-center text-xl shadow-sm shrink-0 border ${colors.border}`}>
+                              {getCategoryIcon(type.category)}
+                            </div>
+                            <span className={`font-semibold ${isSelected ? 'text-blue-700' : 'text-slate-900'}`}>{type.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-normal max-w-xs">
+                          <span className="text-slate-600 line-clamp-1" title={type.description || 'No description provided'}>
+                            {type.description || 'No description provided'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${colors.badge} ${colors.text}`}>
+                            {type.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                            {activeRuleCount} / {ruleCount}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {type.active ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Inactive
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTypeStatus(type);
+                              }}
+                              className={`px-3 py-1.5 text-xs rounded-lg font-medium transition ${
+                                type.active
+                                  ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {type.active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditType(type);
+                              }}
+                              className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                              title="Edit"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteType(type.id);
+                              }}
+                              className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+                              title="Delete"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isSelected && (
+                        <tr>
+                          <td colSpan={6} className="bg-slate-50/80 border-b border-slate-300 p-0 shadow-inner">
+                            <div className="p-6">
+                              {/* rules section header */}
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <h4 className="text-md font-bold text-slate-800 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    Configured Rules
+                                  </h4>
+                                  <p className="text-xs text-slate-500 mt-0.5">Manage conditions for {type.name}</p>
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddRule();
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                  Add Rule
+                                </button>
+                              </div>
+
+                              {selectedTypeRules.length === 0 ? (
+                                <div className="py-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
+                                  <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                  </div>
+                                  <p className="text-sm font-medium text-slate-600 mb-1">No rules defined</p>
+                                  <p className="text-xs text-slate-400">Add conditions to start calculating incentives</p>
+                                </div>
+                              ) : (
+                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                  <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                      <tr>
+                                        <th className="px-4 py-3 font-semibold text-slate-600">Rule Name</th>
+                                        <th className="px-4 py-3 font-semibold text-slate-600 text-right">Base Amount</th>
+                                        <th className="px-4 py-3 font-semibold text-slate-600 text-center">Priority</th>
+                                        <th className="px-4 py-3 font-semibold text-slate-600">Criteria Details</th>
+                                        <th className="px-4 py-3 font-semibold text-slate-600 text-center">Status</th>
+                                        <th className="px-4 py-3 font-semibold text-slate-600 text-center">Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                      {selectedTypeRules.map((rule) => (
+                                        <tr key={rule.id} className="hover:bg-slate-50 transition-colors">
+                                          <td className="px-4 py-3"><span className="font-semibold text-slate-900">{rule.rule_name}</span></td>
+                                          <td className="px-4 py-3 text-right"><span className="font-semibold text-emerald-600">{rule.base_amount} AED</span></td>
+                                          <td className="px-4 py-3 text-center"><span className="font-semibold text-slate-900">{rule.priority}</span></td>
+                                          <td className="px-4 py-3">
+                                            <div className="flex flex-wrap gap-1.5 max-w-xs whitespace-normal">
+                                              {Object.entries(rule.criteria).map(([key, value]) => (
+                                                <span key={key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 border border-slate-200 text-slate-600">
+                                                  <span className="capitalize">{key.replace(/_/g, ' ')}:</span>
+                                                  <span className="font-bold text-slate-900">{String(value)}</span>
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                            {rule.active ? (
+                                              <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600">Active</span>
+                                            ) : (
+                                              <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500">Inactive</span>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                              <button onClick={(e) => { e.stopPropagation(); toggleRuleStatus(rule); }} className={`px-2 py-1 text-[10px] rounded uppercase font-bold transition ${rule.active ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}>
+                                                {rule.active ? 'Disable' : 'Enable'}
+                                              </button>
+                                              <button onClick={(e) => { e.stopPropagation(); handleEditRule(rule); }} className="p-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition" title="Edit">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                              </button>
+                                              <button onClick={(e) => { e.stopPropagation(); handleDeleteRule(rule.id); }} className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">{type.name}</h3>
-                    <p className="text-sm text-slate-600 mb-3 line-clamp-2">
-                      {type.description || 'No description provided'}
-                    </p>
-
-                    <div className="flex items-center gap-3 mb-3 text-sm">
-                      <span
-                        className={`px-2 py-1 rounded-md ${colors.badge} ${colors.text} font-medium capitalize`}
-                      >
-                        {type.category}
-                      </span>
-                      <span className="text-slate-500">
-                        {activeRuleCount}/{ruleCount} rules
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTypeStatus(type);
-                        }}
-                        className="flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition border border-slate-300 hover:bg-slate-50"
-                      >
-                        {type.active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditType(type);
-                        }}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 transition"
-                        title="Edit"
-                      >
-                        <svg
-                          className="w-4 h-4 text-blue-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteType(type.id);
-                        }}
-                        className="p-1.5 rounded-lg hover:bg-red-50 transition"
-                        title="Delete"
-                      >
-                        <svg
-                          className="w-4 h-4 text-red-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Rules Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {selectedType ? (
-          <>
-            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <h2 className="text-lg font-semibold text-slate-900">
-                      {selectedType.name} - Rules
-                    </h2>
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium ${getCategoryColor(selectedType.category).badge} ${getCategoryColor(selectedType.category).text}`}
-                    >
-                      {selectedType.category}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-600">Manage rules for this incentive type</p>
-                </div>
-                <button
-                  onClick={handleAddRule}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Add Rule
-                </button>
-              </div>
-            </div>
-
-            {selectedTypeRules.length === 0 ? (
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-slate-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">No Rules Defined</h3>
-                <p className="text-slate-600 mb-6">
-                  Add your first rule to start calculating incentives
-                </p>
-                <button
-                  onClick={handleAddRule}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Create First Rule
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {selectedTypeRules.map((rule, index) => (
-                  <div key={rule.id} className="p-6 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 font-semibold text-slate-700">
-                        #{index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-3">
-                          <h3 className="text-lg font-semibold text-slate-900">{rule.rule_name}</h3>
-                          {rule.active ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                              Inactive
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-emerald-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-500">Base Amount</p>
-                              <p className="text-sm font-semibold text-emerald-600">
-                                {rule.base_amount} AED
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"
-                                />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-500">Priority</p>
-                              <p className="text-sm font-semibold text-slate-900">
-                                {rule.priority}
-                              </p>
-                            </div>
-                          </div>
-
-                          {rule.criteria.target_tasks && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
-                                <svg
-                                  className="w-4 h-4 text-amber-600"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                  />
-                                </svg>
-                              </div>
-                              <div>
-                                <p className="text-xs text-slate-500">Target Tasks</p>
-                                <p className="text-sm font-semibold text-slate-900">
-                                  {String(rule.criteria.target_tasks)} tasks
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Rule Details in a more readable format */}
-                        <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                          <p className="text-xs font-medium text-slate-700 mb-2">Rule Details:</p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                            {Object.entries(rule.criteria).map(([key, value]) => (
-                              <div key={key} className="flex items-center gap-2">
-                                <span className="text-slate-600 capitalize">
-                                  {key.replace(/_/g, ' ')}:
-                                </span>
-                                <span className="font-medium text-slate-900">{String(value)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => toggleRuleStatus(rule)}
-                          className={`px-4 py-2 text-xs rounded-lg font-medium transition whitespace-nowrap ${
-                            rule.active
-                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                              : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                          }`}
-                        >
-                          {rule.active ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          onClick={() => handleEditRule(rule)}
-                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
-                          title="Edit"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRule(rule.id)}
-                          className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
-                          title="Delete"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-slate-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">No Type Selected</h3>
-            <p className="text-slate-600">
-              Select an incentive type above to view and manage its rules
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Modals */}

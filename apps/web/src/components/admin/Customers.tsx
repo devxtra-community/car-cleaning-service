@@ -22,6 +22,8 @@ const Customers = () => {
     completedWash: 0,
     completionRate: 0,
   });
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 10;
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -153,7 +155,7 @@ const Customers = () => {
             </thead>
 
             <tbody>
-              {tasks.map((task) => (
+              {tasks.slice((page - 1) * PER_PAGE, page * PER_PAGE).map((task) => (
                 <tr key={task.id} className="border-t hover:bg-gray-50 transition-colors">
                   <td className="p-3">
                     <p className="font-medium">{task.owner_name || 'Unknown'}</p>
@@ -194,6 +196,31 @@ const Customers = () => {
               ))}
             </tbody>
           </table>
+        )}
+
+        {/* Pagination */}
+        {!loading && tasks.length > PER_PAGE && (
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-slate-50/50">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold
+              text-slate-600 hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all bg-white"
+            >
+              ← Prev
+            </button>
+            <div className="flex gap-1 text-sm text-slate-500">
+              Page {page} of {Math.ceil(tasks.length / PER_PAGE)}
+            </div>
+            <button
+              disabled={page === Math.ceil(tasks.length / PER_PAGE)}
+              onClick={() => setPage((p) => Math.min(Math.ceil(tasks.length / PER_PAGE), p + 1))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold
+              text-slate-600 hover:bg-white hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all bg-white"
+            >
+              Next →
+            </button>
+          </div>
         )}
       </div>
     </div>
