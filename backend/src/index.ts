@@ -100,38 +100,28 @@ app.get('/api/debug-test', (_req, res) => {
   res.json({ message: 'API Proxy working perfectly' });
 });
 
-// Logging middleware to debug 404s
-app.use((req, res, next) => {
-  if (req.url.startsWith('/api')) {
-    console.log(`[API REQUEST] ${req.method} ${req.url}`);
-  }
-  next();
-});
-
-// Routes - Priority
+// ─── Routes ───────────────────────────────────────────────────────────────────
+// IMPORTANT: More specific routes must come BEFORE generic catch-all mounts
 app.use('/api/analytics', analyticRoutes);
 app.use('/api/admin/system', systemRoutes);
 app.use('/api/auth', authRouter);
-
-app.use('/api', attendanceRoutes);
-app.use('/s3', s3Routes);
-app.use('/workers', workersRoutes);
 app.use('/api/vehicle', vechicleRoutes);
 app.use('/api/buildings', buildingsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/supervisor', supervisorRoute);
-
-app.use('/tasks', taskRoutes);
 app.use('/api/salary', salaryRoute);
 app.use('/api/incentives', incentiveRoutes);
+app.use('/api/floors', floorRoute);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/admins', Adminaccountantrouter);
+app.use('/api/accountants', Adminaccountantrouter);
+app.use('/api', attendanceRoutes);
+app.use('/s3', s3Routes);
+app.use('/workers', workersRoutes);
+app.use('/tasks', taskRoutes);
 app.use('/penalties', penaltiesRoutes);
 app.use('/feedback', reviewRoutes);
-app.use('/supervisors', supervisorRoute);
-app.use('/api/floors', floorRoute);
 app.use('/fraud', fraudRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/admin/system', systemRoutes);
-app.use('/api', Adminaccountantrouter);
 
 // Catch-all for unmatched routes
 app.use((req, res, _next) => {
