@@ -7,3 +7,7 @@ frontend/dist/
 apps/**/dist/
 *.log
 *.apk
+
+# Ignore generated SSH keys
+github_actions_ec2*
+new_ec2_key*
