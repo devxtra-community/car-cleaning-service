@@ -29,7 +29,14 @@ router.get('/cleaner-performance', cleanerPerformanceController);
 router.get('/collections-reconciliation', collectionsReconciliationController);
 router.get('/peak-activity', peakActivityController);
 router.get('/building-comparison', getBuildingComparison);
+router.get('/building_comparison', getBuildingComparison); // Alias for cached UI
+
 router.get('/rating-summary', getCustomerRatingSummary);
+router.get('/rating_summary', getCustomerRatingSummary); // Alias for cached UI
+
+router.get('/cleaner-performance', cleanerPerformanceController);
+router.get('/cleaner_performance', cleanerPerformanceController); // Alias for cached UI
+
 router.get('/fraud-trends', getFraudTrends);
 router.get('/summary', adminSummaryController);
 router.get('/customer-report', customerReportController);
