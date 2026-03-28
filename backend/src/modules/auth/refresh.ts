@@ -155,7 +155,7 @@ export const refresh = async (req: Request, res: Response) => {
       res.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/',
         domain: process.env.COOKIE_DOMAIN || undefined,
         maxAge: 7 * 86400000,
