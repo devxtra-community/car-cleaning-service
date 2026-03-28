@@ -18,21 +18,27 @@ export const getAccessToken = () => {
 };
 
 api.interceptors.request.use((config) => {
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+  // Don't add Authorization header to login/refresh requests if we are about to refresh
+  const isAuthRequest =
+    config.url && (config.url.includes('/auth/login') || config.url.includes('/auth/refresh'));
+
+  if (accessToken && !isAuthRequest) {
+    if (config.headers) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
   }
   return config;
 });
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshSubscribers: ((token: string | null) => void)[] = [];
 
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
+const subscribeTokenRefresh = (cb: (token: string | null) => void) => {
   refreshSubscribers.push(cb);
 };
 
-const onRefreshed = (token: string) => {
-  refreshSubscribers.map((cb) => cb(token));
+const onRefreshed = (token: string | null) => {
+  refreshSubscribers.forEach((cb) => cb(token));
   refreshSubscribers = [];
 };
 
@@ -42,7 +48,7 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Prevent infinite loop: if the failed request IS the refresh request, don't retry.
+      // Prevent infinite loop
       if (
         originalRequest.url &&
         (originalRequest.url.includes('/auth/refresh') ||
@@ -52,9 +58,16 @@ api.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((token: string | null) => {
+            if (!token) {
+              return reject(error);
+            }
+            // Re-create the request with the new token
+            originalRequest._retry = true;
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
             resolve(api(originalRequest));
           });
         });
@@ -68,17 +81,27 @@ api.interceptors.response.use(
         const res = await api.post('/api/auth/refresh');
         const newAccessToken = res.data.accessToken;
 
+        if (!newAccessToken) {
+          throw new Error('No access token in refresh response');
+        }
+
         setAccessToken(newAccessToken);
         isRefreshing = false;
         onRefreshed(newAccessToken);
 
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
         return api(originalRequest);
       } catch (refreshError) {
         isRefreshing = false;
         setAccessToken(null);
-        // Correct path to /login (capital L as per App.jsx)
-        window.location.href = '/login';
+        onRefreshed(null); // reject all subscribers
+        localStorage.removeItem('hasSession');
+        // Prevent redirect if we are already on login page
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }

@@ -10,62 +10,109 @@ import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../../database/connectDatabase';
 
 export const refresh = async (req: Request, res: Response) => {
-  const client = await pool.connect();
+  let client: any;
 
   try {
-    console.log('==== REFRESH HIT ====');
-    console.log('BODY:', req.body);
-    console.log('COOKIES:', req.cookies);
-    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    client = await pool.connect();
+    const rawTokens = req.cookies?.refreshToken;
+    // ... (rest of the logic)
 
-    if (!refreshToken) {
+    const tokensToTry: string[] = [];
+
+    if (Array.isArray(rawTokens)) {
+      tokensToTry.push(...rawTokens);
+    } else if (rawTokens) {
+      tokensToTry.push(rawTokens);
+    }
+
+    if (req.body?.refreshToken && !tokensToTry.includes(req.body.refreshToken)) {
+      tokensToTry.push(req.body.refreshToken);
+    }
+
+    if (tokensToTry.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Refresh token missing',
       });
     }
 
-    const payload = verifyRefreshToken(refreshToken);
-    console.log('REFRESH PAYLOAD:', payload);
+    let validToken: string | null = null;
+    let lastError: any = null;
+    let payload: any = null;
+    let dbRow: any = null;
+    let hasRevokedToken = false;
+    let revokedUserId: string | null = null;
+
+    console.log(`[AUTH-REFRESH] Refreshing. Found ${tokensToTry.length} potential tokens.`);
+    if (tokensToTry.length > 1) {
+      console.log(`[AUTH-REFRESH] Multiple cookies/tokens detected!`);
+    }
+
+    // Try each token until one works with the DB
+    for (const token of tokensToTry) {
+      try {
+        const decoded = verifyRefreshToken(token);
+
+        const { rows } = await client.query(
+          `
+          SELECT rt.user_id, u.token_version, u.role, rt.revoked, rt.expires_at
+          FROM refresh_tokens rt
+          JOIN users u ON u.id = rt.user_id
+          WHERE rt.token_id = $1
+            AND rt.token_hash = $2
+          `,
+          [decoded.tokenId, hashToken(token)]
+        );
+
+        if (rows.length > 0) {
+          const row = rows[0];
+
+          // Check if it's actually valid (not revoked, not expired, matches version)
+          if (
+            !row.revoked &&
+            new Date(row.expires_at) > new Date() &&
+            row.token_version === decoded.tokenVersion
+          ) {
+            validToken = token;
+            payload = decoded;
+            dbRow = row;
+            break;
+          } else if (row.revoked) {
+            // Track reuse attempt but don't fail immediately in case a valid duplicate exists
+            hasRevokedToken = true;
+            revokedUserId = row.user_id;
+          }
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (!validToken) {
+      if (hasRevokedToken && revokedUserId) {
+        console.warn(
+          `[SECURITY] Revoked token reused for user ${revokedUserId} and no valid duplicate found. Revoking all!`
+        );
+        await client.query('BEGIN');
+        await client.query(`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`, [
+          revokedUserId,
+        ]);
+        await client.query('COMMIT');
+        return res.status(401).json({
+          success: false,
+          message: 'Refresh token reused or invalid',
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+    }
 
     const { userId, tokenId, tokenVersion, clientType } = payload;
 
     await client.query('BEGIN');
-
-    const { rows } = await client.query(
-      `
-      SELECT rt.user_id, u.token_version, u.role
-      FROM refresh_tokens rt
-      JOIN users u ON u.id = rt.user_id
-      WHERE rt.token_id = $1
-        AND rt.token_hash = $2
-        AND rt.revoked = FALSE
-        AND rt.expires_at > NOW()
-      `,
-      [tokenId, hashToken(refreshToken)]
-    );
-
-    if (!rows.length) {
-      await client.query(`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`, [userId]);
-
-      await client.query('COMMIT');
-
-      return res.status(401).json({
-        success: false,
-        message: 'Refresh token reused or invalid',
-      });
-    }
-
-    if (rows[0].token_version !== tokenVersion) {
-      await client.query(`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1`, [userId]);
-
-      await client.query('COMMIT');
-
-      return res.status(401).json({
-        success: false,
-        message: 'Session expired',
-      });
-    }
 
     // delete old token
     await client.query(`DELETE FROM refresh_tokens WHERE token_id = $1`, [tokenId]);
@@ -80,7 +127,7 @@ export const refresh = async (req: Request, res: Response) => {
     const newAccessToken = generateAccessToken(
       {
         userId,
-        role: rows[0]?.role || 'user',
+        role: dbRow.role || 'user',
         tokenVersion,
       },
       clientType
@@ -110,6 +157,7 @@ export const refresh = async (req: Request, res: Response) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
+        domain: process.env.COOKIE_DOMAIN || undefined,
         maxAge: 7 * 86400000,
       });
     }
@@ -120,14 +168,22 @@ export const refresh = async (req: Request, res: Response) => {
       ...(clientType === 'mobile' && { refreshToken: newRefreshToken }),
     });
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.log('REFRESH ERROR:', err);
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Rollback failed:', rollbackErr);
+      }
+    }
+    console.error('REFRESH ERROR:', err);
 
     return res.status(500).json({
       success: false,
       message: 'Refresh crashed',
     });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 };

@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EyeIcon, EyeSlashIcon, LockClosedIcon, EnvelopeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  EnvelopeIcon,
+  ArrowRightIcon,
+} from '@heroicons/react/24/outline';
 import carlogo from '../assets/carlogo.png';
 import bgVideo from '../assets/bg-video.mp4';
 import { Link, useNavigate } from 'react-router-dom';
@@ -24,6 +30,12 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { showAlert } = useAlert();
+
+  useEffect(() => {
+    // Attempt to clear any non-httpOnly duplicate cookies that might be lingering
+    // from older versions of the app or different active paths to ensure a clean state
+    document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +65,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      
       {/* --- VIDEO BACKGROUND LAYER --- */}
       <video
         autoPlay
@@ -64,7 +75,7 @@ const Login = () => {
       >
         <source src={bgVideo} type="video/mp4" />
       </video>
-      
+
       {/* --- DARK OVERLAY FOR GLASS --- */}
       <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply z-0"></div>
       <div className="absolute inset-0 bg-blue-900/20 mix-blend-overlay z-0"></div>
@@ -74,7 +85,7 @@ const Login = () => {
       </AnimatePresence>
 
       {/* --- LOGIN CARD (TRUE GLASSMORPHISM) --- */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
@@ -82,9 +93,9 @@ const Login = () => {
       >
         <div className="bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_32px_128px_-12px_rgba(0,0,0,0.8)] rounded-[2.5rem] p-10 sm:p-12 relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-          
+
           {/* Branding */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
@@ -104,7 +115,7 @@ const Login = () => {
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Email Field */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4, duration: 0.5 }}
@@ -127,7 +138,7 @@ const Login = () => {
             </motion.div>
 
             {/* Password Field */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
@@ -170,7 +181,7 @@ const Login = () => {
             </motion.div>
 
             {/* Additional Options */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.5 }}
@@ -213,12 +224,14 @@ const Login = () => {
               className="w-full bg-blue-600 text-white py-4 rounded-[1.25rem] font-black text-sm uppercase tracking-widest shadow-[0_15px_30px_-10px_rgba(37,99,235,0.5)] hover:bg-blue-500 hover:shadow-[0_20px_40px_-10px_rgba(37,99,235,0.6)] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group border border-blue-500/50"
             >
               <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
-              {!loading && <ArrowRightIcon className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />}
+              {!loading && (
+                <ArrowRightIcon className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              )}
             </motion.button>
           </form>
 
           {/* Footer */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8, duration: 0.5 }}
