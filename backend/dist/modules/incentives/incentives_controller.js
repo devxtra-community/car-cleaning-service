@@ -4,6 +4,12 @@ exports.getMonthlyIncentiveSummaryController = exports.getDailyWorkRecordsContro
 const incentives_service_1 = require("./incentives_service");
 const connectDatabase_1 = require("../../database/connectDatabase");
 const getParamString = (value) => Array.isArray(value) ? value[0] : value;
+const normalizeScopeId = (value) => {
+    if (typeof value !== 'string')
+        return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+};
 /* ================= INCENTIVE TARGETS (simple task-count targets) ================= */
 const getAllIncentiveTargetsController = async (_, res) => {
     try {
@@ -37,9 +43,9 @@ const createIncentiveTargetController = async (req, res) => {
             reason,
             Number(target_tasks),
             Number(incentive_amount),
-            cleaner_id || null,
-            building_id || null,
-            floor_id || null,
+            normalizeScopeId(cleaner_id),
+            normalizeScopeId(building_id),
+            normalizeScopeId(floor_id),
         ]);
         return res.status(201).json({ success: true, data: result.rows[0] });
     }
@@ -53,22 +59,28 @@ const updateIncentiveTargetController = async (req, res) => {
     try {
         const { id } = req.params;
         const { target_tasks, reason, incentive_amount, cleaner_id, building_id, floor_id, active } = req.body;
+        const cleanerIdProvided = Object.prototype.hasOwnProperty.call(req.body, 'cleaner_id');
+        const buildingIdProvided = Object.prototype.hasOwnProperty.call(req.body, 'building_id');
+        const floorIdProvided = Object.prototype.hasOwnProperty.call(req.body, 'floor_id');
         const result = await connectDatabase_1.pool.query(`UPDATE incentive_targets
        SET reason = COALESCE($1, reason),
            target_tasks = COALESCE($2, target_tasks),
            incentive_amount = COALESCE($3, incentive_amount),
-           cleaner_id = COALESCE($4, cleaner_id),
-           building_id = COALESCE($5, building_id),
-           floor_id = COALESCE($6, floor_id),
-           active = COALESCE($7, active),
+           cleaner_id = CASE WHEN $4 THEN $5 ELSE cleaner_id END,
+           building_id = CASE WHEN $6 THEN $7 ELSE building_id END,
+           floor_id = CASE WHEN $8 THEN $9 ELSE floor_id END,
+           active = COALESCE($10, active),
            updated_at = NOW()
-       WHERE id = $8 RETURNING *`, [
+       WHERE id = $11 RETURNING *`, [
             reason,
             target_tasks !== undefined ? Number(target_tasks) : undefined,
             incentive_amount !== undefined ? Number(incentive_amount) : undefined,
-            cleaner_id || null,
-            building_id || null,
-            floor_id || null,
+            cleanerIdProvided,
+            normalizeScopeId(cleaner_id),
+            buildingIdProvided,
+            normalizeScopeId(building_id),
+            floorIdProvided,
+            normalizeScopeId(floor_id),
             active,
             id,
         ]);

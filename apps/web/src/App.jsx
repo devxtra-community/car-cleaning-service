@@ -42,80 +42,93 @@ const AnalyticsProgress = lazy(() => import('./components/shared/AnalyticsProgre
 const SalaryCycle = lazy(() => import('./components/shared/SalaryCycles'));
 const SalaryList = lazy(() => import('./components/shared/SalaryList'));
 const SalarySummary = lazy(() => import('./components/shared/SalarySummary'));
+const RoleBasedSalary = lazy(() => import('./components/shared/RoleBasedSalary'));
+const SalaryReports = lazy(() => import('./components/shared/Salaryreports'));
 const BuildingDetailsPage = lazy(() => import('./components/admin/BuildingDetails'));
 const EditBuilding = lazy(() => import('./components/admin/EditBuilding'));
 const AdminListing = lazy(() => import('./components/admin/Admins'));
 const AccountantListing = lazy(() => import('./components/admin/Accountant'));
+const OperationalReports = lazy(() => import('./components/admin/OperationalReports'));
+const TargetManagement = lazy(() => import('./components/admin/TargetManagement'));
+const PerformanceInsights = lazy(() => import('./components/admin/PerformanceInsights'));
 
 function App() {
   return (
     <AuthProvider>
       <AlertProvider>
         <Suspense fallback={<Loader />}>
-        <Routes>
-          {/* Default route */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Routes>
+            {/* Default route */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* Public */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/privacyPolicy" element={<PrivacyPolicy />} />
+            {/* Public */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/privacyPolicy" element={<PrivacyPolicy />} />
 
-          {/* Accountant Portal */}
-          <Route path="/accountant" element={<AccountantPortal />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Accountant />} />
+            {/* Accountant Portal */}
+            <Route path="/accountant" element={<AccountantPortal />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<Accountant />} />
 
-            {/* Shared salary pages */}
-            <Route path="salaryFinalization" element={<SalaryFinalization />} />
-            <Route path="monthlyReport" element={<MonthlyReport />} />
-            <Route path="reconciliation" element={<Reconciliation />} />
-            <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
-            <Route path="incentives" element={<IncentivesDashboard />} />
-          </Route>
+              {/* Shared salary pages */}
+              <Route path="salaryFinalization" element={<SalaryFinalization />} />
+              <Route path="monthlyReport" element={<MonthlyReport />} />
+              <Route path="reconciliation" element={<Reconciliation />} />
+              <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
+              <Route path="incentives" element={<IncentivesDashboard />} />
+              <Route path="role-salaries" element={<RoleBasedSalary />} />
+              <Route path="revenueReport" element={<SalaryReports />} />
+              <Route path="insights" element={<PerformanceInsights />} />
+            </Route>
 
-          {/* Admin Portal */}
-          <Route path="/admin" element={<AdminPortal />}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
+            {/* Admin Portal */}
+            <Route path="/admin" element={<AdminPortal />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
 
-            <Route path="customer" element={<Customers />} />
+              <Route path="customer" element={<Customers />} />
 
-            <Route path="vechicles" element={<VehicleManagement />} />
-            <Route path="vechicles/addVehicles" element={<AddVehicles />} />
+              <Route path="vechicles" element={<VehicleManagement />} />
+              <Route path="vechicles/addVehicles" element={<AddVehicles />} />
 
-            <Route path="buildings" element={<BuildingsManagement />} />
-            <Route path="buildings/add" element={<AddBuilding />} />
+              <Route path="buildings" element={<BuildingsManagement />} />
+              <Route path="buildings/add" element={<AddBuilding />} />
 
-            <Route path="cleaners" element={<Cleaners />} />
+              <Route path="cleaners" element={<Cleaners />} />
 
-            <Route path="supervisors" element={<Supervisors />} />
-            <Route path="supervisor/:supervisorId" element={<CleanerUnderSupervisorDetails />} />
-            <Route path="register/:role" element={<RegisterUser />} />
-            <Route path="register/:role" element={<RegisterUser />} />
-            <Route path="cleaner/:cleanerId" element={<CleanerDetails />} />
-            <Route path="buildings/:buildingId" element={<BuildingDetailsPage />} />
-            <Route path="buildings/:buildingId/edit" element={<EditBuilding />} />
-            {/* Shared salary pages for admin also */}
-            <Route path="salaryFinalization" element={<SalaryFinalization />} />
-            <Route path="monthlyReport" element={<MonthlyReport />} />
-            <Route path="reconciliation" element={<Reconciliation />} />
-            <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
-            <Route path="incentives" element={<IncentivesDashboard />} />
-            <Route path="AnalyticsProgress" element={<AnalyticsProgress />} />
-            <Route path="salary-cycles" element={<SalaryCycle />} />
-            <Route path="salaries/:cycleId" element={<SalaryList />} />
-            <Route path="reconciliation/:cycleId" element={<Reconciliation />} />
-            <Route path="salary-summary" element={<SalarySummary />} />
-            <Route path="incentives/add" element={<AddIncentiveTarget />} />
-            <Route path="incentives/edit/:incentiveId" element={<EditIncentiveTarget />} />
-            <Route path="admins" element={<Admins />} />
-            <Route path="accountants" element={<Accountants />} />
-          </Route>
+              <Route path="supervisors" element={<Supervisors />} />
+              <Route path="supervisor/:supervisorId" element={<CleanerUnderSupervisorDetails />} />
+              <Route path="register/:role" element={<RegisterUser />} />
+              <Route path="register/:role" element={<RegisterUser />} />
+              <Route path="cleaner/:cleanerId" element={<CleanerDetails />} />
+              <Route path="buildings/:buildingId" element={<BuildingDetailsPage />} />
+              <Route path="buildings/:buildingId/edit" element={<EditBuilding />} />
+              {/* Shared salary pages for admin also */}
+              <Route path="salaryFinalization" element={<SalaryFinalization />} />
+              <Route path="monthlyReport" element={<MonthlyReport />} />
+              <Route path="reconciliation" element={<Reconciliation />} />
+              <Route path="salaryDetails/:userId" element={<SalaryPerPerson />} />
+              <Route path="incentives" element={<IncentivesDashboard />} />
+              <Route path="AnalyticsProgress" element={<AnalyticsProgress />} />
+              <Route path="salary-cycles" element={<SalaryCycle />} />
+              <Route path="salaries/:cycleId" element={<SalaryList />} />
+              <Route path="reconciliation/:cycleId" element={<Reconciliation />} />
+              <Route path="salary-summary" element={<SalarySummary />} />
+              <Route path="role-salaries" element={<RoleBasedSalary />} />
+              <Route path="revenueReport" element={<SalaryReports />} />
+              <Route path="incentives/add" element={<AddIncentiveTarget />} />
+              <Route path="incentives/edit/:incentiveId" element={<EditIncentiveTarget />} />
+              <Route path="admins" element={<Admins />} />
+              <Route path="accountants" element={<Accountants />} />
+              <Route path="operational-reports" element={<OperationalReports />} />
+              <Route path="targets" element={<TargetManagement />} />
+              <Route path="insights" element={<PerformanceInsights />} />
+            </Route>
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </Suspense>
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
       </AlertProvider>
     </AuthProvider>
   );

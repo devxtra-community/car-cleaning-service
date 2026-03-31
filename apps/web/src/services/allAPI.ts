@@ -354,9 +354,9 @@ export const createIncentiveTarget = async (data: {
   target_tasks: number;
   reason: string;
   incentive_amount: number;
-  cleaner_id?: string;
-  building_id?: string;
-  floor_id?: string;
+  cleaner_id?: string | null;
+  building_id?: string | null;
+  floor_id?: string | null;
 }) => {
   const response = await api.post('/api/incentives/targets', data);
   return response.data.data;
@@ -449,14 +449,21 @@ export const getAllWorkers = async () => {
 };
 
 export const getUsersByRole = async (role: string) => {
-  const response = await api.get('/salary/users-by-role', {
-    params: { role },
-  });
-  return response.data.data;
+  if (role === 'cleaner') {
+    const response = await api.get('/api/auth/cleaners');
+    return response.data.data;
+  }
+
+  if (role === 'supervisor') {
+    const response = await api.get('/api/auth/supervisors');
+    return response.data.data;
+  }
+
+  throw new Error(`Unsupported role lookup: ${role}`);
 };
 
 export const getUserSalaryDetails = async (userId: string, month: string) => {
-  const response = await api.get(`/salary/user/${userId}/details`, {
+  const response = await api.get(`/api/salary/user/${userId}/details`, {
     params: { month },
   });
   return response.data.data;
@@ -468,22 +475,20 @@ export const createSalary = async (salaryData: {
   base_salary: number;
   penalty_amount?: number;
 }) => {
-  const response = await api.post('/salary', salaryData);
+  const response = await api.post('/api/salary', salaryData);
   return response.data.data;
 };
 
 export const getAllSalaries = async (limit?: number, offset?: number) => {
-  const response = await api.get('/salary', {
+  const response = await api.get('/api/salary', {
     params: { limit, offset },
   });
   return response.data;
 };
 
 export const getSalaryDetailsPerWorker = async (userId: string) => {
-  const response = await api.get(`/salary/user/${userId}`);
-  console.log(response);
-
-  return response.data.data;
+  const response = await api.get(`/api/salary/user/${userId}`);
+  return response.data?.data || [];
 };
 
 export const updateSalary = async (
@@ -493,37 +498,53 @@ export const updateSalary = async (
     penalty_amount?: number;
   }
 ) => {
-  const response = await api.put(`/salary/${salaryId}`, data);
+  const response = await api.put(`/api/salary/${salaryId}`, data);
   return response.data.data;
 };
 
 export const finalizeSalary = async (salaryId: string) => {
-  const response = await api.patch(`/salary/${salaryId}/finalize`);
+  const response = await api.patch(`/api/salary/finalize/${salaryId}`);
   return response.data.data;
 };
 
 export const getSalaryCycles = async () => {
-  const response = await api.get('/salary/salary-cycles');
-  return response.data.data;
+  const response = await api.get('/api/salary/salary-cycles');
+  if (Array.isArray(response.data)) return response.data;
+  return response.data?.data || [];
+};
+
+export const createSalaryCycle = async (data: {
+  month: number;
+  year: number;
+  start_date: string;
+  end_date: string;
+}) => {
+  const response = await api.post('/api/salary/salary-cycles', data);
+  return response.data;
 };
 
 export const lockSalaryPeriod = async (cycleId: string) => {
-  const response = await api.post(`/salary/lock/${cycleId}`);
+  const response = await api.post(`/api/salary/lock/${cycleId}`);
   return response.data;
 };
 
 export const getSalaryPeriod = async (periodId: string) => {
-  const response = await api.get(`/salary/period/${periodId}`);
+  const response = await api.get(`/api/salary/cycle/${periodId}`);
   return response.data;
 };
 
-export const calculateSalaries = async (periodId: string) => {
-  const response = await api.post(`/salary/calculate/${periodId}`);
+export const generateSalaries = async (cycleId: string) => {
+  const response = await api.post(`/api/salary/generate/${cycleId}`);
   return response.data;
 };
 
 export const markSalaryPeriodPaid = async (periodId: string) => {
-  const response = await api.patch(`/salary/period/${periodId}/pay`);
+  const response = await api.post(`/api/salary/salary-cycles/${periodId}/pay`);
+  return response.data;
+};
+
+export const getSalaryBreakdown = async (salaryId: string) => {
+  const response = await api.get(`/api/salary/salaries/${salaryId}/breakdown`);
   return response.data;
 };
 
@@ -548,8 +569,8 @@ export const exportSalaryExcel = async (id: string) => {
 };
 
 export const getMonthlyReport = async (params: any) => {
-  const response = await api.get('/salary/reports/monthly', { params });
-  return response.data;
+  const response = await api.get('/api/salary/monthly-report', { params });
+  return response.data?.data || { history: [], buildings: [] };
 };
 
 export const getCleanerSalaryHistory = async (id: string) => {
@@ -583,7 +604,13 @@ export interface CleanerDetail {
   baseSalary?: number;
   profileImage?: string;
   building?: { id: string; name: string; building_name?: string; location?: string };
-  floor?: { id: string; name: string; number?: string | number; floor_number?: number; floor_name?: string };
+  floor?: {
+    id: string;
+    name: string;
+    number?: string | number;
+    floor_number?: number;
+    floor_name?: string;
+  };
   supervisor?: { id: string; name: string; full_name?: string };
 }
 
@@ -636,7 +663,6 @@ export interface CleanerSalaryHistoryRow {
   net_salary: string | number;
   status: string;
 }
-
 
 export interface SalaryPeriod {
   id: string;
@@ -750,7 +776,7 @@ export const getCollectionsReconciliation = async () => {
 };
 
 export const getAllFloors = async () => {
-  const response = await api.get('/api/floors');
+  const response = await api.get('/api/auth/floors');
   return response.data;
 };
 
@@ -758,7 +784,6 @@ export const getAdminSummary = async () => {
   const response = await api.get('/api/analytics/summary');
   return response.data;
 };
-
 
 export interface AdminListItem {
   id: string;

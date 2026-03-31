@@ -30,7 +30,7 @@ const MonthlyReport = () => {
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/salary/monthly-report');
+      const res = await api.get('/api/salary/monthly-report');
       const { history, buildings } = res.data.data;
 
       // Map History
@@ -77,7 +77,7 @@ const MonthlyReport = () => {
   const handleExportReport = () => {
     if (!monthlyData.length) return;
     const headers = ['Month', 'Base Salary', 'Incentives', 'Penalties', 'Net Payout', 'Status'];
-    const csvRows = monthlyData.map(m =>
+    const csvRows = monthlyData.map((m) =>
       [m.month, m.baseSalary, m.incentives, m.penalties, m.netPayout, m.status].join(',')
     );
     const csv = [headers.join(','), ...csvRows].join('\n');
@@ -119,19 +119,21 @@ const MonthlyReport = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('monthly')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${viewMode === 'monthly'
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                viewMode === 'monthly'
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setViewMode('quarterly')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${viewMode === 'quarterly'
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                viewMode === 'quarterly'
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
             >
               Quarterly
             </button>
@@ -181,9 +183,7 @@ const MonthlyReport = () => {
                   </td>
                 </tr>
               ) : (
-                monthlyData.map((row, index) => (
-                  <SalaryRow key={index} data={row} />
-                ))
+                monthlyData.map((row, index) => <SalaryRow key={index} data={row} />)
               )}
             </tbody>
 
@@ -302,12 +302,13 @@ function SalaryRow({ data }: { data: MonthData }) {
       </td>
       <td className="p-4 text-center">
         <span
-          className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${data.status === 'current'
-            ? 'bg-green-100 text-green-700'
-            : data.status === 'finalized'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-gray-100 text-gray-600'
-            }`}
+          className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${
+            data.status === 'current'
+              ? 'bg-green-100 text-green-700'
+              : data.status === 'finalized'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-600'
+          }`}
         >
           {data.status === 'current' && '🟢 '}
           {data.status === 'finalized' && '✓ '}
@@ -385,8 +386,9 @@ function BuildingCard({ data }: { data: BuildingData }) {
           <span className="text-xs text-gray-600">Net Impact</span>
           <div className="flex items-center gap-1">
             <span
-              className={`text-sm font-semibold ${netChange >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}
+              className={`text-sm font-semibold ${
+                netChange >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}
             >
               {netChange >= 0 ? '+' : ''}₹{Math.abs(netChange).toLocaleString('en-IN')}
             </span>

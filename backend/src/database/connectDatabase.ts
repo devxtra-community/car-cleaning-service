@@ -13,6 +13,7 @@ const RECONNECT_INTERVAL_MS = 10000;
 
 let isDbConnected = false;
 let reconnectInterval: ReturnType<typeof setInterval> | null = null;
+let schemaEnsured = false;
 
 let poolInstance: Pool | null = null;
 
@@ -23,7 +24,7 @@ export const getPool = () => {
       ssl: {
         rejectUnauthorized: false,
       },
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 60000,
     });
 
     // Add error listener to prevent process crashes on idle db connections
@@ -49,6 +50,24 @@ async function tryConnectOnce(): Promise<boolean> {
   try {
     const client = await pool.connect();
     await client.query('SELECT 1');
+    if (!schemaEnsured) {
+      await client.query(`
+        ALTER TABLE incentive_targets
+          ADD COLUMN IF NOT EXISTS cleaner_id UUID REFERENCES cleaners(id) ON DELETE CASCADE,
+          ADD COLUMN IF NOT EXISTS building_id UUID REFERENCES buildings(id) ON DELETE CASCADE,
+          ADD COLUMN IF NOT EXISTS floor_id UUID REFERENCES floors(id) ON DELETE CASCADE
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_incentive_targets_cleaner_id ON incentive_targets(cleaner_id)
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_incentive_targets_building_id ON incentive_targets(building_id)
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_incentive_targets_floor_id ON incentive_targets(floor_id)
+      `);
+      schemaEnsured = true;
+    }
     client.release();
 
     if (!isDbConnected) {

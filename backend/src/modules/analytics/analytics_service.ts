@@ -1,8 +1,6 @@
 import { pool } from '../../database/connectDatabase';
 
 export const getDailyProgress = async (date?: string) => {
-
-
   const res = await pool.query(
     `
     SELECT
@@ -22,7 +20,6 @@ export const getDailyProgress = async (date?: string) => {
 };
 
 export const getWeeklyProgress = async (weekStart?: string) => {
-
   const res = await pool.query(
     `
     SELECT
@@ -42,7 +39,6 @@ export const getWeeklyProgress = async (weekStart?: string) => {
 };
 
 export const getMonthlyProgress = async (month?: string) => {
-
   const res = await pool.query(
     `
     SELECT
@@ -62,39 +58,70 @@ export const getMonthlyProgress = async (month?: string) => {
 };
 
 export const getCleanerPerformance = async (period?: string) => {
+  let taskDateFilter = '';
+  let incentiveDateFilter = '';
+  let penaltyDateFilter = '';
 
-  // period can be 'daily', 'weekly', 'monthly' or null for all time
-  let dateFilter = '';
-  if (period === 'daily') dateFilter = `AND t.completed_at >= CURRENT_DATE`;
-  else if (period === 'weekly')
-    dateFilter = `AND t.completed_at >= date_trunc('week', CURRENT_DATE)`;
-  else if (period === 'monthly')
-    dateFilter = `AND t.completed_at >= date_trunc('month', CURRENT_DATE)`;
+  if (period === 'daily') {
+    taskDateFilter = `AND t.completed_at >= CURRENT_DATE`;
+    incentiveDateFilter = `AND ci.created_at >= CURRENT_DATE`;
+    penaltyDateFilter = `AND p.created_at >= CURRENT_DATE`;
+  } else if (period === 'weekly') {
+    taskDateFilter = `AND t.completed_at >= date_trunc('week', CURRENT_DATE)`;
+    incentiveDateFilter = `AND ci.created_at >= date_trunc('week', CURRENT_DATE)`;
+    penaltyDateFilter = `AND p.created_at >= date_trunc('week', CURRENT_DATE)`;
+  } else if (period === 'monthly') {
+    taskDateFilter = `AND t.completed_at >= date_trunc('month', CURRENT_DATE)`;
+    incentiveDateFilter = `AND ci.created_at >= date_trunc('month', CURRENT_DATE)`;
+    penaltyDateFilter = `AND p.created_at >= date_trunc('month', CURRENT_DATE)`;
+  }
 
   const res = await pool.query(
     `SELECT 
       c.id AS cleaner_id,
       u.full_name as cleaner_name,
+      u.email as cleaner_email,
+      s_u.full_name as supervisor_name,
       b.building_name,
-      COUNT(t.id)::int as completed_tasks,
-      COALESCE(AVG(r.rating), 0)::float as avg_rating
+      COUNT(t.id)::int as total_tasks,
+      COALESCE((
+        SELECT SUM(ci.amount)::float
+        FROM cleaner_incentives ci
+        WHERE ci.cleaner_id = c.id ${incentiveDateFilter}
+      ), 0)::float as total_incentives,
+      COALESCE((
+        SELECT SUM(p.amount)::float
+        FROM penalties p
+        WHERE p.cleaner_id = c.id ${penaltyDateFilter}
+      ), 0)::float as total_penalties,
+      COALESCE(SUM(t.final_price), 0)::float as total_earnings
      FROM cleaners c
      JOIN users u ON c.user_id = u.id
+     LEFT JOIN supervisors s ON c.supervisor_id = s.id
+     LEFT JOIN users s_u ON s.user_id = s_u.id
      LEFT JOIN buildings b ON c.building_id = b.id
-     LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${dateFilter}
-     LEFT JOIN reviews r ON t.id = r.task_id
-     GROUP BY c.id, u.full_name, b.building_name
-     ORDER BY completed_tasks DESC
-     LIMIT 10`
+     LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${taskDateFilter}
+     WHERE u.role = 'cleaner'
+     GROUP BY c.id, u.full_name, u.email, s_u.full_name, b.building_name
+     ORDER BY total_tasks DESC, cleaner_name ASC`
   );
 
   return res.rows;
 };
 
 export const getCollectionsReconciliation = async (month?: string) => {
-  let dateFilter = '';
+  let taskDateFilter = '';
+  let incentiveDateFilter = '';
+  let penaltyDateFilter = '';
+
   if (month)
-    dateFilter = `AND t.completed_at >= date_trunc('month', $1::date) AND t.completed_at < date_trunc('month', $1::date) + interval '1 month'`;
+    taskDateFilter = `AND t.completed_at >= date_trunc('month', $1::date) AND t.completed_at < date_trunc('month', $1::date) + interval '1 month'`;
+
+  if (month)
+    incentiveDateFilter = `AND ci.created_at >= date_trunc('month', $1::date) AND ci.created_at < date_trunc('month', $1::date) + interval '1 month'`;
+
+  if (month)
+    penaltyDateFilter = `AND p.created_at >= date_trunc('month', $1::date) AND p.created_at < date_trunc('month', $1::date) + interval '1 month'`;
 
   const queryParams = month ? [month] : [];
 
@@ -103,15 +130,27 @@ export const getCollectionsReconciliation = async (month?: string) => {
       c.id AS cleaner_id,
       u.full_name as cleaner_name,
       b.building_name,
-      COUNT(t.id) as total_jobs,
-      SUM(CASE WHEN t.payment_method = 'Cash' THEN t.amount_charged ELSE 0 END) as cash_collected,
-      SUM(CASE WHEN t.payment_method = 'Online' OR t.payment_method = 'UPI' OR t.payment_method = 'Card' THEN t.amount_charged ELSE 0 END) as online_collected,
-      COALESCE((SELECT net_salary FROM salaries s WHERE s.cleaner_id = c.id ORDER BY s.created_at DESC LIMIT 1), 0) as salary_owed
+      COUNT(t.id)::int as total_jobs,
+      COALESCE(SUM(CASE WHEN t.payment_method = 'Cash' THEN t.amount_charged ELSE 0 END), 0)::float as cash_collected,
+      COALESCE(SUM(CASE WHEN t.payment_method = 'Online' OR t.payment_method = 'UPI' OR t.payment_method = 'Card' THEN t.amount_charged ELSE 0 END), 0)::float as online_collected,
+      (
+        COALESCE(u.base_salary, 0)
+        + COALESCE((
+            SELECT SUM(ci.amount)::float
+            FROM cleaner_incentives ci
+            WHERE ci.cleaner_id = c.id ${incentiveDateFilter}
+          ), 0)
+        - COALESCE((
+            SELECT SUM(p.amount)::float
+            FROM penalties p
+            WHERE p.cleaner_id = c.id ${penaltyDateFilter}
+          ), 0)
+      )::float as salary_owed
      FROM cleaners c
      JOIN users u ON c.user_id = u.id
      LEFT JOIN buildings b ON c.building_id = b.id
-     LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${dateFilter}
-     GROUP BY c.id, u.full_name, b.building_name
+      LEFT JOIN tasks t ON t.cleaner_id = c.id AND t.status = 'completed' ${taskDateFilter}
+     GROUP BY c.id, u.full_name, b.building_name, u.base_salary
      ORDER BY cash_collected DESC`,
     queryParams
   );
@@ -170,7 +209,6 @@ export const getCustomerRatingSummaryService = async () => {
 };
 
 export const getFraudTrendsService = async () => {
-
   const query = `
     SELECT 
       DATE(f.created_at) as date,
@@ -188,7 +226,6 @@ export const getFraudTrendsService = async () => {
 };
 
 export const getAdminSummaryService = async () => {
-
   const res = await pool.query(`
     SELECT
       (SELECT COALESCE(SUM(final_salary), 0)::float FROM salaries WHERE status = 'paid' AND date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)) as total_salary_paid,
@@ -209,7 +246,6 @@ export const getAdminSummaryService = async () => {
 };
 
 export const getCustomerReportService = async () => {
-
   const res = await pool.query(`
     SELECT
       t.id,

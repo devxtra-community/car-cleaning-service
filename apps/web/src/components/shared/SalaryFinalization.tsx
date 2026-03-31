@@ -22,7 +22,7 @@ interface SalaryRow {
   incentive_amount: number;
   penalty_amount: number;
   final_salary: number;
-  status: 'draft' | 'finalized' | 'locked' | 'paid';
+  status: 'draft' | 'pending' | 'finalized' | 'locked' | 'paid';
 }
 
 type RoleFilter = 'all' | 'cleaner' | 'supervisor' | 'accountant';
@@ -55,11 +55,21 @@ const SalaryFinalization: React.FC = () => {
         getAllSalaries(limit, offset),
         getSalaryCycles(),
       ]);
-      setSalaries(salaryRes.data);
-      setTotalRecords(salaryRes.meta.total);
-      setCycles(cycleData);
-      if (cycleData && cycleData.length > 0) {
-        const active = cycleData.find((c: any) => !c.is_locked) || cycleData[0];
+      const salaryRows = Array.isArray(salaryRes?.data) ? salaryRes.data : [];
+      const normalizedRows: SalaryRow[] = salaryRows.map((row: any) => ({
+        ...row,
+        incentive_amount: Number(row?.incentives ?? row?.incentive_amount ?? 0),
+        penalty_amount: Number(row?.penalties ?? row?.penalty_amount ?? 0),
+        status: row?.status === 'pending' ? 'draft' : row?.status,
+      }));
+
+      setSalaries(normalizedRows);
+      setTotalRecords(Number(salaryRes?.meta?.total ?? 0));
+
+      const cyclesList = Array.isArray(cycleData) ? cycleData : [];
+      setCycles(cyclesList);
+      if (cyclesList.length > 0) {
+        const active = cyclesList.find((c: any) => !c.is_locked) || cyclesList[0];
         setActiveCycle(active);
       }
     } catch (err) {
@@ -99,9 +109,10 @@ const SalaryFinalization: React.FC = () => {
     const matchesRole = selectedRole === 'all' || salary.role === selectedRole;
 
     // Search filter
-    const matchesSearch =
-      salary.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      salary.user_id.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = String(salary.full_name || '').toLowerCase();
+    const userId = String(salary.user_id || '').toLowerCase();
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = name.includes(query) || userId.includes(query);
 
     return matchesRole && matchesSearch;
   });
@@ -120,7 +131,9 @@ const SalaryFinalization: React.FC = () => {
 
   const netTotal = filteredSalaries.reduce((sum, s) => sum + Number(s.final_salary || 0), 0);
 
-  const pendingCount = filteredSalaries.filter((s) => s.status === 'draft').length;
+  const pendingCount = filteredSalaries.filter(
+    (s) => s.status === 'draft' || s.status === 'pending'
+  ).length;
 
   /* =========================
      Lock Salary Period
@@ -128,14 +141,19 @@ const SalaryFinalization: React.FC = () => {
   const handleLockPeriod = async () => {
     if (!activeCycle || activeCycle.is_locked) return;
     if (pendingCount > 0) {
-      await showAlert('Must finalize all pending salaries before locking the period.', 'Pending Actions');
+      await showAlert(
+        'Must finalize all pending salaries before locking the period.',
+        'Pending Actions'
+      );
       return;
     }
     setLocking(true);
     try {
       await lockSalaryPeriod(activeCycle.id);
       setActiveCycle({ ...activeCycle, is_locked: true });
-      setSalaries((prev) => prev.map((s) => ({ ...s, status: 'locked' })));
+      setSalaries((prev) =>
+        prev.map((s) => ({ ...s, status: s.status === 'paid' ? 'paid' : 'locked' }))
+      );
     } catch (err) {
       await showAlert(errMsg(err), 'Error');
     } finally {
@@ -231,7 +249,6 @@ const SalaryFinalization: React.FC = () => {
               {selectedRole !== 'all' && ` (${selectedRole}s)`}
             </p>
           </div>
-
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             {/* Role Filter Dropdown */}
             <select
@@ -253,6 +270,7 @@ const SalaryFinalization: React.FC = () => {
               placeholder="Search by name or ID..."
             />
           </div>
+          @id:anthropic.claude-code
         </div>
 
         <div className="overflow-x-auto">
@@ -387,15 +405,17 @@ const SalaryFinalization: React.FC = () => {
 
                     <td className="p-4 text-center">
                       <button
-                        disabled={salary.status !== 'draft'}
+                        disabled={salary.status !== 'draft' && salary.status !== 'pending'}
                         onClick={() => handleFinalize(salary.id)}
                         className={`px-4 py-2 rounded-lg text-xs font-medium transition ${
-                          salary.status === 'draft'
+                          salary.status === 'draft' || salary.status === 'pending'
                             ? 'bg-blue-600 text-white hover:bg-blue-700'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
                       >
-                        {salary.status === 'draft' ? 'Finalize' : '🔒 Locked'}
+                        {salary.status === 'draft' || salary.status === 'pending'
+                          ? 'Finalize'
+                          : '🔒 Locked'}
                       </button>
                     </td>
 

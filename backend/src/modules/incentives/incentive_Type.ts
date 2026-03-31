@@ -5,6 +5,9 @@ export interface IncentiveTarget {
   reason: string;
   incentive_amount: number;
   active: boolean;
+  cleaner_id?: string | null;
+  building_id?: string | null;
+  floor_id?: string | null;
   created_at: Date;
   updated_at: Date;
 }

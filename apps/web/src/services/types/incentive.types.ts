@@ -4,6 +4,13 @@ export interface IncentiveTarget {
   target_tasks: number;
   reason: string;
   incentive_amount: number;
+  active?: boolean;
+  cleaner_id?: string | null;
+  building_id?: string | null;
+  floor_id?: string | null;
+  cleaner_name?: string;
+  building_name?: string;
+  floor_name?: string;
   created_at?: string;
   updated_at?: string;
 }

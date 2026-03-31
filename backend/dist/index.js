@@ -83,27 +83,30 @@ app.get('/health', async (_req, res) => {
 app.get('/test', (_req, res) => {
     res.json({ message: 'Backend reachable' });
 });
-// Routes
-app.use('/api/auth', auth_routes_1.default);
+app.get('/api/debug-test', (_req, res) => {
+    res.json({ message: 'API Proxy working perfectly' });
+});
+// ─── Routes ───────────────────────────────────────────────────────────────────
+// IMPORTANT: More specific routes must come BEFORE generic catch-all mounts
 app.use('/api/analytics', analytic_routes_1.default);
-app.use('/api', attendance_routes_1.default);
-app.use('/s3', s3_1.default);
-app.use('/workers', workers_routes_1.default);
+app.use('/api/admin/system', system_routes_1.default);
+app.use('/api/auth', auth_routes_1.default);
 app.use('/api/vehicle', vechicleRoutes_1.default);
 app.use('/api/buildings', buildings_routes_1.default);
 app.use('/api/users', user_Routes_1.default);
 app.use('/api/supervisor', supervisor_routes_1.default);
-app.use('/tasks', tasks_routes_1.default);
 app.use('/api/salary', salary_routes_1.default);
 app.use('/api/incentives', incentives_routes_1.default);
+app.use('/api/floors', floorRoutes_1.default);
+app.use('/api/notifications', notification_routes_1.default);
+app.use('/api', Adminaccountantrouter_1.default);
+app.use('/api', attendance_routes_1.default);
+app.use('/s3', s3_1.default);
+app.use('/workers', workers_routes_1.default);
+app.use('/tasks', tasks_routes_1.default);
 app.use('/penalties', penalties_routes_1.default);
 app.use('/feedback', review_routes_1.default);
-app.use('/supervisors', supervisor_routes_1.default);
-app.use('/api/floors', floorRoutes_1.default);
 app.use('/fraud', fraud_routes_1.default);
-app.use('/api/notifications', notification_routes_1.default);
-app.use('/api/admin/system', system_routes_1.default);
-app.use('/api', Adminaccountantrouter_1.default);
 // Catch-all for unmatched routes
 app.use((req, res, _next) => {
     console.log(`[404 NOT MATCHED] ${req.method} ${req.originalUrl}`);

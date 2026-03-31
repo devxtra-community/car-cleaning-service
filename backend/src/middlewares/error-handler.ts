@@ -22,7 +22,25 @@ export function globalErrorHandler(err: unknown, req: Request, res: Response, _n
     message = err.message;
     code = err.code;
   } else if (err instanceof Error) {
-    message = err.message;
+    // Mapping for common string-based errors from legacy services
+    const errorMappings: Record<string, { status: number; code: string }> = {
+      CYCLE_NOT_FOUND: { status: 404, code: 'NOT_FOUND' },
+      SALARY_CYCLE_LOCKED: { status: 403, code: 'FORBIDDEN' },
+      USER_NOT_FOUND: { status: 404, code: 'NOT_FOUND' },
+      CLEANER_PROFILE_NOT_FOUND: { status: 404, code: 'NOT_FOUND' },
+      NO_LOCKED_SALARIES_FOUND_FOR_PAYOUT: { status: 400, code: 'BAD_REQUEST' },
+      'Invalid credentials': { status: 401, code: 'UNAUTHORIZED' },
+      'Refresh token missing': { status: 401, code: 'UNAUTHORIZED' },
+    };
+
+    const mapping = errorMappings[err.message];
+    if (mapping) {
+      statusCode = mapping.status;
+      code = mapping.code;
+      message = err.message;
+    } else {
+      message = err.message;
+    }
   }
 
   logger.error('Unhandled error', {

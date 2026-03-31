@@ -44,6 +44,28 @@ const YEARS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - i);
 
 type View = 'monthly' | 'cleaner';
 
+const toMonthRange = (monthKey: string) => {
+  const [yearStr, monthStr] = monthKey.split('-');
+  const yearNum = Number(yearStr);
+  const monthNum = Number(monthStr);
+
+  if (!yearNum || !monthNum) {
+    const today = new Date();
+    return {
+      start: today.toISOString(),
+      end: today.toISOString(),
+    };
+  }
+
+  const start = new Date(yearNum, monthNum - 1, 1);
+  const end = new Date(yearNum, monthNum, 0);
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+  };
+};
+
 const SalaryReports: React.FC = () => {
   const navigate = useNavigate();
   const { loading: authLoading, isAuthenticated } = useAuth();
@@ -60,7 +82,28 @@ const SalaryReports: React.FC = () => {
   const loadMonthly = useCallback(async () => {
     setLoading(true);
     try {
-      setMonthlyData(await getMonthlyReport({ year, month: month ?? undefined }));
+      const report = await getMonthlyReport({ year, month: month ?? undefined });
+      const normalized = (Array.isArray(report) ? report : report.history || []).map((row: any) => {
+        const monthKey = String(row.month_key || `${year}-${String(month ?? 1).padStart(2, '0')}`);
+        const range = toMonthRange(monthKey);
+
+        return {
+          period_id: monthKey,
+          period_name: monthKey,
+          start_date: range.start,
+          end_date: range.end,
+          total_cleaners: 0,
+          total_base: Number(row.base_salary || 0),
+          total_task_amount: 0,
+          total_incentives: Number(row.incentives || 0),
+          total_penalties: Number(row.penalties || 0),
+          total_adjustments: 0,
+          total_net: Number(row.net_payout || 0),
+          period_status: row.status || 'current',
+        };
+      });
+
+      setMonthlyData(normalized);
     } catch (e) {
       showToast(errMsg(e), 'error');
     } finally {
@@ -100,7 +143,6 @@ const SalaryReports: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-
       {/* top bar */}
       <div className="bg-white border-b border-slate-100 sticky top-0 z-20">
         <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
