@@ -35,7 +35,7 @@ const app = express();
 
 app.use(express.json());
 app.use((req, _res, next) => {
-  console.log(`[REQUEST] ${req.method} ${req.url}`);
+  logger.info(`${req.method} ${req.url}`, { method: req.method, url: req.url });
   next();
 });
 app.use(express.urlencoded({ extended: true }));
@@ -125,7 +125,10 @@ app.use('/fraud', fraudRoutes);
 
 // Catch-all for unmatched routes
 app.use((req, res, _next) => {
-  console.log(`[404 NOT MATCHED] ${req.method} ${req.originalUrl}`);
+  logger.warn(`404 not found: ${req.method} ${req.originalUrl}`, {
+    method: req.method,
+    url: req.originalUrl,
+  });
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.originalUrl} not found`,
@@ -134,5 +137,5 @@ app.use((req, res, _next) => {
 
 app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('Backend running on port 3033');
+  logger.info(`Backend running on port ${PORT}`);
 });

@@ -1,35 +1,28 @@
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-type LogMeta = Record<string, unknown>;
-const isProduction = process.env.NODE_ENV === 'production';
+import { Logtail } from '@logtail/node';
+import { LogtailTransport } from '@logtail/winston';
+import winston from 'winston';
 
-function log(level: LogLevel, message: string, meta?: LogMeta) {
-  if (level === 'debug' && isProduction) return;
+const logtail = new Logtail(process.env.BETTERSTACK_SOURCE_TOKEN!, {
+  endpoint: `https://${process.env.BETTERSTACK_HOST}`,
+});
 
-  const logEntry = {
-    level,
-    message,
-    timestamp: new Date().toISOString(),
-    ...(meta && { meta }),
-  };
-
-  switch (level) {
-    case 'error':
-      console.error(logEntry);
-      break;
-    case 'warn':
-      console.warn(logEntry);
-      break;
-    default:
-      console.log(logEntry);
-  }
-}
-
-export const logger = {
-  info: (message: string, meta?: LogMeta) => log('info', message, meta),
-
-  warn: (message: string, meta?: LogMeta) => log('warn', message, meta),
-
-  error: (message: string, meta?: LogMeta) => log('error', message, meta),
-
-  debug: (message: string, meta?: LogMeta) => log('debug', message, meta),
-};
+export const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: {
+    service: 'car-cleaning-backend',
+    environment: process.env.NODE_ENV ?? 'development',
+  },
+  transports: [
+    // Keep logs visible in your terminal
+    new winston.transports.Console({
+      format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+    }),
+    // Send logs to Better Stack
+    new LogtailTransport(logtail),
+  ],
+});
