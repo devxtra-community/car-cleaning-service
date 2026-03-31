@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { api, setAccessToken } from '../services/commonAPI';
+import { api, setAccessToken, refreshSession } from '../services/commonAPI';
 import { User, AccessTokenPayload } from '../types/auth';
 import { AuthContext } from './AuthContext';
+import Loader from '../pages/Loader';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -33,8 +34,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initAuth = async () => {
       try {
         if (localStorage.getItem('hasSession')) {
-          const res = await api.post('/api/auth/refresh');
-          setSession(res.data.accessToken);
+          const accessToken = await refreshSession();
+          if (accessToken) {
+            setSession(accessToken);
+          }
         }
       } catch {
         setSession(null);
@@ -80,7 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         logout,
       }}
     >
-      {children}
+      {loading ? <Loader /> : children}
     </AuthContext.Provider>
   );
 };

@@ -114,8 +114,9 @@ const login = async (req, res, next) => {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/api/auth/refresh',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                path: '/',
+                domain: process.env.COOKIE_DOMAIN || undefined,
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             });
         }
@@ -156,9 +157,10 @@ const logout = async (req, res, next) => {
         await (0, auth_service_1.logoutService)(userId, logoutAll ? undefined : tokenId);
         res.clearCookie('refreshToken', {
             httpOnly: true,
-            sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
-            path: '/api/auth/refresh',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/',
+            domain: process.env.COOKIE_DOMAIN || undefined,
         });
         return res.status(200).json({
             success: true,

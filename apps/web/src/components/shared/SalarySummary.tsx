@@ -22,9 +22,8 @@ const SalarySummary: React.FC = () => {
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/salary/summary/${viewMode}`);
+      const res = await api.get(`/api/salary/summary/${viewMode}`);
       setRows(res.data.data || []);
-      console.log(res);
     } catch (err) {
       console.error(err);
       setToast({ message: 'Failed to fetch salary summary', type: 'error' });

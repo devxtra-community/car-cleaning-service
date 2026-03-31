@@ -15,6 +15,7 @@ import {
   getRoleBasedSalaries,
   getMonthlyReport,
   getSalaryBreakdown,
+  finalizeSalaryRecord,
 } from './salary_service';
 
 /* ================= GENERATE SALARY FOR ONE CLEANER ================= */
@@ -187,6 +188,40 @@ export const markSalaryPaidController = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: err instanceof Error ? err.message : 'Something went wrong',
+    });
+  }
+};
+
+export const finalizeSalaryController = async (req: Request, res: Response) => {
+  try {
+    const { salaryId } = req.params;
+
+    if (!salaryId || Array.isArray(salaryId)) {
+      return res.status(400).json({ success: false, message: 'Invalid salaryId' });
+    }
+
+    const result = await finalizeSalaryRecord(salaryId);
+
+    return res.json({
+      success: true,
+      message: 'Salary finalized successfully',
+      data: result,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Something went wrong';
+
+    if (
+      message === 'SALARY_NOT_FOUND' ||
+      message === 'SALARY_CYCLE_LOCKED' ||
+      message === 'SALARY_ALREADY_LOCKED' ||
+      message === 'SALARY_ALREADY_PAID'
+    ) {
+      return res.status(400).json({ success: false, message });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message,
     });
   }
 };

@@ -4,7 +4,7 @@ import SERVER_URL from './serverURL';
 export const api = axios.create({
   baseURL: SERVER_URL,
   withCredentials: true, // IMPORTANT for cookies
-  timeout: 10000, // 10 seconds timeout
+  timeout: 60000, // 60 seconds timeout
 });
 
 let accessToken: string | null = null;
@@ -30,16 +30,40 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-let isRefreshing = false;
-let refreshSubscribers: ((token: string | null) => void)[] = [];
+let refreshTokenPromise: Promise<string | null> | null = null;
 
-const subscribeTokenRefresh = (cb: (token: string | null) => void) => {
-  refreshSubscribers.push(cb);
-};
+export const refreshSession = async (): Promise<string | null> => {
+  if (refreshTokenPromise) {
+    return refreshTokenPromise;
+  }
 
-const onRefreshed = (token: string | null) => {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
+  refreshTokenPromise = (async () => {
+    try {
+      console.log('[AUTH] Refreshing session...');
+      const res = await api.post('/api/auth/refresh');
+      const newAccessToken = res.data.accessToken;
+
+      if (!newAccessToken) {
+        throw new Error('No access token in refresh response');
+      }
+
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+    } catch (error) {
+      console.error('[AUTH] Refresh failed:', error);
+      setAccessToken(null);
+      localStorage.removeItem('hasSession');
+
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      return null;
+    } finally {
+      refreshTokenPromise = null;
+    }
+  })();
+
+  return refreshTokenPromise;
 };
 
 api.interceptors.response.use(
@@ -48,7 +72,7 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Prevent infinite loop
+      // Prevent infinite loop on auth endpoints
       if (
         originalRequest.url &&
         (originalRequest.url.includes('/auth/refresh') ||
@@ -57,51 +81,17 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          subscribeTokenRefresh((token: string | null) => {
-            if (!token) {
-              return reject(error);
-            }
-            // Re-create the request with the new token
-            originalRequest._retry = true;
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            resolve(api(originalRequest));
-          });
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        console.log('Intercepted 401: Attempting token refresh...');
-        const res = await api.post('/api/auth/refresh');
-        const newAccessToken = res.data.accessToken;
-
-        if (!newAccessToken) {
-          throw new Error('No access token in refresh response');
+        const newToken = await refreshSession();
+        if (newToken) {
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          }
+          return api(originalRequest);
         }
-
-        setAccessToken(newAccessToken);
-        isRefreshing = false;
-        onRefreshed(newAccessToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
-        return api(originalRequest);
       } catch (refreshError) {
-        isRefreshing = false;
-        setAccessToken(null);
-        onRefreshed(null); // reject all subscribers
-        localStorage.removeItem('hasSession');
-        // Prevent redirect if we are already on login page
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
         return Promise.reject(refreshError);
       }
     }

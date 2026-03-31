@@ -1,5 +1,6 @@
 import { pool } from '../../database/connectDatabase';
-import { sendNotificationToUser } from '../notifications/notification_service'; export const generateSalaryForUser = async (
+import { sendNotificationToUser } from '../notifications/notification_service';
+export const generateSalaryForUser = async (
   userId: string,
   cycleId: string,
   bypassLock: boolean = false
@@ -254,7 +255,22 @@ export const lockSalaryCycle = async (cycleId: string) => {
       throw new Error('NO_SALARIES_GENERATED');
     }
 
-    // 3️⃣ Lock salary cycle
+    // 3️⃣ Ensure all records are finalized before locking
+    const unfinalizedRes = await client.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM salaries
+      WHERE salary_cycle_id = $1
+        AND status NOT IN ('finalized', 'locked', 'paid')
+      `,
+      [cycleId]
+    );
+
+    if (Number(unfinalizedRes.rows[0].count) > 0) {
+      throw new Error('SALARIES_NOT_FINALIZED');
+    }
+
+    // 4️⃣ Lock salary cycle
     await client.query(
       `
       UPDATE salary_cycles
@@ -265,7 +281,7 @@ export const lockSalaryCycle = async (cycleId: string) => {
       [cycleId]
     );
 
-    // 4️⃣ Update salary status
+    // 5️⃣ Update salary status
     await client.query(
       `
       UPDATE salaries
@@ -359,6 +375,85 @@ export const markSalaryAsPaid = async (salaryId: string) => {
       }
     })();
 
+    return updateRes.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+export const finalizeSalaryRecord = async (salaryId: string) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const salaryRes = await client.query(
+      `
+      SELECT s.id, s.status, sc.is_locked
+      FROM salaries s
+      LEFT JOIN salary_cycles sc ON sc.id = s.salary_cycle_id
+      WHERE s.id = $1
+      `,
+      [salaryId]
+    );
+
+    if (!salaryRes.rowCount) {
+      throw new Error('SALARY_NOT_FOUND');
+    }
+
+    const salary = salaryRes.rows[0];
+
+    if (salary.is_locked) {
+      throw new Error('SALARY_CYCLE_LOCKED');
+    }
+
+    if (salary.status === 'paid') {
+      throw new Error('SALARY_ALREADY_PAID');
+    }
+
+    if (salary.status === 'locked') {
+      throw new Error('SALARY_ALREADY_LOCKED');
+    }
+
+    if (salary.status === 'finalized') {
+      await client.query('COMMIT');
+      return salary;
+    }
+
+    let updateRes;
+    try {
+      updateRes = await client.query(
+        `
+        UPDATE salaries
+        SET status = 'finalized',
+            finalized_at = now()
+        WHERE id = $1
+        RETURNING *
+        `,
+        [salaryId]
+      );
+    } catch (err: any) {
+      // Backward compatibility: older enum definitions may not include "finalized".
+      if (err?.code === '22P02') {
+        updateRes = await client.query(
+          `
+          UPDATE salaries
+          SET status = 'locked',
+              finalized_at = now()
+          WHERE id = $1
+          RETURNING *
+          `,
+          [salaryId]
+        );
+      } else {
+        throw err;
+      }
+    }
+
+    await client.query('COMMIT');
     return updateRes.rows[0];
   } catch (err) {
     await client.query('ROLLBACK');
@@ -729,7 +824,6 @@ export const getRoleBasedSalaries = async (cycleId?: string) => {
  * Returns aggregated totals per month and per building for the latest cycle.
  */
 export const getMonthlyReport = async () => {
-
   // 1. Monthly History (Last 12 cycles)
   const historyRes = await pool.query(`
     SELECT

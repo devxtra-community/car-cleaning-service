@@ -1,9 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../services/commonAPI';
-import {
-  ArrowDownTrayIcon,
-  BanknotesIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 
 interface CollectionRow {
   cleaner_id: string;
@@ -25,7 +22,7 @@ const Reconciliation: React.FC = () => {
     setLoading(true);
     try {
       const params = month ? `?month=${month}-01` : '';
-      const res = await api.get(`/analytics/collections-reconciliation${params}`);
+      const res = await api.get(`/api/analytics/collections-reconciliation${params}`);
       setRows(res.data.data || []);
     } catch {
       setToast({ message: 'Failed to load collections data', type: 'error' });
@@ -40,7 +37,15 @@ const Reconciliation: React.FC = () => {
 
   const handleExportCSV = () => {
     if (!rows.length) return;
-    const headers = ['Cleaner Name', 'Building', 'Total Jobs', 'Cash Collected (₹)', 'Online Collected (₹)', 'Salary Owed (₹)', 'Net Balance (₹)'];
+    const headers = [
+      'Cleaner Name',
+      'Building',
+      'Total Jobs',
+      'Cash Collected (₹)',
+      'Online Collected (₹)',
+      'Salary Owed (₹)',
+      'Net Balance (₹)',
+    ];
     const csvRows = rows.map((r) => {
       const total = Number(r.cash_collected) + Number(r.online_collected);
       const net = total - Number(r.salary_owed);
@@ -107,14 +112,35 @@ const Reconciliation: React.FC = () => {
       {/* Totals Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Cash', value: totals.cash, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-          { label: 'Total Online', value: totals.online, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-          { label: 'Salary Owed', value: totals.salary, color: 'text-purple-600 bg-purple-50 border-purple-200' },
-          { label: 'Net Balance', value: totalNet, color: totalNet >= 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-600 bg-red-50 border-red-200' },
+          {
+            label: 'Total Cash',
+            value: totals.cash,
+            color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+          },
+          {
+            label: 'Total Online',
+            value: totals.online,
+            color: 'text-blue-600 bg-blue-50 border-blue-200',
+          },
+          {
+            label: 'Salary Owed',
+            value: totals.salary,
+            color: 'text-purple-600 bg-purple-50 border-purple-200',
+          },
+          {
+            label: 'Net Balance',
+            value: totalNet,
+            color:
+              totalNet >= 0
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : 'text-red-600 bg-red-50 border-red-200',
+          },
         ].map((c) => (
           <div key={c.label} className={`border rounded-xl p-4 ${c.color}`}>
             <p className="text-xs font-semibold uppercase text-gray-600">{c.label}</p>
-            <p className="text-2xl font-bold mt-1">₹{c.value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+            <p className="text-2xl font-bold mt-1">
+              ₹{c.value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </p>
           </div>
         ))}
       </div>
@@ -136,9 +162,17 @@ const Reconciliation: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={7} className="p-10 text-center text-slate-500">Loading...</td></tr>
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-slate-500">
+                    Loading...
+                  </td>
+                </tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={7} className="p-10 text-center text-slate-400">No data for selected period</td></tr>
+                <tr>
+                  <td colSpan={7} className="p-10 text-center text-slate-400">
+                    No data for selected period
+                  </td>
+                </tr>
               ) : (
                 rows.map((row) => {
                   const total = Number(row.cash_collected) + Number(row.online_collected);
@@ -148,11 +182,20 @@ const Reconciliation: React.FC = () => {
                       <td className="px-5 py-4 font-medium text-slate-900">{row.cleaner_name}</td>
                       <td className="px-5 py-4 text-slate-600">{row.building_name || '—'}</td>
                       <td className="px-5 py-4 text-right">{row.total_jobs}</td>
-                      <td className="px-5 py-4 text-right text-emerald-700 font-medium">₹{Number(row.cash_collected).toLocaleString('en-IN')}</td>
-                      <td className="px-5 py-4 text-right text-blue-700 font-medium">₹{Number(row.online_collected).toLocaleString('en-IN')}</td>
-                      <td className="px-5 py-4 text-right text-purple-700">₹{Number(row.salary_owed).toLocaleString('en-IN')}</td>
-                      <td className={`px-5 py-4 text-right font-semibold ${net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {net >= 0 ? '+' : ''}₹{net.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      <td className="px-5 py-4 text-right text-emerald-700 font-medium">
+                        ₹{Number(row.cash_collected).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-5 py-4 text-right text-blue-700 font-medium">
+                        ₹{Number(row.online_collected).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-5 py-4 text-right text-purple-700">
+                        ₹{Number(row.salary_owed).toLocaleString('en-IN')}
+                      </td>
+                      <td
+                        className={`px-5 py-4 text-right font-semibold ${net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                      >
+                        {net >= 0 ? '+' : ''}₹
+                        {net.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                       </td>
                     </tr>
                   );
@@ -163,7 +206,13 @@ const Reconciliation: React.FC = () => {
         </div>
       </div>
 
-      {toast && <div className={`fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg text-white text-sm ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>{toast.message}</div>}
+      {toast && (
+        <div
+          className={`fixed bottom-5 right-5 px-4 py-3 rounded-lg shadow-lg text-white text-sm ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 };

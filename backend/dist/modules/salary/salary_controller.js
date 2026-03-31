@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSalaryBreakdownController = exports.getMonthlyReportController = exports.getRoleBasedSalariesController = exports.getSalariesByUserIdController = exports.getSalariesByCycleIdController = exports.getSalarySummaryController = exports.markSalaryPaidController = exports.lockSalaryController = exports.getSalaryCyclesController = exports.generateSalaryForAllController = exports.generateSalaryForCleanerController = exports.getSalaryTimelineController = exports.getAllSalariesController = void 0;
+exports.getSalaryBreakdownController = exports.getMonthlyReportController = exports.getRoleBasedSalariesController = exports.getSalariesByUserIdController = exports.getSalariesByCycleIdController = exports.getSalarySummaryController = exports.finalizeSalaryController = exports.markSalaryPaidController = exports.lockSalaryController = exports.getSalaryCyclesController = exports.generateSalaryForAllController = exports.generateSalaryForCleanerController = exports.getSalaryTimelineController = exports.getAllSalariesController = void 0;
 const auditLogger_1 = require("../../utils/auditLogger");
 const salary_service_1 = require("./salary_service");
 /* ================= GET ALL SALARIES ================= */
@@ -159,6 +159,34 @@ const markSalaryPaidController = async (req, res) => {
     }
 };
 exports.markSalaryPaidController = markSalaryPaidController;
+const finalizeSalaryController = async (req, res) => {
+    try {
+        const { salaryId } = req.params;
+        if (!salaryId || Array.isArray(salaryId)) {
+            return res.status(400).json({ success: false, message: 'Invalid salaryId' });
+        }
+        const result = await (0, salary_service_1.finalizeSalaryRecord)(salaryId);
+        return res.json({
+            success: true,
+            message: 'Salary finalized successfully',
+            data: result,
+        });
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : 'Something went wrong';
+        if (message === 'SALARY_NOT_FOUND' ||
+            message === 'SALARY_CYCLE_LOCKED' ||
+            message === 'SALARY_ALREADY_LOCKED' ||
+            message === 'SALARY_ALREADY_PAID') {
+            return res.status(400).json({ success: false, message });
+        }
+        return res.status(500).json({
+            success: false,
+            message,
+        });
+    }
+};
+exports.finalizeSalaryController = finalizeSalaryController;
 const getSalarySummaryController = async (req, res) => {
     try {
         const { mode } = req.params;

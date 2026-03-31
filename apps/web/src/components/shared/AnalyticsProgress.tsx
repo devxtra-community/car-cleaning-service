@@ -36,7 +36,9 @@ const AnalyticsProgress: React.FC = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/analytics/${viewMode}`);
+      const res = await api.get('/api/analytics/cleaner-performance', {
+        params: { period: viewMode },
+      });
       setRows(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch analytics', err);
@@ -132,8 +134,8 @@ const AnalyticsProgress: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              rows.map((row, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
+              rows.map((row) => (
+                <tr key={row.cleaner_id} className="hover:bg-gray-50">
                   <td className="p-4">
                     <p className="font-medium text-gray-800">{row.cleaner_name}</p>
                     <p className="text-xs text-gray-500">{row.cleaner_email}</p>

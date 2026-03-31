@@ -12,6 +12,7 @@ import {
   getRoleBasedSalariesController,
   getMonthlyReportController,
   getSalaryBreakdownController,
+  finalizeSalaryController,
 } from './salary_controller';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { allowRoles } from '../../middlewares/roleMiddleware';
@@ -28,7 +29,6 @@ router.get('/role-summary', getRoleBasedSalariesController);
 // Monthly report summary (accountant dashboard)
 router.get('/monthly-report', getMonthlyReportController);
 router.get('/breakdown/:salaryId', getSalaryBreakdownController);
-
 
 router.get('/summary/:mode', getSalarySummaryController);
 
@@ -49,4 +49,5 @@ router.post('/generate/:cycleId', generateSalaryForAllController);
 router.post('/generate/:cycleId/:cleanerId', generateSalaryForCleanerController);
 
 router.post('/lock/:cycleId', allowRoles('admin', 'accountant'), lockSalaryController);
+router.patch('/finalize/:salaryId', allowRoles('admin', 'accountant'), finalizeSalaryController);
 export default router;

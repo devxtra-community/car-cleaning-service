@@ -29,4 +29,5 @@ router.post('/generate/:cycleId', salary_controller_1.generateSalaryForAllContro
 // Generate salary for one cleaner
 router.post('/generate/:cycleId/:cleanerId', salary_controller_1.generateSalaryForCleanerController);
 router.post('/lock/:cycleId', (0, roleMiddleware_1.allowRoles)('admin', 'accountant'), salary_controller_1.lockSalaryController);
+router.patch('/finalize/:salaryId', (0, roleMiddleware_1.allowRoles)('admin', 'accountant'), salary_controller_1.finalizeSalaryController);
 exports.default = router;
