@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import axios from 'axios';
+import { API } from '../src/api/api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -14,8 +15,6 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
-
-const BACKEND_URL = 'http://3.80.46.40:3030/api/auth/register-push-token';
 
 export const usePushNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
@@ -81,16 +80,14 @@ export const usePushNotifications = () => {
     async (token: string, authToken: string): Promise<void> => {
       try {
         console.log('Sending supervisor push token to backend...');
-        console.log('URL:', BACKEND_URL);
         console.log('Token:', token);
 
-        const response = await axios.post(
-          BACKEND_URL,
+        const response = await API.post(
+          '/api/auth/register-push-token',
           { pushToken: token },
           {
             headers: {
               Authorization: `Bearer ${authToken}`,
-              'Content-Type': 'application/json',
             },
           }
         );

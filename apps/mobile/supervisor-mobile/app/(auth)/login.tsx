@@ -32,7 +32,7 @@ const TopoPattern = () => {
     <SvgComponent
       height="100%"
       width="100%"
-      className="absolute inset-0"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       viewBox="0 0 400 400"
       preserveAspectRatio="xMidYMid slice"
       pointerEvents="none"
@@ -83,7 +83,10 @@ const WavyHeader = () => {
   const DefsComponent = Defs as any;
 
   return (
-    <View className="absolute inset-0" pointerEvents="none">
+    <View
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      pointerEvents="none"
+    >
       <SvgComponent
         height={height * 0.45}
         width={width}
@@ -151,9 +154,11 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="h-[42%] justify-center items-center">
-          <WavyHeader />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+            <WavyHeader />
+          </View>
 
-          <View className="items-center z-10">
+          <View style={{ alignItems: 'center', zIndex: 10 }}>
             <View className="w-20 h-20 rounded-3xl bg-white/20 justify-center items-center mb-5 border border-white/30">
               <Mail size={32} color="#fff" />
             </View>
@@ -245,7 +250,13 @@ export default function LoginScreen() {
                 return (
                   <LinearGradientComponent
                     colors={['#0EA5E9', '#0284C7']}
-                    className="flex-1 flex-row justify-center items-center gap-2.5"
+                    style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >

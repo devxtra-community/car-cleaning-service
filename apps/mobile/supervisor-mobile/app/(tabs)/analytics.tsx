@@ -27,9 +27,10 @@ const TopoPattern = () => {
     <SvgComponent
       height="100%"
       width="100%"
-      className="absolute inset-0"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       viewBox="0 0 400 400"
       preserveAspectRatio="xMidYMid slice"
+      pointerEvents="none"
     >
       <PathComponent
         d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
@@ -177,10 +178,18 @@ export default function AnalyticsView() {
           return (
             <LinearGradientComponent
               colors={['#0EA5E9', '#0284C7']}
-              className="flex-1 pt-3 overflow-hidden"
+              style={{ flex: 1, paddingTop: 12, overflow: 'hidden' }}
             >
               <TopoPattern />
-              <View className="flex-row justify-between items-center px-5 z-10">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingHorizontal: 20,
+                  zIndex: 10,
+                }}
+              >
                 <View>
                   <Text className="text-[32px] font-antigravity-bold text-white tracking-tighter">
                     {t('supervisor.analytics', { defaultValue: 'Analytics' })}
@@ -218,7 +227,7 @@ export default function AnalyticsView() {
                   colors={['#0EA5E9', '#0284C7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  className="p-5 min-h-[160px]"
+                  style={{ padding: 20, minHeight: 160 }}
                 >
                   <View className="flex-row justify-between items-center mb-3">
                     <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center">
@@ -261,7 +270,12 @@ export default function AnalyticsView() {
                   colors={['#0EA5E9', '#0284C7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  className="p-[18px] flex-row justify-between items-center"
+                  style={{
+                    padding: 18,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
                 >
                   <View className="flex-row items-center flex-1">
                     <View className="w-12 h-12 rounded-full bg-white/20 justify-center items-center mr-3.5">
@@ -367,8 +381,14 @@ export default function AnalyticsView() {
                         colors={['#0EA5E9', '#0284C7']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
-                        className="w-full max-w-[32px] rounded-lg shadow-sm"
-                        style={{ height: `${heightPercent}%` } as any}
+                        style={
+                          {
+                            width: '100%',
+                            maxWidth: 32,
+                            borderRadius: 8,
+                            height: `${heightPercent}%`,
+                          } as any
+                        }
                       />
                     );
                   })()}

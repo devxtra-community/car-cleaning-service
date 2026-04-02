@@ -1,6 +1,3 @@
-#!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports */
-/* eslint-disable no-undef */
 // @ts-check
 
 const fs = require('fs');

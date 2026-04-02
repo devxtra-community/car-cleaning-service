@@ -43,7 +43,7 @@ const TopoPattern = () => {
     <SvgComponent
       height="100%"
       width="100%"
-      className="absolute inset-0"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       viewBox="0 0 400 400"
       preserveAspectRatio="xMidYMid slice"
       pointerEvents="none"
@@ -236,17 +236,24 @@ export default function HomePage() {
   return (
     <View className="flex-1">
       <StatusBar barStyle="dark-content" />
-      {(() => {
-        const LinearGradientComponent = LinearGradient as any;
-        return (
-          <LinearGradientComponent
-            colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-            className="absolute inset-0"
-            pointerEvents="none"
-          />
-        );
-      })()}
-      <TopoPattern />
+      {/* BACKGROUND ELEMENTS */}
+      <View
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        pointerEvents="none"
+      >
+        {(() => {
+          const LinearGradientComponent = LinearGradient as any;
+          return (
+            <LinearGradientComponent
+              colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
+              style={{ flex: 1 }}
+            />
+          );
+        })()}
+        <View style={{ position: 'absolute', width: '100%', height: '100%' }} pointerEvents="none">
+          <TopoPattern />
+        </View>
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -345,7 +352,13 @@ export default function HomePage() {
               return (
                 <LinearGradientComponent
                   colors={['#0EA5E9', '#0284C7']}
-                  className="flex-1 flex-row items-center px-5 justify-between"
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 20,
+                    justifyContent: 'space-between',
+                  }}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >

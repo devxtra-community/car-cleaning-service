@@ -28,9 +28,10 @@ const TopoPattern = () => {
     <SvgComponent
       height="100%"
       width="100%"
-      className="absolute inset-0"
-      viewBox="0 0 400 200"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      viewBox="0 0 400 400"
       preserveAspectRatio="xMidYMid slice"
+      pointerEvents="none"
     >
       <PathComponent
         d="M 0 50 Q 50 30, 100 50 T 200 50 T 300 50 T 400 50"

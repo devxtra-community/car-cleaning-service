@@ -533,7 +533,10 @@ export default function LiveWorker() {
                         className="w-full h-40"
                         resizeMode="cover"
                       />
-                      <View className="absolute inset-0 bg-black/30 justify-center items-center">
+                      <View
+                        className="bg-black/30 justify-center items-center"
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                      >
                         <Camera size={24} color="#FFF" />
                         <Text className="text-white text-xs font-antigravity-bold mt-1">
                           {t('supervisor.changePhoto', { defaultValue: 'Change Photo' })}

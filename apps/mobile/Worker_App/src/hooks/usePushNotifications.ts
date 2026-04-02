@@ -100,10 +100,12 @@ export const usePushNotifications = () => {
       setExpoPushToken(token);
       if (token) {
         try {
-          // Retrieve auth token from SecureStore to authorize the backend call
           const SecureStore = await import('expo-secure-store');
           const authToken = await SecureStore.getItemAsync('access_token');
-          await sendTokenToBackend(token, authToken ?? undefined);
+          // Only attempt to sync if we have an auth token
+          if (authToken) {
+            await sendTokenToBackend(token, authToken);
+          }
         } catch (err) {
           console.error('[PushNotifications] Failed to send token to backend:', err);
         }

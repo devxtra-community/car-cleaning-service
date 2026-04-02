@@ -1,16 +1,4 @@
 import * as SecureStore from 'expo-secure-store';
-
-// FORCE METRO REFRESH - Sanitizing keys for SecureStore compatibility
-
-/**
- * A shim for AsyncStorage using Expo SecureStore.
- * This is useful when AsyncStorage (native module) is failing but SecureStore is working.
- */
-/**
- * SecureStore keys must only contain alphanumeric characters, ".", "-", and "_".
- * This function sanitizes common AsyncStorage keys (which often start with "@")
- * to be compatible with SecureStore.
- */
 const sanitizeKey = (key: string): string => {
   return key.replace(/[^a-zA-Z0-9._-]/g, '_');
 };
@@ -46,8 +34,6 @@ const storage = {
 
   clear: async (): Promise<void> => {
     try {
-      // Since SecureStore doesn't have a clearAll() method,
-      // we need to remove the known keys we use.
       const knownKeys = ['access_token', 'refresh_token', 'user_role', 'app_language'];
 
       await Promise.all(knownKeys.map((key) => storage.removeItem(key)));

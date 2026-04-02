@@ -35,9 +35,10 @@ const TopoPattern = ({ color = 'rgba(14, 165, 233, 0.08)' }: { color?: string })
     <SvgComponent
       height="100%"
       width="100%"
-      className="absolute inset-0"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       viewBox="0 0 400 400"
       preserveAspectRatio="xMidYMid slice"
+      pointerEvents="none"
     >
       <PathComponent
         d="M 0 80 Q 50 60, 100 80 T 200 80 T 300 80 T 400 80"
