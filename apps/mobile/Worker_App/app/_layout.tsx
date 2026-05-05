@@ -1,7 +1,6 @@
 import '../global.css';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -18,9 +17,10 @@ import OfflineBanner from '../components/OfflineBanner';
 import NetInfo from '@react-native-community/netinfo';
 import { syncQueue } from '../src/api/offlineQueue';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
+import { getAccessToken } from '../src/api/tokenStorage';
 
 export default function RootLayout() {
-  const { expoPushToken, notification } = usePushNotifications();
+  usePushNotifications();
   const [hydrated, setHydrated] = useState(false);
   const [fontsLoaded] = useFonts({
     Nunito_400Regular,
@@ -44,7 +44,7 @@ export default function RootLayout() {
     let mounted = true;
     (async () => {
       try {
-        await Promise.all([SecureStore.getItemAsync('access_token'), initI18n()]);
+        await Promise.all([getAccessToken(), initI18n()]);
       } finally {
         if (mounted) setHydrated(true);
       }

@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import api from '../api/api';
+import { getAccessToken } from '../api/tokenStorage';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -23,6 +24,11 @@ export const usePushNotifications = () => {
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   async function registerForPushNotificationsAsync() {
+    if (Platform.OS === 'web') {
+      console.log('Push notifications are disabled on web for this app.');
+      return undefined;
+    }
+
     if (Constants.appOwnership === 'expo') {
       console.log(
         'Push notifications are not supported in Expo Go (SDK 53+). Use a development build.'
@@ -96,12 +102,15 @@ export const usePushNotifications = () => {
   };
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
     registerForPushNotificationsAsync().then(async (token) => {
       setExpoPushToken(token);
       if (token) {
         try {
-          const SecureStore = await import('expo-secure-store');
-          const authToken = await SecureStore.getItemAsync('access_token');
+          const authToken = await getAccessToken();
           // Only attempt to sync if we have an auth token
           if (authToken) {
             await sendTokenToBackend(token, authToken);

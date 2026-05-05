@@ -119,6 +119,7 @@ function CustomTabBar({ state, navigation, role }: any) {
   const tabs = isSupervisor ? supervisorTabs : cleanerTabs;
   const tabCount = tabs.length;
   const tabWidth = CONTAINER_WIDTH / tabCount;
+  const useNativeDriver = Platform.OS !== 'web';
 
   // Find the exact active tab based on the current Expo router state
   const currentRouteName = state.routes[state.index]?.name;
@@ -130,11 +131,11 @@ function CustomTabBar({ state, navigation, role }: any) {
   useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: safeActiveIndex * tabWidth,
-      useNativeDriver: true,
+      useNativeDriver,
       friction: 9,
       tension: 60,
     }).start();
-  }, [safeActiveIndex, tabWidth, slideAnim]);
+  }, [safeActiveIndex, tabWidth, slideAnim, useNativeDriver]);
 
   // Hidden screens logic (using state instead of pathname for consistency if possible, but state.routes only contains tab screens)
   const hiddenScreens = [

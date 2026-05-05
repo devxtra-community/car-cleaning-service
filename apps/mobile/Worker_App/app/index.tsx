@@ -15,7 +15,7 @@ import {
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import Checkbox from 'expo-checkbox';
-import { Mail, Lock, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, ChevronRight, User } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { saveTokens, saveUserRole } from '../src/api/tokenStorage';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
@@ -137,17 +137,38 @@ export default function LoginScreen() {
           <WavyHeader />
 
           <View className="items-center z-10">
-            <View className="w-20 h-20 rounded-3xl bg-white/20 border border-white/30 items-center justify-center mb-5">
-              <Mail size={32} color="#fff" />
+            <View className="px-4 py-2 rounded-full bg-white/15 border border-white/25 mb-4">
+              <Text className="text-[11px] font-extrabold tracking-[2px] text-white/90">
+                FIELD WORKER PORTAL
+              </Text>
             </View>
-            <Text className="text-4xl font-extrabold text-white mb-2">Welcome Back</Text>
-            <Text className="text-base font-medium text-white/80">Sign in to manage your team</Text>
+            <View className="w-20 h-20 rounded-3xl bg-white/20 border border-white/30 items-center justify-center mb-5">
+              <User size={32} color="#fff" />
+            </View>
+            <Text className="text-4xl font-extrabold text-white mb-2">Worker Sign In</Text>
+            <Text className="text-base font-medium text-white/80">
+              Sign in to view your jobs, earnings, and daily updates
+            </Text>
           </View>
         </View>
 
         {/* CARD */}
         <View className="-mt-16 mx-6 bg-white rounded-[32px] p-6 border border-slate-100 shadow-xl">
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View className="flex-row items-center gap-3 mb-6 p-4 rounded-2xl bg-sky-50 border border-sky-100">
+              <View className="w-11 h-11 rounded-2xl bg-white items-center justify-center shadow-sm">
+                <User size={20} color="#0EA5E9" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[11px] font-extrabold tracking-[1.5px] text-sky-500 uppercase mb-1">
+                  Worker Access
+                </Text>
+                <Text className="text-sm font-semibold text-slate-700">
+                  Use your assigned worker email and password to continue.
+                </Text>
+              </View>
+            </View>
+
             {/* EMAIL */}
             <Text className="text-xs font-extrabold text-slate-400 tracking-widest mb-2 ml-2">
               OFFICIAL EMAIL
@@ -159,7 +180,7 @@ export default function LoginScreen() {
               </View>
               <TextInput
                 className="flex-1 text-base font-bold text-slate-800"
-                placeholder="supervisor@cleaning.com"
+                placeholder="worker@cleaning.com"
                 placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
                 value={email}
@@ -238,9 +259,13 @@ export default function LoginScreen() {
         </View>
 
         {/* FOOTER */}
-        <View className="flex-row justify-center items-center mt-10 mb-10">
-          <Text className="text-sm text-slate-500 font-medium">Need an account? </Text>
-          <Text className="text-sm text-sky-500 font-extrabold">Contact Admin</Text>
+        <View className="items-center mt-10 mb-10 px-8">
+          <Text className="text-sm text-slate-500 font-medium text-center">
+            Need worker access?
+          </Text>
+          <Text className="text-sm text-sky-500 font-extrabold text-center mt-1">
+            Contact your supervisor to get your login details
+          </Text>
         </View>
       </ScrollView>
     </View>

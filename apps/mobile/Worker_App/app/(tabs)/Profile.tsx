@@ -17,11 +17,11 @@ import {
   User,
   Star,
 } from 'lucide-react-native';
-import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import api from '../../src/api/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage, Language } from '../../contexts/LanguageContext';
+import { clearTokens } from '../../src/api/tokenStorage';
 
 interface ProfileRowProps {
   icon: React.ReactNode;
@@ -117,8 +117,7 @@ export default function Profile() {
         text: t('logout'),
         style: 'destructive',
         onPress: async () => {
-          await SecureStore.deleteItemAsync('access_token');
-          await SecureStore.deleteItemAsync('refresh_token');
+          await clearTokens();
           router.replace('/');
         },
       },
@@ -157,7 +156,14 @@ export default function Profile() {
         <View className="mb-6 relative">
           <LinearGradient
             colors={['#0EA5E9', '#0284C7']}
-            style={{ position: 'absolute', width: '100%', height: 256, borderBottomLeftRadius: 48, borderBottomRightRadius: 48, paddingTop: insets.top }}
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: 256,
+              borderBottomLeftRadius: 48,
+              borderBottomRightRadius: 48,
+              paddingTop: insets.top,
+            }}
           />
           <View className="items-center mt-28 pb-4 px-6">
             <View className="p-1.5 rounded-[40px] shadow-xl bg-white shadow-blue-900/20">

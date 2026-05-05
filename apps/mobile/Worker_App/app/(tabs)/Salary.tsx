@@ -10,6 +10,7 @@ import {
   Animated,
   StyleSheet,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -79,6 +80,7 @@ export default function SalaryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useLanguage();
+  const useNativeDriver = Platform.OS !== 'web';
   const [timeline, setTimeline] = useState<MonthSalary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -130,8 +132,8 @@ export default function SalaryScreen() {
 
   const selectEntry = (entry: MonthSalary | null) => {
     Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver }),
     ]).start();
     setSelected(entry);
   };
